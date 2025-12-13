@@ -1004,6 +1004,32 @@ class IAlgorithm(ABC):
         """worker 退出前调用（释放模型/GPU/文件句柄等）。"""
 ```
 
+为了兼容“函数式算法”的简单写法，runtime 提供一个适配器：把 `fn(req)->out` 包装成具备生命周期的 `IAlgorithm`（默认 `initialize/after_run/shutdown` 为 no-op）。
+
+```python
+# algo_sdk/runtime/algorithm_adapter.py
+from typing import Any, Callable
+from ..protocol.context import AlgorithmContext
+from ..core.base_model_abc import IBaseModel
+from .algorithm_abc import IAlgorithm
+
+class FunctionAlgorithmAdapter(IAlgorithm):
+    def __init__(self, fn: Callable[[IBaseModel], Any]) -> None:
+        self._fn = fn
+
+    def initialize(self) -> None:
+        return None
+
+    def run(self, req: IBaseModel, context: AlgorithmContext | None = None) -> Any:
+        return self._fn(req)
+
+    def after_run(self) -> None:
+        return None
+
+    def shutdown(self) -> None:
+        return None
+```
+
 ```python
 # algo_sdk/runtime/executor_abc.py
 from abc import ABC, abstractmethod
@@ -1202,6 +1228,8 @@ if __name__ == "__main__":
 # algo_core_service/algorithms/orbit_demo.py
 from algo_sdk.core.base_model_impl import BaseModel
 from algo_sdk.decorators.algorithm_decorator_impl import Algorithm
+from algo_sdk.runtime.algorithm_abc import IAlgorithm
+from algo_sdk.protocol.context import AlgorithmContext
 
 class OrbitInput(BaseModel):
     start_time: str
@@ -1217,10 +1245,22 @@ class OrbitOutput(BaseModel):
     description="Simple orbit propagation demo",
     execution={"isolated_pool": False, "max_workers": 2, "timeout_s": 60},
 )
-def orbit_propagation(req: OrbitInput) -> OrbitOutput:
-    dummy_traj = [[0.0, 0.0, 0.0], [1.0, 1.0, 1.0]]
-    data = {sat_id: dummy_traj for sat_id in req.sats}
-    return OrbitOutput(trajectories=data)
+class OrbitPropagationAlgo(IAlgorithm):
+    def initialize(self) -> None:
+        # 例如：加载星历文件、读取数据集、加载配置、初始化缓存等（仅一次）
+        self._dummy_traj = [[0.0, 0.0, 0.0], [1.0, 1.0, 1.0]]
+
+    def run(self, req: OrbitInput, context: AlgorithmContext | None = None) -> OrbitOutput:
+        data = {sat_id: self._dummy_traj for sat_id in req.sats}
+        return OrbitOutput(trajectories=data)
+
+    def after_run(self) -> None:
+        # 每次调用后清理临时资源（可选）
+        pass
+
+    def shutdown(self) -> None:
+        # worker 退出时释放资源（可选）
+        self._dummy_traj = None
 ```
 
 ---
