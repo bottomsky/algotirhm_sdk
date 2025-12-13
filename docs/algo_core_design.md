@@ -1,7 +1,7 @@
 # 算法核心服务 + SDK 设计方案
 
-> 目标：通过 `@Algorithm` 装饰器注册算法函数，自动暴露为 HTTP 接口。  
-> 算法函数只关心输入模型和返回的 **data**，HTTP 对外统一返回 `{ code, message, data, request_id }`。
+> 目标：通过 `@Algorithm` 装饰器注册算法（函数/类），自动暴露为 HTTP 接口。  
+> SDK 提供标准算法模板（生命周期 `initialize/run/after_run/shutdown`）、进程隔离执行（支持全局共享池/算法独立池）、标准化输入输出协议（含 `AlgorithmContext`）、崩溃/异常日志与观测能力，以及可选的 Consul 服务注册。
 
 ---
 
@@ -12,6 +12,9 @@ algo-platform/
 ├─ README.md
 ├─ algo_sdk/                 # 提供给算法开发者使用的 SDK（核心抽象 + 默认实现）
 │  ├─ __init__.py
+│  ├─ protocol/              # 标准输入输出协议（request/response/context）
+│  │  ├─ context.py                  # AlgorithmContext 定义
+│  │  ├─ envelope.py                 # AlgorithmRequest/AlgorithmResponse 定义
 │  ├─ core/
 │  │  ├─ base_model_abc.py          # 抽象：基础模型接口定义
 │  │  ├─ base_model_impl.py         # 实现：对接 Pydantic BaseModel
@@ -31,11 +34,32 @@ algo-platform/
 │  │
 │  ├─ http/
 │  │  ├─ api_schema_abc.py          # 抽象：HTTP 请求/响应包装结构接口
-│  │  ├─ api_schema_impl.py         # 实现：{code, message, data, request_id} 的默认协议
+│  │  ├─ api_schema_impl.py         # 实现：标准 envelope 的默认协议
 │  │
 │  ├─ config/
 │  │  ├─ settings_abc.py            # 抽象：SDK 配置接口（如是否固定 HTTP 状态码等）
 │  │  ├─ settings_impl.py           # 实现：基于环境变量的默认配置
+│  │
+│  ├─ runtime/                # 执行运行时（进程池/worker/生命周期）
+│  │  ├─ algorithm_abc.py            # 抽象：IAlgorithm 生命周期接口
+│  │  ├─ algorithm_adapter.py        # 适配：把函数包装成 IAlgorithm
+│  │  ├─ executor_abc.py             # 抽象：算法执行器（进程隔离/超时/并发）
+│  │  ├─ executor_impl.py            # 实现：multiprocessing 进程池 + 监控
+│  │  ├─ worker_main.py              # worker 进程入口（initialize/run/after_run）
+│  │
+│  ├─ logging/                # 日志模块（结构化日志 + 多进程汇聚 + 标准异常记录）
+│  │  ├─ logger.py
+│  │  ├─ exception_schema.py
+│  │  ├─ mp_logging.py
+│  │
+│  ├─ observability/          # 观测模块（metrics/tracing/health）
+│  │  ├─ metrics.py
+│  │  ├─ tracing.py
+│  │  ├─ health.py
+│  │
+│  ├─ service_registry/       # 服务注册（可选 Consul）
+│  │  ├─ registrar_abc.py
+│  │  ├─ consul_registrar.py
 │  │
 │  └─ utils/
 │     ├─ import_utils.py            # 通用 import 工具（如果需要）
@@ -123,7 +147,7 @@ class BaseModel(_PydanticBaseModel, IBaseModel):
 #### 2.1.3 `algorithm_spec_abc.py`
 
 **职责**：  
-定义“算法元数据、输入/输出元信息、算法函数”的抽象接口。
+定义“算法元数据、输入/输出元信息、算法入口（函数/类）+ 执行参数”的抽象接口。
 
 ```python
 # algo_sdk/core/algorithm_spec_abc.py
@@ -152,6 +176,37 @@ class IAlgorithmOutputMeta(ABC):
     @abstractmethod
     def schema(self) -> Dict[str, Any]:
         """输出 JSON Schema。"""
+
+class IAlgorithmExecutionMeta(ABC):
+    """
+    执行参数（影响运行时进程池/超时/并发/GPU 等）。
+
+    注意：这里描述的是“期望策略”，实际是否生效由 runtime.executor 决定。
+    """
+
+    @property
+    @abstractmethod
+    def isolated_pool(self) -> bool:
+        """是否使用算法独立进程池（通常用于 GPU/大模型/重资源算法）。"""
+
+    @property
+    @abstractmethod
+    def max_workers(self) -> int:
+        """该算法可并发的 worker 数。"""
+
+    @property
+    @abstractmethod
+    def timeout_s(self) -> float | None:
+        """单次 run 的超时秒数（None 表示不超时）。"""
+
+    @property
+    @abstractmethod
+    def gpu(self) -> str | None:
+        """GPU 资源声明（例如 '0'、'0,1'、或 None 表示不绑定）。"""
+
+    @abstractmethod
+    def to_dict(self) -> Dict[str, Any]:
+        """用于对外暴露（/algorithms, /schema 等）。"""
 
 class IAlgorithmSpec(ABC):
     """算法描述信息抽象接口。"""
@@ -182,8 +237,23 @@ class IAlgorithmSpec(ABC):
 
     @property
     @abstractmethod
-    def func(self) -> Callable[[IBaseModel], Any]:
-        """算法入口函数。"""
+    def execution_meta(self) -> IAlgorithmExecutionMeta: ...
+
+    @property
+    @abstractmethod
+    def entrypoint_ref(self) -> str:
+        """
+        算法入口引用（建议格式：'{module}:{qualname}'）。
+        运行时在 worker 进程中通过该引用 import 并实例化/调用。
+        """
+
+    @property
+    @abstractmethod
+    def entrypoint(self) -> Callable[..., Any]:
+        """
+        进程内入口（用于调试/单元测试）。
+        生产环境建议交由 runtime 在独立进程执行。
+        """
 ```
 
 #### 2.1.4 `algorithm_spec_impl.py`
@@ -198,6 +268,7 @@ from typing import Any, Dict, Callable, Type
 from .algorithm_spec_abc import (
     IAlgorithmInputMeta,
     IAlgorithmOutputMeta,
+    IAlgorithmExecutionMeta,
     IAlgorithmSpec,
 )
 from .base_model_abc import IBaseModel
@@ -229,6 +300,37 @@ class AlgorithmOutputMeta(IAlgorithmOutputMeta):
         return self._schema
 
 @dataclass
+class AlgorithmExecutionMeta(IAlgorithmExecutionMeta):
+    _isolated_pool: bool = False
+    _max_workers: int = 1
+    _timeout_s: float | None = None
+    _gpu: str | None = None
+
+    @property
+    def isolated_pool(self) -> bool:
+        return self._isolated_pool
+
+    @property
+    def max_workers(self) -> int:
+        return self._max_workers
+
+    @property
+    def timeout_s(self) -> float | None:
+        return self._timeout_s
+
+    @property
+    def gpu(self) -> str | None:
+        return self._gpu
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "isolated_pool": self._isolated_pool,
+            "max_workers": self._max_workers,
+            "timeout_s": self._timeout_s,
+            "gpu": self._gpu,
+        }
+
+@dataclass
 class AlgorithmSpec(IAlgorithmSpec):
     _name: str
     _version: str
@@ -236,7 +338,9 @@ class AlgorithmSpec(IAlgorithmSpec):
     _tags: list[str]
     _input_meta: IAlgorithmInputMeta
     _output_meta: IAlgorithmOutputMeta
-    _func: Callable[[IBaseModel], Any]
+    _execution_meta: IAlgorithmExecutionMeta
+    _entrypoint_ref: str
+    _entrypoint: Callable[..., Any]
 
     @property
     def name(self) -> str:
@@ -263,8 +367,16 @@ class AlgorithmSpec(IAlgorithmSpec):
         return self._output_meta
 
     @property
-    def func(self) -> Callable[[IBaseModel], Any]:
-        return self._func
+    def execution_meta(self) -> IAlgorithmExecutionMeta:
+        return self._execution_meta
+
+    @property
+    def entrypoint_ref(self) -> str:
+        return self._entrypoint_ref
+
+    @property
+    def entrypoint(self) -> Callable[..., Any]:
+        return self._entrypoint
 ```
 
 ---
@@ -393,10 +505,11 @@ class AlgoBizError(IAlgoBizError):
 from abc import ABC, abstractmethod
 from typing import Any
 from .registry_abc import IAlgorithmRegistry
+from ..runtime.executor_abc import IAlgorithmExecutor
 
 class IAppFactory(ABC):
     @abstractmethod
-    def create_app(self, registry: IAlgorithmRegistry) -> Any:
+    def create_app(self, registry: IAlgorithmRegistry, executor: IAlgorithmExecutor) -> Any:
         """
         创建 Web 应用实例。
         返回值类型由具体框架决定（例如 FastAPI App）。
@@ -418,13 +531,24 @@ from .app_factory_abc import IAppFactory
 from .registry_abc import IAlgorithmRegistry
 from .errors_impl import AlgoBizError
 from ..http.api_schema_impl import api_success, api_error
+from ..runtime.executor_abc import IAlgorithmExecutor
+from ..protocol.context import AlgorithmContext
 
 class InvokeRequest(PydanticBaseModel):
+    """
+    标准输入协议（外部 JSON）：
+      - requestId: 每次调用唯一 ID
+      - datetime: ISO8601 时间字符串
+      - context: 可选上下文（trace/tenant/user 等）
+      - data: 业务输入（对应算法输入模型）
+    """
+    requestId: str
+    datetime: str
+    context: AlgorithmContext | None = None
     data: Dict[str, Any]
-    request_id: str | None = None
 
 class FastAPIAppFactory(IAppFactory):
-    def create_app(self, registry: IAlgorithmRegistry) -> FastAPI:
+    def create_app(self, registry: IAlgorithmRegistry, executor: IAlgorithmExecutor) -> FastAPI:
         app = FastAPI(title="Algo Core Service")
 
         @app.get("/algorithms")
@@ -435,6 +559,8 @@ class FastAPIAppFactory(IAppFactory):
                     "version": spec.version,
                     "description": spec.description,
                     "tags": spec.tags,
+                    "entrypoint_ref": spec.entrypoint_ref,
+                    "execution": spec.execution_meta.to_dict(),
                 }
                 for spec in registry.list_all()
             ]
@@ -450,8 +576,10 @@ class FastAPIAppFactory(IAppFactory):
                     "name": spec.name,
                     "version": spec.version,
                     "description": spec.description,
+                    "entrypoint_ref": spec.entrypoint_ref,
                     "input_schema": spec.input_meta.schema,
                     "output_schema": spec.output_meta.schema,
+                    "execution": spec.execution_meta.to_dict(),
                 }
             )
 
@@ -462,7 +590,9 @@ class FastAPIAppFactory(IAppFactory):
                 return api_error(
                     code=40401,
                     message="Algorithm not found",
-                    request_id=req.request_id,
+                    requestId=req.requestId,
+                    datetime=req.datetime,
+                    context=req.context,
                 )
 
             # 输入解析
@@ -472,24 +602,37 @@ class FastAPIAppFactory(IAppFactory):
                 return api_error(
                     code=40001,
                     message=f"Input validation error: {e}",
-                    request_id=req.request_id,
+                    requestId=req.requestId,
+                    datetime=req.datetime,
+                    context=req.context,
                 )
 
             # 执行算法
             try:
-                result = spec.func(input_obj)
+                # 注意：默认执行应在独立进程中完成（支持全局共享池/算法独立池）
+                result = executor.invoke(
+                    spec=spec,
+                    requestId=req.requestId,
+                    datetime=req.datetime,
+                    context=req.context,
+                    input_obj=input_obj,
+                )
             except AlgoBizError as e:
                 return api_error(
                     code=e.code,
                     message=e.message,
                     data=e.data,
-                    request_id=req.request_id,
+                    requestId=req.requestId,
+                    datetime=req.datetime,
+                    context=req.context,
                 )
             except Exception as e:
                 return api_error(
                     code=50001,
                     message=f"Algorithm execution error: {e}",
-                    request_id=req.request_id,
+                    requestId=req.requestId,
+                    datetime=req.datetime,
+                    context=req.context,
                 )
 
             # 输出校验
@@ -506,10 +649,17 @@ class FastAPIAppFactory(IAppFactory):
                 return api_error(
                     code=50002,
                     message=f"Output validation error: {e}",
-                    request_id=req.request_id,
+                    requestId=req.requestId,
+                    datetime=req.datetime,
+                    context=req.context,
                 )
 
-            return api_success(data=data, request_id=req.request_id)
+            return api_success(
+                data=data,
+                requestId=req.requestId,
+                datetime=req.datetime,
+                context=req.context,
+            )
 
         return app
 ```
@@ -526,7 +676,7 @@ class FastAPIAppFactory(IAppFactory):
 ```python
 # algo_sdk/decorators/algorithm_decorator_abc.py
 from abc import ABC, abstractmethod
-from typing import Callable
+from typing import Any, Callable
 from ..core.algorithm_spec_abc import IAlgorithmSpec
 
 class IAlgorithmDecorator(ABC):
@@ -537,6 +687,7 @@ class IAlgorithmDecorator(ABC):
         version: str = "v1",
         description: str = "",
         tags: list[str] | None = None,
+        execution: dict[str, Any] | None = None,
     ) -> Callable:
         """返回一个可作为装饰器使用的 callable。"""
 ```
@@ -545,19 +696,20 @@ class IAlgorithmDecorator(ABC):
 
 **职责**：  
 默认实现：  
-- 从函数的 type hints 中提取输入/输出模型（继承自 `BaseModel`）；  
+- 从函数/类的 `run` type hints 中提取输入/输出模型（继承自 `BaseModel`）；  
 - 生成 `AlgorithmSpec`；  
 - 注册到 `global_registry`；  
-- 返回原函数。
+- 返回原对象（函数或类）。
 
 ```python
 # algo_sdk/decorators/algorithm_decorator_impl.py
-from typing import Callable, get_type_hints, Type
+from typing import Any, Callable, get_type_hints, Type
 from ..core.base_model_impl import BaseModel
 from ..core.algorithm_spec_impl import (
     AlgorithmSpec,
     AlgorithmInputMeta,
     AlgorithmOutputMeta,
+    AlgorithmExecutionMeta,
 )
 from ..core.registry_impl import global_registry
 from .algorithm_decorator_abc import IAlgorithmDecorator
@@ -569,11 +721,27 @@ class DefaultAlgorithmDecorator(IAlgorithmDecorator):
         version: str = "v1",
         description: str = "",
         tags: list[str] | None = None,
+        execution: dict[str, Any] | None = None,
     ) -> Callable:
 
         tags = tags or []
+        execution = execution or {}
 
-        def decorator(fn: Callable):
+        def decorator(obj: Any):
+            """
+            支持两种写法：
+              1) 装饰函数：fn(req: In) -> Out
+              2) 装饰类：class Algo: def run(self, req: In) -> Out
+                 （生命周期由 runtime.algorithm_abc 定义）
+            """
+
+            if isinstance(obj, type):
+                entry = obj
+                fn = obj.run
+            else:
+                entry = obj
+                fn = obj
+
             hints = get_type_hints(fn)
             if "return" not in hints:
                 raise TypeError(f"Algorithm {name} must have return type annotation")
@@ -601,6 +769,15 @@ class DefaultAlgorithmDecorator(IAlgorithmDecorator):
                 _schema=out_model_cls.json_schema(),
             )
 
+            execution_meta = AlgorithmExecutionMeta(
+                _isolated_pool=bool(execution.get("isolated_pool", False)),
+                _max_workers=int(execution.get("max_workers", 1)),
+                _timeout_s=execution.get("timeout_s"),
+                _gpu=execution.get("gpu"),
+            )
+
+            entrypoint_ref = f"{entry.__module__}:{entry.__qualname__}"
+
             spec = AlgorithmSpec(
                 _name=name,
                 _version=version,
@@ -608,11 +785,13 @@ class DefaultAlgorithmDecorator(IAlgorithmDecorator):
                 _tags=tags,
                 _input_meta=input_meta,
                 _output_meta=output_meta,
-                _func=fn,
+                _execution_meta=execution_meta,
+                _entrypoint_ref=entrypoint_ref,
+                _entrypoint=entry,
             )
 
             global_registry.register(spec)
-            return fn
+            return obj
 
         return decorator
 
@@ -630,16 +809,23 @@ Algorithm = DefaultAlgorithmDecorator()
 #### 2.3.1 `api_schema_abc.py`
 
 **职责**：  
-抽象 HTTP 层的 `{code, message, data, request_id}` 协议。
+抽象 HTTP 层的标准输入/输出 envelope（支持 `AlgorithmContext`、`requestId`、`datetime`）。
 
 ```python
 # algo_sdk/http/api_schema_abc.py
 from abc import ABC, abstractmethod
 from typing import Any, Dict
+from ..protocol.context import AlgorithmContext
 
 class IApiResponseBuilder(ABC):
     @abstractmethod
-    def success(self, data: Any, request_id: str | None = None) -> Dict[str, Any]:
+    def success(
+        self,
+        data: Any,
+        requestId: str | None = None,
+        datetime: str | None = None,
+        context: AlgorithmContext | None = None,
+    ) -> Dict[str, Any]:
         ...
 
     @abstractmethod
@@ -648,7 +834,9 @@ class IApiResponseBuilder(ABC):
         code: int,
         message: str,
         data: Any = None,
-        request_id: str | None = None,
+        requestId: str | None = None,
+        datetime: str | None = None,
+        context: AlgorithmContext | None = None,
     ) -> Dict[str, Any]:
         ...
 ```
@@ -662,14 +850,23 @@ class IApiResponseBuilder(ABC):
 # algo_sdk/http/api_schema_impl.py
 from typing import Any, Dict
 from .api_schema_abc import IApiResponseBuilder
+from ..protocol.context import AlgorithmContext
 
 class DefaultApiResponseBuilder(IApiResponseBuilder):
-    def success(self, data: Any, request_id: str | None = None) -> Dict[str, Any]:
+    def success(
+        self,
+        data: Any,
+        requestId: str | None = None,
+        datetime: str | None = None,
+        context: AlgorithmContext | None = None,
+    ) -> Dict[str, Any]:
         return {
             "code": 0,
             "message": "success",
+            "requestId": requestId,
+            "datetime": datetime,
+            "context": context.model_dump() if context else None,
             "data": data,
-            "request_id": request_id,
         }
 
     def error(
@@ -677,28 +874,39 @@ class DefaultApiResponseBuilder(IApiResponseBuilder):
         code: int,
         message: str,
         data: Any = None,
-        request_id: str | None = None,
+        requestId: str | None = None,
+        datetime: str | None = None,
+        context: AlgorithmContext | None = None,
     ) -> Dict[str, Any]:
         return {
             "code": code,
             "message": message,
+            "requestId": requestId,
+            "datetime": datetime,
+            "context": context.model_dump() if context else None,
             "data": data,
-            "request_id": request_id,
         }
 
 # 简单导出函数，方便 app_factory 使用
 _builder = DefaultApiResponseBuilder()
 
-def api_success(data: Any, request_id: str | None = None) -> Dict[str, Any]:
-    return _builder.success(data, request_id)
+def api_success(
+    data: Any,
+    requestId: str | None = None,
+    datetime: str | None = None,
+    context: AlgorithmContext | None = None,
+) -> Dict[str, Any]:
+    return _builder.success(data, requestId, datetime, context)
 
 def api_error(
     code: int,
     message: str,
     data: Any = None,
-    request_id: str | None = None,
+    requestId: str | None = None,
+    datetime: str | None = None,
+    context: AlgorithmContext | None = None,
 ) -> Dict[str, Any]:
-    return _builder.error(code, message, data, request_id)
+    return _builder.error(code, message, data, requestId, datetime, context)
 ```
 
 ---
@@ -711,6 +919,170 @@ def api_error(
 - 是否打印详细异常信息。
 
 这里先只留结构，具体配置可以后补。
+
+---
+
+### 2.5 `algo_sdk.protocol` 模块
+
+**职责**：  
+定义对外统一的输入/输出结构（支持上下文 `AlgorithmContext`），保证所有算法调用具备一致的：`requestId`、`datetime`、`context`、`data` 字段。
+
+建议外部协议（JSON）：
+
+- Request：`{ requestId, datetime, context, data }`
+- Response：`{ code, message, requestId, datetime, context, data }`
+
+```python
+# algo_sdk/protocol/context.py
+from pydantic import BaseModel
+from typing import Any, Dict
+
+class AlgorithmContext(BaseModel):
+    """
+    算法上下文：用于链路追踪/多租户/用户态信息等。
+    约定：服务端默认回传（echo）请求的 context（可在算法内部修改/补充）。
+    """
+    traceId: str | None = None
+    tenantId: str | None = None
+    userId: str | None = None
+    extra: Dict[str, Any] = {}
+```
+
+```python
+# algo_sdk/protocol/envelope.py
+from pydantic import BaseModel
+from typing import Any, Dict
+from .context import AlgorithmContext
+
+class AlgorithmRequest(BaseModel):
+    requestId: str
+    datetime: str  # ISO8601
+    context: AlgorithmContext | None = None
+    data: Dict[str, Any]
+
+class AlgorithmResponse(BaseModel):
+    code: int
+    message: str
+    requestId: str | None = None
+    datetime: str | None = None
+    context: AlgorithmContext | None = None
+    data: Any = None
+```
+
+---
+
+### 2.6 `algo_sdk.runtime` 模块
+
+**职责**：  
+把算法执行从 HTTP 进程中隔离出去，提供：
+
+- 生命周期：`initialize()`（加载资源/模型/数据集）、`run()`（每次请求执行）、`after_run()`（每次请求后清理）、`shutdown()`（worker 退出前释放资源）；
+- 进程隔离并发：默认全局共享进程池；通过装饰器 `execution.isolated_pool=True` 可启用“每算法独立进程池”（更适合 GPU/大模型/重资源算法）；
+- 崩溃检测：worker 非 0 退出码视为崩溃，标准化记录日志，并返回可识别的错误码；
+- 资源声明：`execution.gpu` 可用于绑定 CUDA 设备（实现层可通过设置 `CUDA_VISIBLE_DEVICES` 等方式）。
+
+```python
+# algo_sdk/runtime/algorithm_abc.py
+from abc import ABC, abstractmethod
+from typing import Any
+from ..protocol.context import AlgorithmContext
+from ..core.base_model_abc import IBaseModel
+
+class IAlgorithm(ABC):
+    @abstractmethod
+    def initialize(self) -> None:
+        """worker 启动后调用一次（加载模型/文件/数据集等）。"""
+
+    @abstractmethod
+    def run(self, req: IBaseModel, context: AlgorithmContext | None = None) -> Any:
+        """每次请求调用（建议不要做昂贵的重复初始化）。"""
+
+    def after_run(self) -> None:
+        """每次 run 后调用（释放临时资源/清理缓存等）。"""
+
+    def shutdown(self) -> None:
+        """worker 退出前调用（释放模型/GPU/文件句柄等）。"""
+```
+
+```python
+# algo_sdk/runtime/executor_abc.py
+from abc import ABC, abstractmethod
+from typing import Any
+from ..protocol.context import AlgorithmContext
+from ..core.algorithm_spec_abc import IAlgorithmSpec
+from ..core.base_model_abc import IBaseModel
+
+class IAlgorithmExecutor(ABC):
+    @abstractmethod
+    def start(self) -> None: ...
+
+    @abstractmethod
+    def stop(self) -> None: ...
+
+    @abstractmethod
+    def invoke(
+        self,
+        spec: IAlgorithmSpec,
+        requestId: str,
+        datetime: str,
+        context: AlgorithmContext | None,
+        input_obj: IBaseModel,
+    ) -> Any:
+        """在独立进程执行算法（含超时/崩溃处理），返回结果（dict 或输出模型实例）。"""
+```
+
+**并发与池化建议**：
+
+- 默认：全局共享进程池（适合轻量/初始化快的算法，资源利用率高）；
+- 对 `execution.isolated_pool=True` 的算法：每算法独立池（适合 GPU/深度学习/初始化昂贵的算法，隔离强且可常驻模型）；
+- 可进一步扩展：`dedicated`（独占进程/独占 GPU）用于强 SLA 场景。
+
+---
+
+### 2.7 `algo_sdk.logging` 模块
+
+**职责**：  
+提供标准化异常记录 + 多进程日志汇聚，解决两类问题：
+
+1. 算法抛异常（可捕获）需要结构化记录；
+2. worker 进程崩溃（不可捕获）需要由父进程监控并记录“崩溃事件”。
+
+建议统一异常日志结构（JSON）包含：
+
+- `requestId`、`datetime`、`algoName`、`algoVersion`、`entrypointRef`
+- `errorType`、`errorMessage`、`stack`
+- `processPid`、`exitCode`（崩溃场景）
+
+实现建议：基于 `logging.handlers.QueueHandler/QueueListener` 把 worker 日志集中到主进程输出/落盘。
+
+---
+
+### 2.8 `algo_sdk.observability` 模块
+
+**职责**：  
+提供可观测性能力，建议最小集合：
+
+- Metrics：请求总数、失败数、延迟直方图、队列长度、worker 存活数（按算法维度标签化）；
+- Tracing：从 HTTP 接入层生成/透传 `traceId`（写入 `AlgorithmContext`），并在日志里关联；
+- Health：`/healthz`（存活）、`/readyz`（就绪：算法加载完成/worker 池已启动）、`/metrics`（Prometheus）。
+
+---
+
+### 2.9 `algo_sdk.service_registry` 模块
+
+**职责**：  
+服务启动后按环境变量开关决定是否注册到 Consul：
+
+- 注册内容（service）：`serviceName`、`address`、`port`、`health check`、tags
+- 发现内容（推荐）：提供算法清单入口 URL（如 `/algorithms`）与 schema URL（如 `/algorithms/{name}/{version}/schema`）
+- 如需“把算法路由 + 输入输出 schema 写入注册中心”，建议写 Consul KV（避免 service meta 过大）
+
+建议的环境变量：
+
+- `SERVICE_REGISTRY_ENABLED=true/false`
+- `CONSUL_HTTP_ADDR=http://127.0.0.1:8500`
+- `SERVICE_NAME=algo-core-service`
+- `SERVICE_ID=<可选，默认 name+host+port>`
 
 ---
 
@@ -735,6 +1107,15 @@ ALGO_MODULES = os.getenv(
 
 SERVICE_HOST = os.getenv("SERVICE_HOST", "0.0.0.0")
 SERVICE_PORT = int(os.getenv("SERVICE_PORT", "8000"))
+
+# runtime/executor
+EXECUTOR_GLOBAL_MAX_WORKERS = int(os.getenv("EXECUTOR_GLOBAL_MAX_WORKERS", "4"))
+EXECUTOR_DEFAULT_TIMEOUT_S = float(os.getenv("EXECUTOR_DEFAULT_TIMEOUT_S", "300"))
+
+# service registry (consul)
+SERVICE_REGISTRY_ENABLED = os.getenv("SERVICE_REGISTRY_ENABLED", "false").lower() == "true"
+CONSUL_HTTP_ADDR = os.getenv("CONSUL_HTTP_ADDR", "http://127.0.0.1:8500")
+SERVICE_NAME = os.getenv("SERVICE_NAME", "algo-core-service")
 ```
 
 ---
@@ -743,8 +1124,10 @@ SERVICE_PORT = int(os.getenv("SERVICE_PORT", "8000"))
 
 **职责**：  
 1. 导入算法模块（触发 `@Algorithm` 注册）；  
-2. 创建 `FastAPI` 应用；  
-3. 用 `uvicorn` 启动。
+2. 启动 runtime executor（进程池/worker）；  
+3. 可选注册到 Consul；  
+4. 创建 `FastAPI` 应用（路由调用走 executor）；  
+5. 用 `uvicorn` 启动。
 
 ```python
 # algo_core_service/main.py
@@ -753,7 +1136,18 @@ import uvicorn
 
 from algo_sdk.core.registry_impl import global_registry
 from algo_sdk.core.app_factory_impl import FastAPIAppFactory
-from .settings import ALGO_MODULES, SERVICE_HOST, SERVICE_PORT
+from algo_sdk.runtime.executor_impl import MpAlgorithmExecutor
+from algo_sdk.service_registry.consul_registrar import ConsulRegistrar, NullRegistrar
+from .settings import (
+    ALGO_MODULES,
+    SERVICE_HOST,
+    SERVICE_PORT,
+    EXECUTOR_GLOBAL_MAX_WORKERS,
+    EXECUTOR_DEFAULT_TIMEOUT_S,
+    SERVICE_REGISTRY_ENABLED,
+    CONSUL_HTTP_ADDR,
+    SERVICE_NAME,
+)
 
 def load_algorithms():
     for mod_name in ALGO_MODULES:
@@ -765,7 +1159,31 @@ def load_algorithms():
 def create_app():
     load_algorithms()
     factory = FastAPIAppFactory()
-    app = factory.create_app(global_registry)
+
+    executor = MpAlgorithmExecutor(
+        registry=global_registry,
+        global_max_workers=EXECUTOR_GLOBAL_MAX_WORKERS,
+        default_timeout_s=EXECUTOR_DEFAULT_TIMEOUT_S,
+    )
+
+    registrar = (
+        ConsulRegistrar(consul_addr=CONSUL_HTTP_ADDR, service_name=SERVICE_NAME)
+        if SERVICE_REGISTRY_ENABLED
+        else NullRegistrar()
+    )
+
+    app = factory.create_app(global_registry, executor)
+
+    @app.on_event("startup")
+    def _startup():
+        executor.start()
+        registrar.register(app=app, registry=global_registry, host=SERVICE_HOST, port=SERVICE_PORT)
+
+    @app.on_event("shutdown")
+    def _shutdown():
+        registrar.deregister()
+        executor.stop()
+
     return app
 
 if __name__ == "__main__":
@@ -797,6 +1215,7 @@ class OrbitOutput(BaseModel):
     name="orbit_propagation",
     version="v1",
     description="Simple orbit propagation demo",
+    execution={"isolated_pool": False, "max_workers": 2, "timeout_s": 60},
 )
 def orbit_propagation(req: OrbitInput) -> OrbitOutput:
     dummy_traj = [[0.0, 0.0, 0.0], [1.0, 1.0, 1.0]]
@@ -806,14 +1225,67 @@ def orbit_propagation(req: OrbitInput) -> OrbitOutput:
 
 ---
 
+### 3.4 `algorithms/dl_demo.py`（GPU/深度学习示例）
+
+**要点**：
+
+- 通过 `execution.isolated_pool=True` 启用算法独立进程池，便于模型常驻与隔离；
+- `initialize()` 只加载一次模型；`after_run()` 做每次调用后的轻量清理；`shutdown()` 做最终释放；
+- `execution.gpu` 由 runtime 用于绑定设备（例如设置 `CUDA_VISIBLE_DEVICES`）。
+
+```python
+# algo_core_service/algorithms/dl_demo.py
+from algo_sdk.core.base_model_impl import BaseModel
+from algo_sdk.decorators.algorithm_decorator_impl import Algorithm
+from algo_sdk.protocol.context import AlgorithmContext
+from algo_sdk.runtime.algorithm_abc import IAlgorithm
+
+class ImageClsInput(BaseModel):
+    image_b64: str
+
+class ImageClsOutput(BaseModel):
+    label: str
+    score: float
+
+@Algorithm(
+    name="image_classification",
+    version="v1",
+    description="GPU image classification demo",
+    execution={"isolated_pool": True, "max_workers": 1, "timeout_s": 300, "gpu": "0"},
+)
+class ImageClassificationAlgo(IAlgorithm):
+    def initialize(self) -> None:
+        # load_model(), load_weights(), warmup() ...
+        self._model = object()
+
+    def run(self, req: ImageClsInput, context: AlgorithmContext | None = None) -> ImageClsOutput:
+        # inference ...
+        return ImageClsOutput(label="cat", score=0.9)
+
+    def after_run(self) -> None:
+        # 可选：释放临时显存/缓存（如 torch.cuda.empty_cache）
+        pass
+
+    def shutdown(self) -> None:
+        # 释放模型/句柄等
+        self._model = None
+```
+
+---
+
 ## 4. 小结
 
 - **抽象类和实现类分文件**：
   - `*_abc.py`：定义接口（IBaseModel, IAlgorithmSpec, IAlgorithmRegistry, IAppFactory, IAlgoBizError, IApiResponseBuilder...）
   - `*_impl.py`：给出默认实现（基于 Pydantic、FastAPI、内存 Registry 等）
+- **补齐运行时能力**：
+  - 标准协议：`requestId/datetime/context/data`，响应统一 `code/message`；
+  - 生命周期：`initialize/run/after_run/shutdown`；
+  - 进程隔离：默认全局共享池，支持装饰器参数启用算法独立池（更适合 GPU/深度学习）；
+  - 观测与治理：结构化异常/崩溃日志、metrics/tracing/health、可选 Consul 注册与发现。
 - **对算法开发者**：
   - 只需要：
     - `from algo_sdk import BaseModel, Algorithm`
     - 定义输入/输出模型；
-    - 写一个函数，`@Algorithm` 装饰；
-  - 自动获得 HTTP 接口，外部访问统一返回 `{code, message, data, request_id}`。
+    - 写一个函数或类，`@Algorithm` 装饰；
+  - 自动获得 HTTP 接口，外部访问统一返回标准 envelope：`{code, message, requestId, datetime, context, data}`。
