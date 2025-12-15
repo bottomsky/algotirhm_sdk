@@ -55,7 +55,8 @@ algo-platform/
 │  ├─ observability/          # 观测模块（metrics/tracing/health）
 │  │  ├─ metrics.py
 │  │  ├─ tracing.py
-│  │  ├─ health.py
+│  │  ├─ health_abc.py
+│  │  ├─ health_impl.py
 │  │
 │  ├─ service_registry/       # 服务注册（可选 Consul）
 │  │  ├─ registrar_abc.py
@@ -509,7 +510,12 @@ from ..runtime.executor_abc import IAlgorithmExecutor
 
 class IAppFactory(ABC):
     @abstractmethod
-    def create_app(self, registry: IAlgorithmRegistry, executor: IAlgorithmExecutor) -> Any:
+    def create_app(
+        self,
+        registry: IAlgorithmRegistry,
+        executor: IAlgorithmExecutor,
+        health: "IHealthService | None" = None,
+    ) -> Any:
         """
         创建 Web 应用实例。
         返回值类型由具体框架决定（例如 FastAPI App）。
@@ -533,6 +539,8 @@ from .errors_impl import AlgoBizError
 from ..http.api_schema_impl import api_success, api_error
 from ..runtime.executor_abc import IAlgorithmExecutor
 from ..protocol.context import AlgorithmContext
+from ..observability.health_abc import IHealthService
+from ..observability.health_impl import InMemoryHealthService
 
 class InvokeRequest(PydanticBaseModel):
     """
@@ -548,8 +556,14 @@ class InvokeRequest(PydanticBaseModel):
     data: Dict[str, Any]
 
 class FastAPIAppFactory(IAppFactory):
-    def create_app(self, registry: IAlgorithmRegistry, executor: IAlgorithmExecutor) -> FastAPI:
+    def create_app(
+        self,
+        registry: IAlgorithmRegistry,
+        executor: IAlgorithmExecutor,
+        health: IHealthService | None = None,
+    ) -> FastAPI:
         app = FastAPI(title="Algo Core Service")
+        health = health or InMemoryHealthService(registry=registry, executor=executor)
 
         @app.get("/algorithms")
         def list_algorithms():
@@ -565,6 +579,17 @@ class FastAPIAppFactory(IAppFactory):
                 for spec in registry.list_all()
             ]
             return api_success(data=algos)
+
+        @app.get("/healthz")
+        def healthz():
+            # 存活探针：只要 HTTP 服务能响应即可（不做重依赖检查）
+            return api_success(data=health.liveness())
+
+        @app.get("/readyz")
+        def readyz():
+            # 就绪探针：算法已加载 + executor 已启动（以及可选的外部依赖）
+            ok, payload = health.readiness()
+            return api_success(data=payload) if ok else api_error(code=50300, message="Not ready", data=payload)
 
         @app.get("/algorithms/{name}/{version}/schema")
         def get_schema(name: str, version: str):
@@ -1090,7 +1115,89 @@ class IAlgorithmExecutor(ABC):
 
 - Metrics：请求总数、失败数、延迟直方图、队列长度、worker 存活数（按算法维度标签化）；
 - Tracing：从 HTTP 接入层生成/透传 `traceId`（写入 `AlgorithmContext`），并在日志里关联；
-- Health：`/healthz`（存活）、`/readyz`（就绪：算法加载完成/worker 池已启动）、`/metrics`（Prometheus）。
+- Health：`/healthz`（存活）、`/readyz`（就绪：算法加载完成/worker 池已启动）。
+
+#### 2.8.1 Health 组件设计
+
+**目标**：
+
+- 给负载均衡 / K8s / 运维系统提供“存活/就绪”探针；
+- 把“服务是否可接收算法调用”的判定逻辑收敛到一个模块（而不是散落在入口/路由里）；
+- 为后续接入更多依赖检查（例如 Consul 注册成功、外部模型文件加载、GPU 可用等）预留扩展点。
+
+**探针语义（推荐）**：
+
+- **Liveness**（存活探针）：`GET /healthz`  
+  仅表示“HTTP 进程仍在运行并能响应请求”，不要做重依赖检查，避免抖动导致误杀。
+- **Readiness**（就绪探针）：`GET /readyz`  
+  表示“服务已完成启动关键路径，可对外接收算法调用”。未就绪时返回 `503`。
+
+**Readiness 默认判定（建议最小集合）**：
+
+- `algorithms_loaded`：算法模块导入完成，且 registry 至少包含一个算法（或允许为空但显式配置）；
+- `executor_started`：执行器已启动，能接受任务（必要时可增加 worker 心跳/进程池状态检查）；
+- `external_deps_ok`（可选）：如 Consul 注册成功、模型文件可读、GPU/许可证可用等。
+
+**抽象接口：**（`algo_sdk/observability/health_abc.py`）
+
+```python
+# algo_sdk/observability/health_abc.py
+from abc import ABC, abstractmethod
+from typing import Any, Dict, Tuple
+
+class IHealthService(ABC):
+    @abstractmethod
+    def liveness(self) -> Dict[str, Any]:
+        """存活探针的 payload（轻量、稳定）。"""
+
+    @abstractmethod
+    def readiness(self) -> Tuple[bool, Dict[str, Any]]:
+        """
+        返回 (is_ready, payload)。
+        - is_ready: True -> ready
+        - payload: 用于 /readyz 输出细节（检查项、原因等）
+        """
+```
+
+**默认实现：**（`algo_sdk/observability/health_impl.py`）
+
+```python
+# algo_sdk/observability/health_impl.py
+from typing import Any, Dict, Tuple
+from .health_abc import IHealthService
+from ..core.registry_abc import IAlgorithmRegistry
+from ..runtime.executor_abc import IAlgorithmExecutor
+
+class InMemoryHealthService(IHealthService):
+    def __init__(self, registry: IAlgorithmRegistry, executor: IAlgorithmExecutor):
+        self._registry = registry
+        self._executor = executor
+        self._started = False
+
+    def mark_started(self) -> None:
+        self._started = True
+
+    def liveness(self) -> Dict[str, Any]:
+        return {"status": "ok"}
+
+    def readiness(self) -> Tuple[bool, Dict[str, Any]]:
+        checks = {
+            "started": self._started,
+            "algorithms_loaded": len(self._registry.list_all()) > 0,
+            "executor_started": self._executor.is_started(),
+        }
+        ok = all(checks.values())
+        return ok, {"status": "ready" if ok else "not_ready", "checks": checks}
+```
+
+> 说明：`executor.is_started()` 可作为 `IAlgorithmExecutor` 的能力之一（或由具体实现暴露等价状态）；不希望改动 executor 接口时，也可把“executor 已启动”的标记交给 `HealthService` 维护。
+
+**HTTP 暴露方式（推荐）**：
+
+- 路由由 `algo_sdk.core.app_factory_impl.FastAPIAppFactory` 统一挂载，默认提供：
+  - `GET /healthz`：固定 `200`（只要进程能响应）
+  - `GET /readyz`：就绪返回 `200`，未就绪返回 `503`
+- `algo_core_service/main.py` 在关键启动步骤完成后调用 `health.mark_started()`（或更细粒度标记），从而把 ready 状态从 `not_ready` 切换为 `ready`。
 
 ---
 
@@ -1192,17 +1299,21 @@ def create_app():
         default_timeout_s=EXECUTOR_DEFAULT_TIMEOUT_S,
     )
 
+    # health：负责 /healthz /readyz 的状态判定
+    health = InMemoryHealthService(registry=global_registry, executor=executor)
+
     registrar = (
         ConsulRegistrar(consul_addr=CONSUL_HTTP_ADDR, service_name=SERVICE_NAME)
         if SERVICE_REGISTRY_ENABLED
         else NullRegistrar()
     )
 
-    app = factory.create_app(global_registry, executor)
+    app = factory.create_app(global_registry, executor, health=health)
 
     @app.on_event("startup")
     def _startup():
         executor.start()
+        health.mark_started()
         registrar.register(app=app, registry=global_registry, host=SERVICE_HOST, port=SERVICE_PORT)
 
     @app.on_event("shutdown")
