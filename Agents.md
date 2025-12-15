@@ -1,11 +1,13 @@
 # 算法核心服务 + SDK 设计方案（当前版本）
 
 ## 概述
+
 - 目标：通过 `@Algorithm` 装饰器注册算法（函数/类），自动暴露为 HTTP 接口；统一输入/输出协议与生命周期，提供可观测性与（可选）服务注册。
 - 关键能力：标准协议封装、进程隔离执行（全局共享池/算法独立池）、结构化异常与崩溃日志、Metrics/Tracing/Health 探针、FastAPI 应用工厂、Consul 注册（可选）。
 
 ## 技术栈
-- 语言与运行时：`Python 3.13`
+
+- 语言与运行时：`Python 3.11`
 - Web 框架：`FastAPI`（应用工厂与路由）
 - 模型与校验：`Pydantic`（统一输入/输出模型）
 - 服务启动：`uvicorn`
@@ -15,6 +17,7 @@
 - 服务注册（可选）：`Consul`
 
 ## 项目结构（设计）
+
 ```text
 algo-platform/
 ├─ algo_sdk/                 # 提供给算法开发者使用的 SDK
@@ -35,6 +38,7 @@ algo-platform/
 ```
 
 ## 关键模块说明
+
 - `core`：模型抽象、算法元数据、注册中心、应用工厂、错误结构与异常。
 - `decorators`：`@Algorithm` 默认实现，支持函数或类（`run` 方法）。
 - `http`：统一的 `api_success`/`api_error` 响应封装。
@@ -44,15 +48,18 @@ algo-platform/
 - `service_registry`：按环境变量开关对接 Consul 服务注册。
 
 ## HTTP 接口
+
 - `GET /algorithms`：算法清单（名称/版本/描述/执行策略等）。
 - `GET /healthz`：存活探针（HTTP 服务可响应即为存活）。
 - `GET /readyz`：就绪探针（算法加载完成、执行器启动等）。
 - `GET /algorithms/{name}/{version}/schema`：算法输入/输出 Schema。
 
 ## 标准协议
+
 - 请求结构：`{ requestId, datetime, context, data }`
 - 响应结构：`{ code, message, requestId, datetime, context, data }`
 - 上下文模型：
+
 ```python
 from pydantic import BaseModel
 from typing import Any, Dict
@@ -65,12 +72,14 @@ class AlgorithmContext(BaseModel):
 ```
 
 ## 运行时与执行器
+
 - 进程池策略：
   - 全局共享池（默认）：资源复用、轻量通用。
   - 算法独立池（`execution.isolated_pool=True`）：适合 GPU/大模型/初始化昂贵算法。
 - 执行元数据：`max_workers`、`timeout_s`、`gpu` 等（期望策略，由执行器解释与约束）。
 
 ## 服务配置（`algo_core_service/settings.py`）
+
 - `ALGO_MODULES`：要加载的算法模块列表（逗号分隔）。
 - `SERVICE_HOST`、`SERVICE_PORT`：服务监听地址与端口。
 - `EXECUTOR_GLOBAL_MAX_WORKERS`：全局执行器最大并发。
@@ -78,6 +87,7 @@ class AlgorithmContext(BaseModel):
 - `SERVICE_REGISTRY_ENABLED`、`CONSUL_HTTP_ADDR`、`SERVICE_NAME`：服务注册配置。
 
 ## 示例算法（函数式与类式）
+
 ```python
 # 假设来自 algo_sdk
 from algo_sdk.core.base_model_impl import BaseModel
@@ -155,6 +165,7 @@ class OrbitAlgo:
 ```
 
 ## 观测与治理
+
 - 结构化异常日志：记录 `requestId/datetime/algoName/version/entrypointRef/errorType/message/stack/pid` 等。
 - 崩溃事件：父进程监控并记录 worker 退出码与上下文。
 - Metrics：请求总数/失败数/延迟直方图/队列长度/worker 存活数（按算法维度标签）。
@@ -162,6 +173,7 @@ class OrbitAlgo:
 - Health：`/healthz` 存活、`/readyz` 就绪。
 
 ## 服务注册（可选 Consul）
+
 - 环境变量：
   - `SERVICE_REGISTRY_ENABLED=true/false`
   - `CONSUL_HTTP_ADDR=http://127.0.0.1:8500`
@@ -169,27 +181,40 @@ class OrbitAlgo:
 - 建议在 KV 写入算法清单入口 URL（`/algorithms`）与 Schema URL（`/algorithms/{name}/{version}/schema`）。
 
 ## 部署指南
+
 - 本地启动（示例）：`uvicorn algo_core_service.main:app --host 0.0.0.0 --port 8000`
 - K8s/容器化：接入 `readinessProbe` 与 `livenessProbe` 指向 `/readyz`、`/healthz`。
 - 生产建议：开启结构化日志与 Metrics 抓取；按需启用 Consul 服务注册。
 
 ## 测试策略（建议）
+
 - 单元测试：算法函数/类的 `run` 与模型校验；异常路径覆盖。
 - 集成测试：HTTP 路由 `/algorithms`、`/schema`、`/readyz`；执行器并发与超时。
 - 端到端：加载真实算法模块、校验协议兼容与上下文透传。
 
 ## 环境变量（汇总）
+
 - `ALGO_MODULES`、`SERVICE_HOST`、`SERVICE_PORT`
 - `EXECUTOR_GLOBAL_MAX_WORKERS`、`EXECUTOR_DEFAULT_TIMEOUT_S`
 - `SERVICE_REGISTRY_ENABLED`、`CONSUL_HTTP_ADDR`、`SERVICE_NAME`
 
 ## 常见问题
+
 - 算法未找到：检查注册名与版本是否一致，确认模块已被导入（参考 `ALGO_MODULES`）。
 - 就绪失败：查看 `/readyz` 返回负载，确认算法加载与执行器启动状态。
 - Worker 崩溃：检查结构化异常日志与退出码；必要时启用独立池隔离资源。
 
 ## 参考资源
+
 - 设计文档：`docs/algo_core_design.md`
 
+## 开发规则
+
+- Python 项目必须使用项目根目录下 `.venv` 虚拟环境里的解释器，以确保依赖隔离与一致性。
+- 添加依赖包请通过项目中提供的 `uv add` 命令进行，避免手动修改 `pyproject.toml` 以外的方式。
+- 所有测试框架相关代码需放在 `tests/` 目录，源代码需放在 `src/`，文档内容写入 `docs/`。
+- Python 代码风格遵循项目根目录中的 `Python开发规范.md` 约定，任何偏离需附理由说明。
+
 ## 变更日志
+
 - v1.0.0（设计稿）：完成核心抽象与默认实现的设计，定义统一协议与运行时模型。
