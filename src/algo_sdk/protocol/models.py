@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime as DateTime, timezone
 from typing import Any, Dict, Generic, Optional, TypeVar
 
 from pydantic import BaseModel as _PydanticBaseModel
@@ -25,7 +25,7 @@ class AlgorithmRequest(_PydanticBaseModel, Generic[T]):
     """Standardized algorithm request envelope."""
 
     requestId: str = Field(min_length=1)
-    datetime: datetime
+    datetime: DateTime
     context: AlgorithmContext = Field(default_factory=AlgorithmContext)
     data: T
 
@@ -44,7 +44,7 @@ class AlgorithmResponse(_PydanticBaseModel, Generic[T]):
     code: int
     message: str
     requestId: Optional[str] = None
-    datetime: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    datetime: DateTime = Field(default_factory=lambda: DateTime.now(timezone.utc))
     context: Optional[AlgorithmContext] = None
     data: Optional[T] = None
 

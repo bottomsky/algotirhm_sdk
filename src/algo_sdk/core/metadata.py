@@ -29,9 +29,17 @@ class AlgorithmSpec:
     description: Optional[str]
     input_model: Type[Req]
     output_model: Type[Resp]
-    execution: ExecutionConfig = field(default_factory=ExecutionConfig)
     entrypoint: Callable[[Req], Resp] | Type[AlgorithmLifecycle[Req, Resp]]
+    execution: ExecutionConfig = field(default_factory=ExecutionConfig)
     is_class: bool = False
 
     def key(self) -> tuple[str, str]:
         return self.name, self.version
+
+    def input_schema(self) -> dict:
+        """Return JSON schema for the input model."""
+        return self.input_model.model_json_schema()
+
+    def output_schema(self) -> dict:
+        """Return JSON schema for the output model."""
+        return self.output_model.model_json_schema()
