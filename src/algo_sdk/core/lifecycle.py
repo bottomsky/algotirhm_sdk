@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Protocol, TypeVar, override
+from typing import Protocol, TypeVar, override, runtime_checkable
 
 from .base_model_impl import BaseModel
 
@@ -9,6 +9,7 @@ TInput = TypeVar("TInput", bound=BaseModel, contravariant=True)
 TOutput = TypeVar("TOutput", bound=BaseModel, covariant=True)
 
 
+@runtime_checkable
 class AlgorithmLifecycle(Protocol[TInput, TOutput]):
     """Lifecycle contract for class-based algorithms."""
 
