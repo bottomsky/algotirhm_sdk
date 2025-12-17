@@ -7,6 +7,7 @@ import json
 import logging
 import urllib.error
 import urllib.request
+from collections.abc import Iterable, Mapping
 from http.client import HTTPResponse
 from typing import ClassVar, cast
 
@@ -49,20 +50,47 @@ def _to_int(value: object, default: int = 0) -> int:
 
 def _to_str_tuple(value: object) -> tuple[str, ...]:
     """Convert value to tuple of strings."""
-    if value is None:
+    items: Iterable[object]
+    if isinstance(value, tuple):
+        items = cast(Iterable[object], value)
+    elif isinstance(value, list):
+        items = cast(Iterable[object], value)
+    elif isinstance(value, Iterable):
+        items = value
+    else:
         return ()
-    if isinstance(value, (list, tuple)):
-        return tuple(_to_str(v) for v in value)
-    return ()
+    return tuple(_to_str(v) for v in items)
 
 
 def _to_str_dict(value: object) -> dict[str, str]:
     """Convert value to dict of strings."""
-    if value is None:
-        return {}
-    if isinstance(value, dict):
-        return {_to_str(k): _to_str(v) for k, v in value.items()}
+    if isinstance(value, Mapping):
+        mapping = cast(Mapping[object, object], value)
+        return {_to_str(k): _to_str(v) for k, v in mapping.items()}
     return {}
+
+
+def _as_object_dict(value: object) -> dict[str, object]:
+    """Ensure the value is a dict[str, object] or return empty."""
+    if isinstance(value, Mapping):
+        mapping = cast(Mapping[object, object], value)
+        return {str(k): v for k, v in mapping.items()}
+    return {}
+
+
+def _coerce_dict_list(result: object) -> list[dict[str, object]]:
+    """Convert JSON result to a list of object dictionaries."""
+    if isinstance(result, list):
+        dicts: list[dict[str, object]] = []
+        for item in cast(list[object], result):
+            mapped = _as_object_dict(item)
+            if mapped:
+                dicts.append(mapped)
+        return dicts
+    if isinstance(result, Mapping):
+        mapped = _as_object_dict(cast(Mapping[object, object], result))
+        return [mapped] if mapped else []
+    return []
 
 
 class ConsulRegistry:
@@ -235,9 +263,13 @@ class ConsulRegistry:
                 return None
             # Consul returns base64 encoded value
             encoded_value = data[0].get("Value")
-            if encoded_value is None:
+            if isinstance(encoded_value, str):
+                raw = base64.b64decode(encoded_value.encode("utf-8"))
+            elif isinstance(encoded_value, (bytes, bytearray)):
+                raw = base64.b64decode(encoded_value)
+            else:
                 return None
-            return base64.b64decode(encoded_value).decode("utf-8")
+            return raw.decode("utf-8")
         except urllib.error.HTTPError as e:
             if e.code == 404:
                 return None
@@ -363,17 +395,16 @@ class ConsulRegistry:
         """Parse Consul health service response."""
         instances: list[ServiceInstance] = []
         for item in data:
-            service = item.get("Service", {})
-            if not isinstance(service, dict):
+            service = _as_object_dict(item.get("Service", {}))
+            if not service:
                 continue
             instance = ServiceInstance(
-                service_id=str(service.get("ID", "")),
-                service_name=str(service.get("Service", "")),
-                host=str(service.get("Address", "")),
-                port=int(service.get("Port", 0)),  # type: ignore[arg-type]
-                tags=tuple(service.get("Tags")
-                           or []),  # type: ignore[arg-type]
-                meta=dict(service.get("Meta") or {}),  # type: ignore[arg-type]
+                service_id=_to_str(service.get("ID", "")),
+                service_name=_to_str(service.get("Service", "")),
+                host=_to_str(service.get("Address", "")),
+                port=_to_int(service.get("Port", 0)),
+                tags=_to_str_tuple(service.get("Tags")),
+                meta=_to_str_dict(service.get("Meta")),
                 status=ServiceStatus.PASSING,
             )
             instances.append(instance)
@@ -385,15 +416,16 @@ class ConsulRegistry:
         request.add_header("Accept", "application/json")
 
         try:
-            with urllib.request.urlopen(request,
-                                        timeout=self._timeout) as response:
-                content = response.read().decode("utf-8")
-                if not content:
+            with cast(
+                    HTTPResponse,
+                    urllib.request.urlopen(request, timeout=self._timeout),
+            ) as response:
+                content_bytes = response.read()
+                if not content_bytes:
                     return []
-                result = json.loads(content)
-                if isinstance(result, list):
-                    return result  # type: ignore[return-value]
-                return [result]
+                content = content_bytes.decode("utf-8")
+                result = cast(object, json.loads(content))
+                return _coerce_dict_list(result)
         except urllib.error.URLError as e:
             raise ServiceRegistryConnectionError(
                 f"Failed to connect to Consul: {e}") from e
@@ -417,9 +449,11 @@ class ConsulRegistry:
         request.add_header("Content-Type", "application/json")
 
         try:
-            with urllib.request.urlopen(request,
-                                        timeout=self._timeout) as response:
-                response.read()  # Consume response
+            with cast(
+                    HTTPResponse,
+                    urllib.request.urlopen(request, timeout=self._timeout),
+            ) as response:
+                _ = response.read()  # Consume response
         except urllib.error.URLError as e:
             raise ServiceRegistryConnectionError(
                 f"Failed to connect to Consul: {e}") from e
@@ -429,9 +463,11 @@ class ConsulRegistry:
         request = urllib.request.Request(url, method="DELETE")
 
         try:
-            with urllib.request.urlopen(request,
-                                        timeout=self._timeout) as response:
-                response.read()  # Consume response
+            with cast(
+                    HTTPResponse,
+                    urllib.request.urlopen(request, timeout=self._timeout),
+            ) as response:
+                _ = response.read()  # Consume response
         except urllib.error.URLError as e:
             raise ServiceRegistryConnectionError(
                 f"Failed to connect to Consul: {e}") from e
