@@ -29,8 +29,9 @@ class AlgorithmSpec(Generic[TInput, TOutput]):
     description: str | None
     input_model: type[TInput]
     output_model: type[TOutput]
-    entrypoint: Callable[[TInput], TOutput] | type[AlgorithmLifecycleProtocol[TInput,
-                                                                      TOutput]]
+    entrypoint: Callable[[TInput],
+                         TOutput] | type[AlgorithmLifecycleProtocol[TInput,
+                                                                    TOutput]]
     execution: ExecutionConfig = field(default_factory=ExecutionConfig)
     is_class: bool = False
 
