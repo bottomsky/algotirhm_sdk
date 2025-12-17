@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import inspect
-from typing import Any, Callable, TypeVar, cast, overload
+from typing import Any, Callable, TypeVar, cast
 
 from algo_sdk.core import (
     AlgorithmSpec,
@@ -15,6 +15,8 @@ from algo_sdk.core.registry import AlgorithmRegistry
 
 Req = TypeVar("Req", bound=BaseModel)
 Resp = TypeVar("Resp", bound=BaseModel)
+AlgT = TypeVar("AlgT", Callable[[Req], Resp],
+               type[AlgorithmLifecycle[Req, Resp]])
 
 
 class DefaultAlgorithmDecorator:
@@ -23,7 +25,6 @@ class DefaultAlgorithmDecorator:
     def __init__(self, *, registry: AlgorithmRegistry | None = None) -> None:
         self._registry = registry or get_registry()
 
-    @overload
     def __call__(
         self,
         *,
@@ -31,37 +32,14 @@ class DefaultAlgorithmDecorator:
         version: str,
         description: str | None = None,
         execution: dict[str, Any] | None = None,
-    ) -> Callable[[Callable[[Req], Resp]], Callable[[Req], Resp]]:
-        ...
-
-    @overload
-    def __call__(
-        self,
-        *,
-        name: str,
-        version: str,
-        description: str | None = None,
-        execution: dict[str, Any] | None = None,
-    ) -> Callable[[type[AlgorithmLifecycle[Req, Resp]]],
-                  type[AlgorithmLifecycle[Req, Resp]]]:
-        ...
-
-    def __call__(
-        self,
-        *,
-        name: str,
-        version: str,
-        description: str | None = None,
-        execution: dict[str, Any] | None = None,
-    ) -> Callable[[Callable[..., Any] | type[Any]], Callable[..., Any]
-                  | type[Any]]:
+    ) -> Callable[[AlgT], AlgT]:
         if not name or not version:
             raise AlgorithmValidationError(
                 "name and version are required for registration")
 
         exec_config = self._build_execution_config(execution)
 
-        def _decorator(target: Callable[..., Any] | type[Any]):
+        def _decorator(target: AlgT) -> AlgT:
             typed_target = cast(
                 Callable[[Req], Resp]
                 | type[AlgorithmLifecycle[Req, Resp]], target)
