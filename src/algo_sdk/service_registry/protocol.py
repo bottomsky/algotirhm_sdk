@@ -59,7 +59,7 @@ class ServiceRegistration:
     health_check: HealthCheck | None = None
 
 
-class ServiceRegistry(ABC):
+class BaseServiceRegistry(ABC):
     """Abstract base class for service registry implementations.
 
     This class defines the interface for service discovery and registration.
@@ -69,7 +69,7 @@ class ServiceRegistry(ABC):
     instantiation will raise TypeError.
 
     Example:
-        >>> class MyRegistry(ServiceRegistry):
+        >>> class MyRegistry(BaseServiceRegistry):
         ...     def register(self, registration: ServiceRegistration) -> None:
         ...         # implementation
         ...         pass
