@@ -1,10 +1,9 @@
 from __future__ import annotations
 
 import inspect
-from typing import Any, Callable, TypeVar
+from typing import Any, Callable, TypeVar, cast, overload
 
 from algo_sdk.core import (
-    AlgorithmRegistrationError,
     AlgorithmSpec,
     AlgorithmValidationError,
     BaseModel,
@@ -24,6 +23,29 @@ class DefaultAlgorithmDecorator:
     def __init__(self, *, registry: AlgorithmRegistry | None = None) -> None:
         self._registry = registry or get_registry()
 
+    @overload
+    def __call__(
+        self,
+        *,
+        name: str,
+        version: str,
+        description: str | None = None,
+        execution: dict[str, Any] | None = None,
+    ) -> Callable[[Callable[[Req], Resp]], Callable[[Req], Resp]]:
+        ...
+
+    @overload
+    def __call__(
+        self,
+        *,
+        name: str,
+        version: str,
+        description: str | None = None,
+        execution: dict[str, Any] | None = None,
+    ) -> Callable[[type[AlgorithmLifecycle[Req, Resp]]],
+                  type[AlgorithmLifecycle[Req, Resp]]]:
+        ...
+
     def __call__(
         self,
         *,
@@ -40,7 +62,10 @@ class DefaultAlgorithmDecorator:
         exec_config = self._build_execution_config(execution)
 
         def _decorator(target: Callable[..., Any] | type[Any]):
-            spec = self._build_spec(target, name, version, description,
+            typed_target = cast(
+                Callable[[Req], Resp]
+                | type[AlgorithmLifecycle[Req, Resp]], target)
+            spec = self._build_spec(typed_target, name, version, description,
                                     exec_config)
             self._registry.register(spec)
             return target
@@ -67,14 +92,15 @@ class DefaultAlgorithmDecorator:
 
     def _build_spec(
         self,
-        target: Callable[..., Any] | type[Any],
+        target: Callable[[Req], Resp] | type[AlgorithmLifecycle[Req, Resp]],
         name: str,
         version: str,
         description: str | None,
         exec_config: ExecutionConfig,
-    ) -> AlgorithmSpec:
+    ) -> AlgorithmSpec[Req, Resp]:
         if inspect.isclass(target):
-            return self._build_class_spec(target,
+            cls_target = cast(type[AlgorithmLifecycle[Req, Resp]], target)
+            return self._build_class_spec(cls_target,
                                           name=name,
                                           version=version,
                                           description=description,
@@ -84,7 +110,9 @@ class DefaultAlgorithmDecorator:
             raise AlgorithmValidationError(
                 "decorated target must be a callable or class")
 
-        input_model, output_model = self._extract_io(target, skip_first=False)
+        func_target = cast(Callable[[Req], Resp], target)
+        input_model, output_model = self._extract_io(func_target,
+                                                     skip_first=False)
         return AlgorithmSpec(
             name=name,
             version=version,
@@ -92,19 +120,19 @@ class DefaultAlgorithmDecorator:
             input_model=input_model,
             output_model=output_model,
             execution=exec_config,
-            entrypoint=target,
+            entrypoint=func_target,
             is_class=False,
         )
 
     def _build_class_spec(
         self,
-        target_cls: type[Any],
+        target_cls: type[AlgorithmLifecycle[Req, Resp]],
         *,
         name: str,
         version: str,
         description: str | None,
         exec_config: ExecutionConfig,
-    ) -> AlgorithmSpec:
+    ) -> AlgorithmSpec[Req, Resp]:
         run_method = getattr(target_cls, "run", None)
         if run_method is None or not callable(run_method):
             raise AlgorithmValidationError(
