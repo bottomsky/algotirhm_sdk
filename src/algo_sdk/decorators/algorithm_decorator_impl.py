@@ -1,25 +1,19 @@
-"""Algorithm decorator implementation for registering algorithms."""
-
 from __future__ import annotations
 
 import inspect
-from typing import Callable, TypeVar, cast
+from typing import Any, Callable, TypeVar, cast, overload
 
-from algo_sdk.core import (
-    AlgorithmSpec,
-    AlgorithmValidationError,
-    BaseModel,
-    ExecutionConfig,
-    get_registry,
-)
+from algo_sdk.core import (AlgorithmSpec, AlgorithmValidationError, BaseModel,
+                           ExecutionConfig, get_registry)
+from algo_sdk.core.lifecycle import BaseAlgorithmLifecycle
 from algo_sdk.core.registry import AlgorithmRegistry
 
-# 用于装饰器返回类型，保持被装饰对象类型不变
-T = TypeVar("T", bound=Callable[..., BaseModel] | type)
-
-
-def _noop_hook(_self: object) -> None:
-    """No-op hook for algorithm lifecycle methods."""
+FnReq = TypeVar("FnReq", bound=BaseModel)
+FnResp = TypeVar("FnResp", bound=BaseModel)
+ClsReq = TypeVar("ClsReq", bound=BaseModel)
+ClsResp = TypeVar("ClsResp", bound=BaseModel)
+ReqT = TypeVar("ReqT", bound=BaseModel)
+RespT = TypeVar("RespT", bound=BaseModel)
 
 
 class DefaultAlgorithmDecorator:
@@ -30,6 +24,7 @@ class DefaultAlgorithmDecorator:
     def __init__(self, *, registry: AlgorithmRegistry | None = None) -> None:
         self._registry = registry or get_registry()
 
+    @overload
     def __call__(
         self,
         *,
@@ -37,7 +32,31 @@ class DefaultAlgorithmDecorator:
         version: str,
         description: str | None = None,
         execution: dict[str, object] | None = None,
-    ) -> Callable[[T], T]:
+    ) -> Callable[[Callable[[FnReq], FnResp]], Callable[[FnReq], FnResp]]:
+        ...
+
+    @overload
+    def __call__(
+        self,
+        *,
+        name: str,
+        version: str,
+        description: str | None = None,
+        execution: dict[str, object] | None = None,
+    ) -> Callable[
+        [type[BaseAlgorithmLifecycle[ClsReq, ClsResp]]],
+        type[BaseAlgorithmLifecycle[ClsReq, ClsResp]],
+    ]:
+        ...
+
+    def __call__(
+        self,
+        *,
+        name: str,
+        version: str,
+        description: str | None = None,
+        execution: dict[str, object] | None = None,
+    ) -> Callable[[object], object]:
         """Register an algorithm (function or class-based).
 
         Args:
@@ -55,7 +74,7 @@ class DefaultAlgorithmDecorator:
 
         exec_config = self._build_execution_config(execution)
 
-        def _decorator(target: T) -> T:
+        def _decorator(target: object) -> object:
             spec = self._build_spec(target, name, version, description,
                                     exec_config)
             self._registry.register(spec)
@@ -99,22 +118,37 @@ class DefaultAlgorithmDecorator:
 
     def _build_spec(
         self,
-        target: Callable[..., BaseModel] | type,
+        target: Callable[[ReqT], RespT]
+        | type[BaseAlgorithmLifecycle[ReqT, RespT]]
+        | object,
         name: str,
         version: str,
         description: str | None,
         exec_config: ExecutionConfig,
-    ) -> AlgorithmSpec[BaseModel, BaseModel]:
-        if inspect.isclass(target):
+    ) -> AlgorithmSpec[ReqT, RespT]:
+        if inspect.isclass(target) and issubclass(
+                target, BaseAlgorithmLifecycle):
+            cls_target = cast(type[BaseAlgorithmLifecycle[ReqT, RespT]],
+                              target)
             return self._build_class_spec(
-                target,
+                cls_target,
                 name=name,
                 version=version,
                 description=description,
                 exec_config=exec_config,
             )
 
-        input_model, output_model = self._extract_io(target, skip_first=False)
+        if inspect.isclass(target):
+            raise AlgorithmValidationError(
+                "class-based algorithm must inherit BaseAlgorithmLifecycle")
+
+        if not callable(target):
+            raise AlgorithmValidationError(
+                "decorated target must be a callable or class")
+
+        func_target = cast(Callable[[ReqT], RespT], target)
+        input_model, output_model = self._extract_io(func_target,
+                                                     skip_first=False)
         return AlgorithmSpec(
             name=name,
             version=version,
@@ -122,19 +156,19 @@ class DefaultAlgorithmDecorator:
             input_model=input_model,
             output_model=output_model,
             execution=exec_config,
-            entrypoint=target,
+            entrypoint=func_target,
             is_class=False,
         )
 
     def _build_class_spec(
         self,
-        target_cls: type,
+        target_cls: type[BaseAlgorithmLifecycle[ClsReq, ClsResp]],
         *,
         name: str,
         version: str,
         description: str | None,
         exec_config: ExecutionConfig,
-    ) -> AlgorithmSpec[BaseModel, BaseModel]:
+    ) -> AlgorithmSpec[ClsReq, ClsResp]:
         run_method: object = getattr(target_cls, "run", None)
         if run_method is None or not callable(run_method):
             raise AlgorithmValidationError(
@@ -151,12 +185,8 @@ class DefaultAlgorithmDecorator:
 
         for hook_name in ("initialize", "after_run", "shutdown"):
             if not hasattr(target_cls, hook_name):
-                setattr(
-                    target_cls,
-                    hook_name,
-                    _noop_hook,
-                )
-                continue
+                raise AlgorithmValidationError(
+                    f"hook '{hook_name}' must be implemented")
             hook = getattr(target_cls, hook_name)  # pyright: ignore[reportAny]
             if hook is not None and not callable(
                     hook):  # pyright: ignore[reportAny]
@@ -170,7 +200,8 @@ class DefaultAlgorithmDecorator:
             input_model=input_model,
             output_model=output_model,
             execution=exec_config,
-            entrypoint=target_cls,
+            entrypoint=cast(type[BaseAlgorithmLifecycle[ClsReq, ClsResp]],
+                            target_cls),
             is_class=True,
         )
 
