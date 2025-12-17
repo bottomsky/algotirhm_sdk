@@ -5,11 +5,11 @@ from typing import Protocol, TypeVar, override
 
 from .base_model_impl import BaseModel
 
-Req = TypeVar("Req", bound=BaseModel, contravariant=True)
-Resp = TypeVar("Resp", bound=BaseModel, covariant=True)
+TInput = TypeVar("TInput", bound=BaseModel, contravariant=True)
+TOutput = TypeVar("TOutput", bound=BaseModel, covariant=True)
 
 
-class AlgorithmLifecycle(Protocol[Req, Resp]):
+class AlgorithmLifecycle(Protocol[TInput, TOutput]):
     """Lifecycle contract for class-based algorithms."""
 
     def initialize(self) -> None:
@@ -22,7 +22,7 @@ class AlgorithmLifecycle(Protocol[Req, Resp]):
         """
         ...
 
-    def run(self, req: Req) -> Resp:
+    def run(self, req: TInput) -> TOutput:
         """
         Execute one unit of work for the algorithm.
 
@@ -67,7 +67,7 @@ class AlgorithmLifecycle(Protocol[Req, Resp]):
         ...
 
 
-class BaseAlgorithm(ABC, AlgorithmLifecycle[Req, Resp]):
+class BaseAlgorithm(ABC, AlgorithmLifecycle[TInput, TOutput]):
     """
     Convenience base with no-op lifecycle hooks; subclasses must implement run.
     """
@@ -78,7 +78,8 @@ class BaseAlgorithm(ABC, AlgorithmLifecycle[Req, Resp]):
         return None
 
     @abstractmethod
-    def run(self, req: Req) -> Resp:
+    @override
+    def run(self, req: TInput) -> TOutput:
         """Core algorithm logic; subclasses must provide an implementation."""
         raise NotImplementedError
 
