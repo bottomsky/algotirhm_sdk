@@ -5,7 +5,6 @@ from __future__ import annotations
 import json
 import logging
 from collections.abc import Iterable
-from typing import Any
 
 from algo_sdk.core import AlgorithmSpec, BaseModel, get_registry
 from algo_sdk.core.registry import AlgorithmRegistry

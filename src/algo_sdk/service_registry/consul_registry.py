@@ -9,7 +9,7 @@ import urllib.error
 import urllib.request
 from collections.abc import Iterable, Mapping
 from http.client import HTTPResponse
-from typing import ClassVar, cast
+from typing import ClassVar, cast, override
 
 from .config import ServiceRegistryConfig, load_config
 from .errors import (
@@ -23,6 +23,7 @@ from .protocol import (
     HealthCheck,
     ServiceInstance,
     ServiceRegistration,
+    ServiceRegistry,
     ServiceStatus,
 )
 
@@ -93,11 +94,11 @@ def _coerce_dict_list(result: object) -> list[dict[str, object]]:
     return []
 
 
-class ConsulRegistry:
+class ConsulRegistry(ServiceRegistry):
     """Consul-based service registry implementation.
 
-    This class implements the ServiceRegistry protocol using Consul as the
-    backend. It provides service registration, discovery, and key-value
+    This class implements the ServiceRegistry abstract base class using Consul
+    as the backend. It provides service registration, discovery, and key-value
     storage capabilities.
 
     Example:
@@ -136,6 +137,7 @@ class ConsulRegistry:
         """Get the registry configuration."""
         return self._config
 
+    @override
     def register(self, registration: ServiceRegistration) -> None:
         """Register a service instance with Consul.
 
@@ -160,6 +162,7 @@ class ConsulRegistry:
             logger.exception(msg)
             raise ServiceRegistrationError(msg) from e
 
+    @override
     def deregister(self, service_id: str) -> None:
         """Deregister a service instance from Consul.
 
@@ -179,6 +182,7 @@ class ConsulRegistry:
             logger.exception(msg)
             raise ServiceDeregistrationError(msg) from e
 
+    @override
     def get_service(self, service_name: str) -> list[ServiceInstance]:
         """Get all instances of a service.
 
@@ -201,6 +205,7 @@ class ConsulRegistry:
             logger.exception(msg)
             raise ServiceDiscoveryError(msg) from e
 
+    @override
     def get_healthy_service(self, service_name: str) -> list[ServiceInstance]:
         """Get all healthy instances of a service.
 
@@ -223,6 +228,7 @@ class ConsulRegistry:
             logger.exception(msg)
             raise ServiceDiscoveryError(msg) from e
 
+    @override
     def set_kv(self, key: str, value: str) -> None:
         """Set a key-value pair in Consul KV store.
 
@@ -243,6 +249,7 @@ class ConsulRegistry:
             logger.exception(msg)
             raise KVOperationError(msg) from e
 
+    @override
     def get_kv(self, key: str) -> str | None:
         """Get a value by key from Consul KV store.
 
@@ -281,6 +288,7 @@ class ConsulRegistry:
             logger.exception(msg)
             raise KVOperationError(msg) from e
 
+    @override
     def delete_kv(self, key: str) -> None:
         """Delete a key-value pair from Consul KV store.
 
@@ -300,6 +308,7 @@ class ConsulRegistry:
             logger.exception(msg)
             raise KVOperationError(msg) from e
 
+    @override
     def is_healthy(self) -> bool:
         """Check if the Consul connection is healthy.
 

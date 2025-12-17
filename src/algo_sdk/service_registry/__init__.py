@@ -38,6 +38,7 @@ Example:
 
 from .config import ServiceRegistryConfig, load_config
 from .consul_registry import ConsulRegistry
+from .memory_registry import MemoryRegistry
 from .errors import (
     KVOperationError,
     ServiceDeregistrationError,
@@ -66,6 +67,7 @@ __all__ = [
     "ServiceStatus",
     # Implementation
     "ConsulRegistry",
+    "MemoryRegistry",
     # Errors
     "ServiceRegistryError",
     "ServiceRegistrationError",

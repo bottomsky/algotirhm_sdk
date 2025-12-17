@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
+from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Protocol
 
 
 class ServiceStatus(Enum):
@@ -59,13 +59,24 @@ class ServiceRegistration:
     health_check: HealthCheck | None = None
 
 
-class ServiceRegistry(Protocol):
-    """Protocol for service registry implementations.
+class ServiceRegistry(ABC):
+    """Abstract base class for service registry implementations.
 
-    This protocol defines the interface for service discovery and registration.
+    This class defines the interface for service discovery and registration.
     Implementations can use Consul, etcd, Kubernetes, or other backends.
+
+    Subclasses MUST implement all abstract methods. If any method is missing,
+    instantiation will raise TypeError.
+
+    Example:
+        >>> class MyRegistry(ServiceRegistry):
+        ...     def register(self, registration: ServiceRegistration) -> None:
+        ...         # implementation
+        ...         pass
+        ...     # ... implement all other abstract methods
     """
 
+    @abstractmethod
     def register(self, registration: ServiceRegistration) -> None:
         """Register a service instance.
 
@@ -75,8 +86,8 @@ class ServiceRegistry(Protocol):
         Raises:
             ServiceRegistryError: If registration fails
         """
-        ...
 
+    @abstractmethod
     def deregister(self, service_id: str) -> None:
         """Deregister a service instance.
 
@@ -86,8 +97,8 @@ class ServiceRegistry(Protocol):
         Raises:
             ServiceRegistryError: If deregistration fails
         """
-        ...
 
+    @abstractmethod
     def get_service(self, service_name: str) -> list[ServiceInstance]:
         """Get all instances of a service.
 
@@ -100,8 +111,8 @@ class ServiceRegistry(Protocol):
         Raises:
             ServiceRegistryError: If query fails
         """
-        ...
 
+    @abstractmethod
     def get_healthy_service(self, service_name: str) -> list[ServiceInstance]:
         """Get all healthy instances of a service.
 
@@ -114,8 +125,8 @@ class ServiceRegistry(Protocol):
         Raises:
             ServiceRegistryError: If query fails
         """
-        ...
 
+    @abstractmethod
     def set_kv(self, key: str, value: str) -> None:
         """Set a key-value pair in the registry.
 
@@ -126,8 +137,8 @@ class ServiceRegistry(Protocol):
         Raises:
             ServiceRegistryError: If operation fails
         """
-        ...
 
+    @abstractmethod
     def get_kv(self, key: str) -> str | None:
         """Get a value by key from the registry.
 
@@ -140,8 +151,8 @@ class ServiceRegistry(Protocol):
         Raises:
             ServiceRegistryError: If query fails
         """
-        ...
 
+    @abstractmethod
     def delete_kv(self, key: str) -> None:
         """Delete a key-value pair from the registry.
 
@@ -151,12 +162,11 @@ class ServiceRegistry(Protocol):
         Raises:
             ServiceRegistryError: If operation fails
         """
-        ...
 
+    @abstractmethod
     def is_healthy(self) -> bool:
         """Check if the registry connection is healthy.
 
         Returns:
             True if connection is healthy, False otherwise
         """
-        ...
