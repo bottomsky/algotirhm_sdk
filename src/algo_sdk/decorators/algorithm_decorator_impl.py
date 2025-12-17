@@ -1,11 +1,12 @@
 from __future__ import annotations
 
+from algo_sdk.core.base_model_impl import BaseModel
 import inspect
 from typing import Any, Callable, TypeVar, cast, overload
 
 from algo_sdk.core import (AlgorithmSpec, AlgorithmValidationError, BaseModel,
                            ExecutionConfig, get_registry)
-from algo_sdk.core.lifecycle import BaseAlgorithmLifecycle
+from algo_sdk.core.lifecycle import BaseAlgorithm, AlgorithmLifecycle
 from algo_sdk.core.registry import AlgorithmRegistry
 
 FnReq = TypeVar("FnReq", bound=BaseModel)
@@ -44,12 +45,12 @@ class DefaultAlgorithmDecorator:
         description: str | None = None,
         execution: dict[str, object] | None = None,
     ) -> Callable[
-        [type[BaseAlgorithmLifecycle[ClsReq, ClsResp]]],
-        type[BaseAlgorithmLifecycle[ClsReq, ClsResp]],
+        [type[AlgorithmLifecycle[ClsReq, ClsResp]]],
+            type[AlgorithmLifecycle[ClsReq, ClsResp]],
     ]:
         ...
 
-    def __call__(
+    def __call__(  # pyright: ignore[reportInconsistentOverload]
         self,
         *,
         name: str,
@@ -119,17 +120,15 @@ class DefaultAlgorithmDecorator:
     def _build_spec(
         self,
         target: Callable[[ReqT], RespT]
-        | type[BaseAlgorithmLifecycle[ReqT, RespT]]
+        | type[AlgorithmLifecycle[ReqT, RespT]]
         | object,
         name: str,
         version: str,
         description: str | None,
         exec_config: ExecutionConfig,
     ) -> AlgorithmSpec[ReqT, RespT]:
-        if inspect.isclass(target) and issubclass(
-                target, BaseAlgorithmLifecycle):
-            cls_target = cast(type[BaseAlgorithmLifecycle[ReqT, RespT]],
-                              target)
+        if inspect.isclass(target) and issubclass(target, AlgorithmLifecycle):
+            cls_target = cast(type[AlgorithmLifecycle[ReqT, RespT]], target)
             return self._build_class_spec(
                 cls_target,
                 name=name,
@@ -149,7 +148,7 @@ class DefaultAlgorithmDecorator:
         func_target = cast(Callable[[ReqT], RespT], target)
         input_model, output_model = self._extract_io(func_target,
                                                      skip_first=False)
-        return AlgorithmSpec(
+        return AlgorithmSpec[BaseModel, BaseModel](
             name=name,
             version=version,
             description=description,
@@ -162,7 +161,7 @@ class DefaultAlgorithmDecorator:
 
     def _build_class_spec(
         self,
-        target_cls: type[BaseAlgorithmLifecycle[ClsReq, ClsResp]],
+        target_cls: type[AlgorithmLifecycle[ClsReq, ClsResp]],
         *,
         name: str,
         version: str,
@@ -200,7 +199,7 @@ class DefaultAlgorithmDecorator:
             input_model=input_model,
             output_model=output_model,
             execution=exec_config,
-            entrypoint=cast(type[BaseAlgorithmLifecycle[ClsReq, ClsResp]],
+            entrypoint=cast(type[AlgorithmLifecycle[ClsReq, ClsResp]],
                             target_cls),
             is_class=True,
         )
