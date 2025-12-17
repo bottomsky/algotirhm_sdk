@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import inspect
-from typing import Any, Callable, Dict, Optional, Tuple, Type, TypeVar
+from typing import Any, Callable, TypeVar
 
 from algo_sdk.core import (
     AlgorithmRegistrationError,
@@ -21,7 +21,7 @@ Resp = TypeVar("Resp", bound=BaseModel)
 class DefaultAlgorithmDecorator:
     """Decorator used to register algorithms (function or class-based)."""
 
-    def __init__(self, *, registry: Optional[AlgorithmRegistry] = None) -> None:
+    def __init__(self, *, registry: AlgorithmRegistry | None = None) -> None:
         self._registry = registry or get_registry()
 
     def __call__(
@@ -29,29 +29,34 @@ class DefaultAlgorithmDecorator:
         *,
         name: str,
         version: str,
-        description: Optional[str] = None,
-        execution: Optional[Dict[str, Any]] = None,
-    ) -> Callable[[Callable[..., Any] | Type[Any]], Callable[..., Any] | Type[Any]]:
+        description: str | None = None,
+        execution: dict[str, Any] | None = None,
+    ) -> Callable[[Callable[..., Any] | type[Any]], Callable[..., Any]
+                  | type[Any]]:
         if not name or not version:
-            raise AlgorithmValidationError("name and version are required for registration")
+            raise AlgorithmValidationError(
+                "name and version are required for registration")
 
         exec_config = self._build_execution_config(execution)
 
-        def _decorator(target: Callable[..., Any] | Type[Any]):
-            spec = self._build_spec(target, name, version, description, exec_config)
+        def _decorator(target: Callable[..., Any] | type[Any]):
+            spec = self._build_spec(target, name, version, description,
+                                    exec_config)
             self._registry.register(spec)
             return target
 
         return _decorator
 
-    def _build_execution_config(self, execution: Optional[Dict[str, Any]]) -> ExecutionConfig:
+    def _build_execution_config(
+            self, execution: dict[str, Any] | None) -> ExecutionConfig:
         if not execution:
             return ExecutionConfig()
 
         allowed_keys = {"isolated_pool", "max_workers", "timeout_s", "gpu"}
         unknown = set(execution.keys()) - allowed_keys
         if unknown:
-            raise AlgorithmValidationError(f"unknown execution keys: {', '.join(sorted(unknown))}")
+            raise AlgorithmValidationError(
+                f"unknown execution keys: {', '.join(sorted(unknown))}")
 
         return ExecutionConfig(
             isolated_pool=bool(execution.get("isolated_pool", False)),
@@ -62,19 +67,22 @@ class DefaultAlgorithmDecorator:
 
     def _build_spec(
         self,
-        target: Callable[..., Any] | Type[Any],
+        target: Callable[..., Any] | type[Any],
         name: str,
         version: str,
-        description: Optional[str],
+        description: str | None,
         exec_config: ExecutionConfig,
     ) -> AlgorithmSpec:
         if inspect.isclass(target):
-            return self._build_class_spec(
-                target, name=name, version=version, description=description, exec_config=exec_config
-            )
+            return self._build_class_spec(target,
+                                          name=name,
+                                          version=version,
+                                          description=description,
+                                          exec_config=exec_config)
 
         if not callable(target):
-            raise AlgorithmValidationError("decorated target must be a callable or class")
+            raise AlgorithmValidationError(
+                "decorated target must be a callable or class")
 
         input_model, output_model = self._extract_io(target, skip_first=False)
         return AlgorithmSpec(
@@ -90,22 +98,25 @@ class DefaultAlgorithmDecorator:
 
     def _build_class_spec(
         self,
-        target_cls: Type[Any],
+        target_cls: type[Any],
         *,
         name: str,
         version: str,
-        description: Optional[str],
+        description: str | None,
         exec_config: ExecutionConfig,
     ) -> AlgorithmSpec:
         run_method = getattr(target_cls, "run", None)
         if run_method is None or not callable(run_method):
-            raise AlgorithmValidationError("class-based algorithm must define a callable 'run' method")
+            raise AlgorithmValidationError(
+                "class-based algorithm must define a callable 'run' method")
 
-        input_model, output_model = self._extract_io(run_method, skip_first=True)
+        input_model, output_model = self._extract_io(run_method,
+                                                     skip_first=True)
 
         for hook_name in ("initialize", "after_run", "shutdown"):
             if getattr(target_cls, hook_name, None) is None:
-                setattr(target_cls, hook_name, lambda self: None)  # type: ignore[misc]
+                setattr(target_cls, hook_name,
+                        lambda self: None)  # type: ignore[misc]
 
         return AlgorithmSpec(
             name=name,
@@ -118,28 +129,36 @@ class DefaultAlgorithmDecorator:
             is_class=True,
         )
 
-    def _extract_io(
-        self, fn: Callable[..., Any], *, skip_first: bool
-    ) -> Tuple[Type[Req], Type[Resp]]:
+    def _extract_io(self, fn: Callable[..., Any], *,
+                    skip_first: bool) -> tuple[type[Req], type[Resp]]:
         sig = inspect.signature(fn)
         params = list(sig.parameters.values())
         if skip_first and params:
             params = params[1:]
 
         if len(params) != 1:
-            raise AlgorithmValidationError("algorithm entrypoint must accept exactly one argument")
+            raise AlgorithmValidationError(
+                "algorithm entrypoint must accept exactly one argument")
 
         param = params[0]
         if param.annotation is inspect.Signature.empty:
-            raise AlgorithmValidationError("algorithm input must be type-annotated with a BaseModel subclass")
-        if not inspect.isclass(param.annotation) or not issubclass(param.annotation, BaseModel):
-            raise AlgorithmValidationError("algorithm input must be a BaseModel subclass")
+            raise AlgorithmValidationError(
+                "algorithm input must be type-annotated with a BaseModel subclass"
+            )
+        if not inspect.isclass(param.annotation) or not issubclass(
+                param.annotation, BaseModel):
+            raise AlgorithmValidationError(
+                "algorithm input must be a BaseModel subclass")
 
         output_annotation = sig.return_annotation
         if output_annotation is inspect.Signature.empty:
-            raise AlgorithmValidationError("algorithm output must be type-annotated with a BaseModel subclass")
-        if not inspect.isclass(output_annotation) or not issubclass(output_annotation, BaseModel):
-            raise AlgorithmValidationError("algorithm output must be a BaseModel subclass")
+            raise AlgorithmValidationError(
+                "algorithm output must be type-annotated with a BaseModel subclass"
+            )
+        if not inspect.isclass(output_annotation) or not issubclass(
+                output_annotation, BaseModel):
+            raise AlgorithmValidationError(
+                "algorithm output must be a BaseModel subclass")
 
         return param.annotation, output_annotation
 
