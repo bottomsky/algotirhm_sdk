@@ -1,18 +1,18 @@
 from __future__ import annotations
 
-from typing import Optional
-
 
 class AlgorithmError(Exception):
     """Base exception for algorithm SDK errors."""
 
-    def __init__(self, message: str, *, code: Optional[int] = None) -> None:
+    def __init__(self, message: str, *, code: int | None = None) -> None:
         super().__init__(message)
         self.code = code
 
 
 class AlgorithmRegistrationError(AlgorithmError):
-    """Raised when an algorithm fails to register or conflicts with an existing entry."""
+    """Raised when an algorithm fails to register or conflicts with an
+    existing entry.
+    """
 
 
 class AlgorithmNotFoundError(AlgorithmError):
