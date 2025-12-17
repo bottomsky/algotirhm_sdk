@@ -8,3 +8,34 @@ dependencies = [
     "pydantic>=2.12.5",
     "pytest>=9.0.2",
 ]
+
+[tool.pyright]
+# Type checking settings
+typeCheckingMode = "strict"
+pythonVersion = "3.11"
+pythonPlatform = "Windows"
+
+# Code style enforcement
+reportMissingTypeStubs = false
+reportUnknownMemberType = false
+reportUnknownArgumentType = false
+reportUnknownParameterType = false
+reportPrivateUsage = "warning"
+reportOptionalMemberAccess = "warning"
+reportOptionalOperand = "warning"
+reportOptionalSubscript = "warning"
+reportOptionalCall = "warning"
+
+# Import settings
+reportMissingImports = "warning"
+reportUnusedImport = "warning"
+reportUnusedClass = "warning"
+reportUnusedFunction = "warning"
+reportUnusedVariable = "warning"
+
+# Include/exclude patterns
+include = ["src", "tests"]
+exclude = ["**/__pycache__", "**/.venv", "build", "dist"]
+
+# Naming convention checks (via reportGeneralTypeIssues)
+reportGeneralTypeIssues = "warning"
