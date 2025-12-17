@@ -1,13 +1,13 @@
 from .base_model_impl import BaseModel
-from .app_factory import ApplicationFactory
+from .app_factory import ApplicationFactoryProtocol
 from .errors import (
     AlgorithmError,
     AlgorithmNotFoundError,
     AlgorithmRegistrationError,
     AlgorithmValidationError,
 )
-from .executor import ExecutionResult, Executor
-from .lifecycle import AlgorithmLifecycle
+from .executor import ExecutionResult, ExecutorProtocol
+from .lifecycle import AlgorithmLifecycleProtocol, BaseAlgorithm
 from .metadata import AlgorithmSpec, ExecutionConfig
 from .registry import AlgorithmRegistry, get_registry
 
@@ -16,13 +16,14 @@ __all__ = [
     "AlgorithmNotFoundError",
     "AlgorithmRegistrationError",
     "AlgorithmValidationError",
-    "AlgorithmLifecycle",
+    "AlgorithmLifecycleProtocol",
+    "BaseAlgorithm",
     "AlgorithmSpec",
     "ExecutionConfig",
     "AlgorithmRegistry",
     "BaseModel",
     "get_registry",
-    "ApplicationFactory",
-    "Executor",
+    "ApplicationFactoryProtocol",
+    "ExecutorProtocol",
     "ExecutionResult",
 ]

@@ -15,15 +15,15 @@ from .errors import (
 from .protocol import (
     ServiceInstance,
     ServiceRegistration,
-    ServiceRegistry,
+    BaseServiceRegistry,
     ServiceStatus,
 )
 
 
-class MemoryRegistry(ServiceRegistry):
+class MemoryRegistry(BaseServiceRegistry):
     """A simple in-memory registry useful for unit tests.
 
-    This class implements the ServiceRegistry abstract base class using an
+    This class implements the BaseServiceRegistry abstract base class using an
     in-memory storage backend. Ideal for testing scenarios where a real
     Consul instance is not available.
     """

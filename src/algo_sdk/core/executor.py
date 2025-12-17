@@ -13,7 +13,7 @@ class ExecutionResult:
         self.error = error
 
 
-class Executor(Protocol):
+class ExecutorProtocol(Protocol):
     """Contract placeholder for executing registered algorithms."""
 
     def submit(self, spec: AlgorithmSpec, payload: object) -> ExecutionResult: ...

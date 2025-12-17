@@ -10,7 +10,7 @@ TOutput = TypeVar("TOutput", bound=BaseModel, covariant=True)
 
 
 @runtime_checkable
-class AlgorithmLifecycle(Protocol[TInput, TOutput]):
+class AlgorithmLifecycleProtocol(Protocol[TInput, TOutput]):
     """Lifecycle contract for class-based algorithms."""
 
     def initialize(self) -> None:
@@ -68,7 +68,7 @@ class AlgorithmLifecycle(Protocol[TInput, TOutput]):
         ...
 
 
-class BaseAlgorithm(ABC, AlgorithmLifecycle[TInput, TOutput]):
+class BaseAlgorithm(ABC, AlgorithmLifecycleProtocol[TInput, TOutput]):
     """
     Convenience base with no-op lifecycle hooks; subclasses must implement run.
     """

@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 from typing import Any, Callable, Generic, TypeVar
 
 from .base_model_impl import BaseModel
-from .lifecycle import AlgorithmLifecycle
+from .lifecycle import AlgorithmLifecycleProtocol
 
 TInput = TypeVar("TInput", bound=BaseModel)
 TOutput = TypeVar("TOutput", bound=BaseModel)
@@ -29,7 +29,7 @@ class AlgorithmSpec(Generic[TInput, TOutput]):
     description: str | None
     input_model: type[TInput]
     output_model: type[TOutput]
-    entrypoint: Callable[[TInput], TOutput] | type[AlgorithmLifecycle[TInput,
+    entrypoint: Callable[[TInput], TOutput] | type[AlgorithmLifecycleProtocol[TInput,
                                                                       TOutput]]
     execution: ExecutionConfig = field(default_factory=ExecutionConfig)
     is_class: bool = False

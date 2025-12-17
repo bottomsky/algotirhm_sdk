@@ -11,7 +11,7 @@ from algo_sdk.core.registry import AlgorithmRegistry
 
 from .config import ServiceRegistryConfig, load_config
 from .consul_registry import ConsulRegistry
-from .protocol import ServiceRegistry
+from .protocol import BaseServiceRegistry
 
 logger = logging.getLogger(__name__)
 
@@ -54,7 +54,7 @@ def build_algorithm_catalog(
 
 def publish_algorithm_catalog(
     *,
-    registry: ServiceRegistry | None = None,
+    registry: BaseServiceRegistry | None = None,
     config: ServiceRegistryConfig | None = None,
     algorithm_registry: AlgorithmRegistry | None = None,
     kv_key: str | None = None,

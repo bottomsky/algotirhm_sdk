@@ -23,7 +23,7 @@ from .protocol import (
     HealthCheck,
     ServiceInstance,
     ServiceRegistration,
-    ServiceRegistry,
+    BaseServiceRegistry,
     ServiceStatus,
 )
 
@@ -94,12 +94,12 @@ def _coerce_dict_list(result: object) -> list[dict[str, object]]:
     return []
 
 
-class ConsulRegistry(ServiceRegistry):
+class ConsulRegistry(BaseServiceRegistry):
     """Consul-based service registry implementation.
 
-    This class implements the ServiceRegistry abstract base class using Consul
-    as the backend. It provides service registration, discovery, and key-value
-    storage capabilities.
+    This class implements the BaseServiceRegistry abstract base class using
+    Consul as the backend. It provides service registration, discovery, and
+    key-value storage capabilities.
 
     Example:
         >>> config = ServiceRegistryConfig(host="http://localhost:8500")

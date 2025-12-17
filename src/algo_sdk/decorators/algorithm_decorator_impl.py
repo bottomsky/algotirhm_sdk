@@ -11,8 +11,8 @@ from algo_sdk.core import (
     BaseModel,
     ExecutionConfig,
     get_registry,
+    AlgorithmLifecycleProtocol,
 )
-from algo_sdk.core.lifecycle import AlgorithmLifecycle
 from algo_sdk.core.registry import AlgorithmRegistry
 
 
@@ -32,8 +32,8 @@ class DefaultAlgorithmDecorator:
         description: str | None = None,
         execution: dict[str, object] | None = None,
     ) -> Callable[
-        [type[AlgorithmLifecycle[BaseModel, BaseModel]]],
-            type[AlgorithmLifecycle[BaseModel, BaseModel]],
+        [type[AlgorithmLifecycleProtocol[BaseModel, BaseModel]]],
+            type[AlgorithmLifecycleProtocol[BaseModel, BaseModel]],
     ]:
         """Register a class-based algorithm.
 
@@ -53,8 +53,8 @@ class DefaultAlgorithmDecorator:
         exec_config = self._build_execution_config(execution)
 
         def _decorator(
-            target_cls: type[AlgorithmLifecycle[BaseModel, BaseModel]],
-        ) -> type[AlgorithmLifecycle[BaseModel, BaseModel]]:
+            target_cls: type[AlgorithmLifecycleProtocol[BaseModel, BaseModel]],
+        ) -> type[AlgorithmLifecycleProtocol[BaseModel, BaseModel]]:
             spec = self._build_class_spec(
                 target_cls,
                 name=name,
@@ -103,7 +103,7 @@ class DefaultAlgorithmDecorator:
 
     def _build_class_spec(
         self,
-        target_cls: type[AlgorithmLifecycle[BaseModel, BaseModel]],
+        target_cls: type[AlgorithmLifecycleProtocol[BaseModel, BaseModel]],
         *,
         name: str,
         version: str,

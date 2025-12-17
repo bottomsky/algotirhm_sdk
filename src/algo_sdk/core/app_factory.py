@@ -5,7 +5,8 @@ from typing import Protocol
 from .registry import AlgorithmRegistry
 
 
-class ApplicationFactory(Protocol):
-    """Contract for building a web application around the registered algorithms."""
+class ApplicationFactoryProtocol(Protocol):
+    """Contract for building a web app around registered algorithms."""
 
-    def create_app(self, registry: AlgorithmRegistry): ...
+    def create_app(self, registry: AlgorithmRegistry):
+        ...
