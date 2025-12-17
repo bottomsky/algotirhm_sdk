@@ -125,11 +125,16 @@ from module import \*
 | 变量 / 函数 / 方法 | 蛇形小写（snake\_case） | `user_name`, `get_data()`   |
 | 常量           | 全大写蛇形             | `MAX_SIZE`, `PI = 3.14159`  |
 | 类 / 异常       | 大驼峰（CamelCase）    | `User`, `FileNotFoundError` |
+| **抽象基类**    | `Base` 前缀           | `BaseRegistry`, `BaseAlgorithm` |
+| **协议类**      | `Protocol` 后缀       | `ExecutorProtocol`, `ApplicationFactoryProtocol` |
 | 私有变量 / 方法    | 前置单下划线（\_）        | `_internal_func`            |
 | 避免与关键字冲突的变量  | 后置单下划线（\_）        | `class_`                    |
 | 魔术方法（内置）     | 前后双下划线（\_\_）      | `__init__`, `__str__`       |
 
-**注意**：双下划线开头的变量会触发**名称修饰（name mangling）**，一般仅用于类的私有属性，不建议普通场景使用。
+**注意**：
+* 双下划线开头的变量会触发**名称修饰（name mangling）**，一般仅用于类的私有属性，不建议普通场景使用。
+* **抽象基类（ABC）**：继承 `ABC` 且定义 `@abstractmethod` 的类，应以 `Base` 开头，如 `BaseServiceRegistry`。实现类无前缀，如 `ConsulRegistry`, `MemoryRegistry`。
+* **协议类（Protocol）**：定义结构化类型约束的类，应以 `Protocol` 结尾，如 `AlgorithmLifecycleProtocol`, `ExecutorProtocol`。
 
 ## 三、代码编写规范
 
