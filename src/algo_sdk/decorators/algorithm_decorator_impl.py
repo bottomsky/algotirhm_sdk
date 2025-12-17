@@ -1,42 +1,29 @@
+"""Algorithm decorator for class-based algorithms."""
+
 from __future__ import annotations
 
-from algo_sdk.core.base_model_impl import BaseModel
 import inspect
-from typing import Any, Callable, TypeVar, cast, overload
+from typing import Callable
 
-from algo_sdk.core import (AlgorithmSpec, AlgorithmValidationError, BaseModel,
-                           ExecutionConfig, get_registry)
-from algo_sdk.core.lifecycle import BaseAlgorithm, AlgorithmLifecycle
+from algo_sdk.core import (
+    AlgorithmSpec,
+    AlgorithmValidationError,
+    BaseModel,
+    ExecutionConfig,
+    get_registry,
+)
+from algo_sdk.core.lifecycle import AlgorithmLifecycle
 from algo_sdk.core.registry import AlgorithmRegistry
-
-FnReq = TypeVar("FnReq", bound=BaseModel)
-FnResp = TypeVar("FnResp", bound=BaseModel)
-ClsReq = TypeVar("ClsReq", bound=BaseModel)
-ClsResp = TypeVar("ClsResp", bound=BaseModel)
-ReqT = TypeVar("ReqT", bound=BaseModel)
-RespT = TypeVar("RespT", bound=BaseModel)
 
 
 class DefaultAlgorithmDecorator:
-    """Decorator used to register algorithms (function or class-based)."""
+    """Decorator used to register class-based algorithms."""
 
     _registry: AlgorithmRegistry
 
     def __init__(self, *, registry: AlgorithmRegistry | None = None) -> None:
         self._registry = registry or get_registry()
 
-    @overload
-    def __call__(
-        self,
-        *,
-        name: str,
-        version: str,
-        description: str | None = None,
-        execution: dict[str, object] | None = None,
-    ) -> Callable[[Callable[[FnReq], FnResp]], Callable[[FnReq], FnResp]]:
-        ...
-
-    @overload
     def __call__(
         self,
         *,
@@ -45,20 +32,10 @@ class DefaultAlgorithmDecorator:
         description: str | None = None,
         execution: dict[str, object] | None = None,
     ) -> Callable[
-        [type[AlgorithmLifecycle[ClsReq, ClsResp]]],
-            type[AlgorithmLifecycle[ClsReq, ClsResp]],
+        [type[AlgorithmLifecycle[BaseModel, BaseModel]]],
+            type[AlgorithmLifecycle[BaseModel, BaseModel]],
     ]:
-        ...
-
-    def __call__(  # pyright: ignore[reportInconsistentOverload]
-        self,
-        *,
-        name: str,
-        version: str,
-        description: str | None = None,
-        execution: dict[str, object] | None = None,
-    ) -> Callable[[object], object]:
-        """Register an algorithm (function or class-based).
+        """Register a class-based algorithm.
 
         Args:
             name: Algorithm name
@@ -67,7 +44,7 @@ class DefaultAlgorithmDecorator:
             execution: Optional execution config dict
 
         Returns:
-            A decorator that preserves the type of the decorated target
+            A decorator that preserves the type of the decorated class
         """
         if not name or not version:
             raise AlgorithmValidationError(
@@ -75,11 +52,18 @@ class DefaultAlgorithmDecorator:
 
         exec_config = self._build_execution_config(execution)
 
-        def _decorator(target: object) -> object:
-            spec = self._build_spec(target, name, version, description,
-                                    exec_config)
+        def _decorator(
+            target_cls: type[AlgorithmLifecycle[BaseModel, BaseModel]],
+        ) -> type[AlgorithmLifecycle[BaseModel, BaseModel]]:
+            spec = self._build_class_spec(
+                target_cls,
+                name=name,
+                version=version,
+                description=description,
+                exec_config=exec_config,
+            )
             self._registry.register(spec)
-            return target
+            return target_cls
 
         return _decorator
 
@@ -117,57 +101,15 @@ class DefaultAlgorithmDecorator:
             gpu=gpu,
         )
 
-    def _build_spec(
-        self,
-        target: Callable[[ReqT], RespT]
-        | type[AlgorithmLifecycle[ReqT, RespT]]
-        | object,
-        name: str,
-        version: str,
-        description: str | None,
-        exec_config: ExecutionConfig,
-    ) -> AlgorithmSpec[ReqT, RespT]:
-        if inspect.isclass(target) and issubclass(target, AlgorithmLifecycle):
-            cls_target = cast(type[AlgorithmLifecycle[ReqT, RespT]], target)
-            return self._build_class_spec(
-                cls_target,
-                name=name,
-                version=version,
-                description=description,
-                exec_config=exec_config,
-            )
-
-        if inspect.isclass(target):
-            raise AlgorithmValidationError(
-                "class-based algorithm must inherit BaseAlgorithmLifecycle")
-
-        if not callable(target):
-            raise AlgorithmValidationError(
-                "decorated target must be a callable or class")
-
-        func_target = cast(Callable[[ReqT], RespT], target)
-        input_model, output_model = self._extract_io(func_target,
-                                                     skip_first=False)
-        return AlgorithmSpec[BaseModel, BaseModel](
-            name=name,
-            version=version,
-            description=description,
-            input_model=input_model,
-            output_model=output_model,
-            execution=exec_config,
-            entrypoint=func_target,
-            is_class=False,
-        )
-
     def _build_class_spec(
         self,
-        target_cls: type[AlgorithmLifecycle[ClsReq, ClsResp]],
+        target_cls: type[AlgorithmLifecycle[BaseModel, BaseModel]],
         *,
         name: str,
         version: str,
         description: str | None,
         exec_config: ExecutionConfig,
-    ) -> AlgorithmSpec[ClsReq, ClsResp]:
+    ) -> AlgorithmSpec[BaseModel, BaseModel]:
         run_method: object = getattr(target_cls, "run", None)
         if run_method is None or not callable(run_method):
             raise AlgorithmValidationError(
@@ -179,8 +121,7 @@ class DefaultAlgorithmDecorator:
             raise AlgorithmValidationError(
                 "class-based algorithm must not be abstract")
 
-        input_model, output_model = self._extract_io(run_method,
-                                                     skip_first=True)
+        input_model, output_model = self._extract_io(run_method)
 
         for hook_name in ("initialize", "after_run", "shutdown"):
             if not hasattr(target_cls, hook_name):
@@ -199,28 +140,34 @@ class DefaultAlgorithmDecorator:
             input_model=input_model,
             output_model=output_model,
             execution=exec_config,
-            entrypoint=cast(type[AlgorithmLifecycle[ClsReq, ClsResp]],
-                            target_cls),
+            entrypoint=target_cls,
             is_class=True,
         )
 
     def _extract_io(
         self,
-        fn: Callable[..., object],
-        *,
-        skip_first: bool,
+        run_method: Callable[..., object],
     ) -> tuple[type[BaseModel], type[BaseModel]]:
-        sig = inspect.signature(fn)
+        """Extract input/output models from run method signature.
+
+        Args:
+            run_method: The run method of the algorithm class
+
+        Returns:
+            Tuple of (input_model, output_model) types
+        """
+        sig = inspect.signature(run_method)
         params = list(sig.parameters.values())
-        if skip_first and params:
+        # Skip 'self' parameter
+        if params:
             params = params[1:]
 
         if len(params) != 1:
             raise AlgorithmValidationError(
-                "algorithm entrypoint must accept exactly one argument")
+                "run method must accept exactly one argument (besides self)")
 
         param = params[0]
-        annotation = _get_annotation(param)
+        annotation: object = param.annotation  # pyright: ignore[reportAny]
         if annotation is inspect.Signature.empty:
             raise AlgorithmValidationError(
                 "input must be type-annotated with a BaseModel subclass")
@@ -229,7 +176,8 @@ class DefaultAlgorithmDecorator:
             raise AlgorithmValidationError(
                 "algorithm input must be a BaseModel subclass")
 
-        output_annotation = _get_return_annotation(sig)
+        ret_anno = sig.return_annotation  # pyright: ignore[reportAny]
+        output_annotation: object = ret_anno
         if output_annotation is inspect.Signature.empty:
             raise AlgorithmValidationError(
                 "output must be type-annotated with a BaseModel subclass")
@@ -238,23 +186,5 @@ class DefaultAlgorithmDecorator:
             raise AlgorithmValidationError(
                 "algorithm output must be a BaseModel subclass")
 
-        # At this point, we know annotation and output_annotation are
-        # type[BaseModel] subclasses, so we can safely cast them
-        return (
-            annotation,  # type: ignore[return-value]
-            output_annotation,  # type: ignore[return-value]
-        )
-
-
-def _get_annotation(param: inspect.Parameter) -> object:
-    """Get annotation from parameter (isolates Any type from inspect)."""
-    return cast(object, param.annotation)
-
-
-def _get_return_annotation(sig: inspect.Signature) -> object:
-    """Get return annotation from signature (isolates Any from inspect)."""
-    return cast(object, sig.return_annotation)
-
-
-# Default export aligning with design doc usage.
-Algorithm = DefaultAlgorithmDecorator()
+        # After validation, we know these are type[BaseModel] subclasses
+        return (annotation, output_annotation)  # type: ignore[return-value]
