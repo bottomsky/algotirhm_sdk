@@ -32,10 +32,12 @@ class DefaultAlgorithmDecorator:
         description: str | None = None,
         execution: dict[str, object] | None = None,
     ) -> Callable[
-        [type[AlgorithmLifecycleProtocol[BaseModel, BaseModel]]],
-            type[AlgorithmLifecycleProtocol[BaseModel, BaseModel]],
+        [Callable[..., object] | type[AlgorithmLifecycleProtocol[BaseModel,
+                                                                 BaseModel]]],
+        Callable[..., object] | type[AlgorithmLifecycleProtocol[BaseModel,
+                                                                 BaseModel]],
     ]:
-        """Register a class-based algorithm.
+        """Register a function- or class-based algorithm.
 
         Args:
             name: Algorithm name
@@ -53,17 +55,31 @@ class DefaultAlgorithmDecorator:
         exec_config = self._build_execution_config(execution)
 
         def _decorator(
-            target_cls: type[AlgorithmLifecycleProtocol[BaseModel, BaseModel]],
-        ) -> type[AlgorithmLifecycleProtocol[BaseModel, BaseModel]]:
-            spec = self._build_class_spec(
-                target_cls,
-                name=name,
-                version=version,
-                description=description,
-                exec_config=exec_config,
-            )
+            target: Callable[..., object]
+            | type[AlgorithmLifecycleProtocol[BaseModel, BaseModel]],
+        ) -> Callable[..., object] | type[AlgorithmLifecycleProtocol[BaseModel,
+                                                                     BaseModel]]:
+            if inspect.isclass(target):
+                spec = self._build_class_spec(
+                    target,
+                    name=name,
+                    version=version,
+                    description=description,
+                    exec_config=exec_config,
+                )
+            elif callable(target):
+                spec = self._build_function_spec(
+                    target,
+                    name=name,
+                    version=version,
+                    description=description,
+                    exec_config=exec_config,
+                )
+            else:
+                raise AlgorithmValidationError(
+                    "decorator target must be a callable or class")
             self._registry.register(spec)
-            return target_cls
+            return target
 
         return _decorator
 
@@ -144,11 +160,36 @@ class DefaultAlgorithmDecorator:
             is_class=True,
         )
 
+    def _build_function_spec(
+        self,
+        func: Callable[..., object],
+        *,
+        name: str,
+        version: str,
+        description: str | None,
+        exec_config: ExecutionConfig,
+    ) -> AlgorithmSpec[BaseModel, BaseModel]:
+        if not callable(func):
+            raise AlgorithmValidationError("algorithm must be callable")
+        input_model, output_model = self._extract_io(func, skip_first=False)
+        return AlgorithmSpec(
+            name=name,
+            version=version,
+            description=description,
+            input_model=input_model,
+            output_model=output_model,
+            execution=exec_config,
+            entrypoint=func,
+            is_class=False,
+        )
+
     def _extract_io(
         self,
-        run_method: Callable[..., object],
+        callable_obj: Callable[..., object],
+        *,
+        skip_first: bool = True,
     ) -> tuple[type[BaseModel], type[BaseModel]]:
-        """Extract input/output models from run method signature.
+        """Extract input/output models from callable signature.
 
         Args:
             run_method: The run method of the algorithm class
@@ -156,10 +197,9 @@ class DefaultAlgorithmDecorator:
         Returns:
             Tuple of (input_model, output_model) types
         """
-        sig = inspect.signature(run_method)
+        sig = inspect.signature(callable_obj)
         params = list(sig.parameters.values())
-        # Skip 'self' parameter
-        if params:
+        if skip_first and params:
             params = params[1:]
 
         if len(params) != 1:
@@ -188,3 +228,7 @@ class DefaultAlgorithmDecorator:
 
         # After validation, we know these are type[BaseModel] subclasses
         return (annotation, output_annotation)  # type: ignore[return-value]
+
+
+# Convenience instance for common imports
+Algorithm = DefaultAlgorithmDecorator()
