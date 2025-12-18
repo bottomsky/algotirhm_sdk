@@ -6,7 +6,13 @@ from .errors import (
     AlgorithmRegistrationError,
     AlgorithmValidationError,
 )
-from .executor import ExecutionResult, ExecutorProtocol
+from .executor import (
+    ExecutionError,
+    ExecutionRequest,
+    ExecutionResult,
+    ExecutorProtocol,
+    InProcessExecutor,
+)
 from .lifecycle import AlgorithmLifecycleProtocol, BaseAlgorithm
 from .metadata import AlgorithmSpec, ExecutionConfig
 from .registry import AlgorithmRegistry, get_registry
@@ -24,6 +30,9 @@ __all__ = [
     "BaseModel",
     "get_registry",
     "ApplicationFactoryProtocol",
+    "ExecutionError",
+    "ExecutionRequest",
     "ExecutorProtocol",
     "ExecutionResult",
+    "InProcessExecutor",
 ]
