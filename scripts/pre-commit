@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+# Pre-commit hook for naming convention checks
+# Install with: cp scripts/pre-commit .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit
+
+set -e
+
+echo "🔍 运行命名规范检查..."
+python scripts/check_naming_convention.py
+
+if [ $? -ne 0 ]; then
+    echo "❌ 命名规范检查失败！请修复命名规范问题后再提交。"
+    exit 1
+fi
+
+echo "✅ 命名规范检查通过！"
+exit 0
