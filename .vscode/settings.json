@@ -1,5 +1,5 @@
 {
-    "python.analysis.typeCheckingMode": "strict",
+    "python.analysis.typeCheckingMode": "off",
     "python.languageServer": "Pylance",
     "python.testing.pytestArgs": [
         "tests"
@@ -26,5 +26,6 @@
         ".venv": true,
         "dist": true,
         "build": true
-    }
+    },
+    "basedpyright.disableLanguageServices": true
 }
