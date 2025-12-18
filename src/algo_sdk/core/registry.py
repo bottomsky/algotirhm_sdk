@@ -25,7 +25,8 @@ class AlgorithmRegistry:
         with self._lock:
             if key in self._items:
                 raise AlgorithmRegistrationError(
-                    f"algorithm already registered: {spec.name} ({spec.version})"
+                    f"algorithm already registered: {spec.name} "
+                    f"({spec.version})"
                 )
             # Cast to a common storage type since AlgorithmSpec is invariant.
             self._items[key] = cast(AnySpec, spec)
