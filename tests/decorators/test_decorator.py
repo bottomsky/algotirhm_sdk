@@ -1,6 +1,7 @@
 import inspect
 
-from algo_sdk.core import AlgorithmRegistry, BaseModel
+from algo_sdk.core import AlgorithmRegistry, BaseModel, BaseAlgorithm
+from algo_sdk.core.lifecycle import AlgorithmLifecycleProtocol
 from algo_sdk.decorators import DefaultAlgorithmDecorator
 
 
@@ -31,11 +32,12 @@ def test_class_registration() -> None:
     deco = DefaultAlgorithmDecorator(registry=reg)
 
     @deco(name="cls_algo", version="v1", execution={"isolated_pool": True})
-    class Algo:
+    class Algo(BaseAlgorithm[_Req, _Resp]):
+
         def initialize(self) -> None:
             self.ready = True
 
-        def run(self, req: _Req) -> _Resp:
+        def run(self, req: _Req) -> _Resp:  # type: ignore[override]
             return _Resp(doubled=req.value * 2)
 
         def shutdown(self) -> None:
