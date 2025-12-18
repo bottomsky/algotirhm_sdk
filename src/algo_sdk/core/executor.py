@@ -1,9 +1,13 @@
 from __future__ import annotations
 
+import atexit
 import os
 import time
 import traceback
+from concurrent.futures import ProcessPoolExecutor as _FuturesProcessPoolExecutor
+from concurrent.futures import TimeoutError as FuturesTimeoutError
 from dataclasses import dataclass, field
+from threading import BoundedSemaphore, Lock
 from typing import (
     Any,
     Generic,
@@ -85,6 +89,125 @@ class ExecutionResult(Generic[TOutput]):
         return (self.ended_at - self.started_at) * 1000
 
 
+def _default_max_workers() -> int:
+    workers = os.cpu_count() or 1
+    return max(1, workers)
+
+
+def _coerce_input_model(spec: AlgorithmSpec[Any, Any],
+                        payload: Any) -> BaseModel:
+    input_model = spec.input_model
+    if isinstance(payload, input_model):
+        return payload
+    if isinstance(payload, Mapping):
+        return input_model.model_validate(payload)
+    if isinstance(payload, BaseModel):
+        return input_model.model_validate(payload.model_dump())
+    raise ValidationError.from_exception_data(
+        "ValidationError",
+        [{"type": "type_error", "loc": ("payload",), "msg": "Unsupported payload type"}],
+    )
+
+
+def _coerce_output_model(spec: AlgorithmSpec[Any, Any],
+                         output: Any) -> BaseModel:
+    output_model = spec.output_model
+    if isinstance(output, output_model):
+        return output
+    if isinstance(output, BaseModel):
+        return output_model.model_validate(output.model_dump())
+    return output_model.model_validate(output)
+
+
+def _extract_validation_details(exc: ValidationError) -> Any:
+    try:
+        return exc.errors()
+    except Exception:
+        return None
+
+
+@dataclass(slots=True)
+class _WorkerPayload(Generic[TInput, TOutput]):
+    spec: AlgorithmSpec[TInput, TOutput]
+    payload: Mapping[str, Any]
+
+
+@dataclass(slots=True)
+class _WorkerResponse(Generic[TOutput]):
+    success: bool
+    data: Mapping[str, Any] | None
+    error: ExecutionError | None
+    worker_pid: int
+
+
+_WORKER_INSTANCES: MutableMapping[tuple[str, str],
+                                  AlgorithmLifecycleProtocol[Any,
+                                                             Any]] = {}
+
+
+def _worker_shutdown() -> None:
+    for instance in list(_WORKER_INSTANCES.values()):
+        try:
+            instance.shutdown()
+        except Exception:
+            continue
+    _WORKER_INSTANCES.clear()
+
+
+atexit.register(_worker_shutdown)
+
+
+def _get_or_create_worker_instance(
+    spec: AlgorithmSpec[Any, Any]
+) -> AlgorithmLifecycleProtocol[Any, Any]:
+    key = spec.key()
+    instance = _WORKER_INSTANCES.get(key)
+    if instance is None:
+        entrypoint = spec.entrypoint
+        if not callable(entrypoint):
+            raise TypeError(
+                f"Entrypoint for {spec.name}:{spec.version} is not callable")
+        created = entrypoint()  # type: ignore[call-arg]
+        if not isinstance(created, AlgorithmLifecycleProtocol):
+            raise TypeError(
+                f"Entrypoint for {spec.name}:{spec.version} must implement lifecycle")
+        created.initialize()
+        _WORKER_INSTANCES[key] = created
+        instance = created
+    return instance
+
+
+def _worker_execute(payload: _WorkerPayload[Any, Any]) -> _WorkerResponse[Any]:
+    spec = payload.spec
+    try:
+        request_model = _coerce_input_model(spec, payload.payload)
+        if spec.is_class:
+            algo = _get_or_create_worker_instance(spec)
+            raw_output = algo.run(request_model)
+            algo.after_run()
+        else:
+            raw_output = spec.entrypoint(request_model)  # type: ignore[arg-type]
+        output_model = _coerce_output_model(spec, raw_output)
+        return _WorkerResponse(success=True,
+                               data=output_model.model_dump(),
+                               error=None,
+                               worker_pid=os.getpid())
+    except ValidationError as exc:
+        return _WorkerResponse(success=False,
+                               data=None,
+                               error=ExecutionError(kind="validation",
+                                                    message=str(exc),
+                                                    details=_extract_validation_details(exc)),
+                               worker_pid=os.getpid())
+    except Exception as exc:
+        return _WorkerResponse(success=False,
+                               data=None,
+                               error=ExecutionError(kind="runtime",
+                                                    message=str(exc),
+                                                    traceback=traceback.format_exc()),
+                               worker_pid=os.getpid())
+
+
 @runtime_checkable
 class ExecutorProtocol(Protocol):
     """Contract for executing registered algorithms."""
@@ -127,14 +250,14 @@ class InProcessExecutor(ExecutorProtocol):
                                       worker_pid=os.getpid())
 
         try:
-            payload_model = self._coerce_input(request)
+            payload_model = _coerce_input_model(request.spec, request.payload)
             output = self._invoke(request.spec, payload_model)
-            result.data = self._coerce_output(request.spec, output)
+            result.data = _coerce_output_model(request.spec, output)
             result.success = True
         except ValidationError as exc:
             result.error = ExecutionError(kind="validation",
                                           message=str(exc),
-                                          details=self._extract_validation_details(exc))
+                                          details=_extract_validation_details(exc))
         except TimeoutError as exc:
             result.error = ExecutionError(kind="timeout",
                                           message=str(exc))
@@ -156,32 +279,6 @@ class InProcessExecutor(ExecutorProtocol):
                 continue
         self._instances.clear()
         self._started = False
-
-    def _coerce_input(
-        self, request: ExecutionRequest[Any, Any]
-    ) -> BaseModel:
-        payload = request.payload
-        input_model = request.spec.input_model
-        if isinstance(payload, input_model):
-            return payload
-        if isinstance(payload, Mapping):
-            return input_model.model_validate(payload)
-        if isinstance(payload, BaseModel):
-            # Wrong model type; revalidate to ensure schema alignment.
-            return input_model.model_validate(payload.model_dump())
-        raise ValidationError.from_exception_data(
-            "ValidationError",
-            [{"type": "type_error", "loc": ("payload",), "msg": "Unsupported payload type"}],
-        )
-
-    def _coerce_output(self, spec: AlgorithmSpec[Any, Any],
-                       output: Any) -> BaseModel:
-        output_model = spec.output_model
-        if isinstance(output, output_model):
-            return output
-        if isinstance(output, BaseModel):
-            return output_model.model_validate(output.model_dump())
-        return output_model.model_validate(output)
 
     def _invoke(self, spec: AlgorithmSpec[Any, Any],
                 payload_model: BaseModel) -> Any:
@@ -209,9 +306,195 @@ class InProcessExecutor(ExecutorProtocol):
             instance = created
         return instance
 
-    @staticmethod
-    def _extract_validation_details(exc: ValidationError) -> Any:
+
+class ProcessPoolExecutor(ExecutorProtocol):
+    """
+    Shared process pool executor honoring execution hints.
+
+    Uses a bounded queue to provide simple back-pressure and enforces per-call
+    timeouts via Future.result(timeout=...).
+    """
+
+    def __init__(self,
+                 *,
+                 max_workers: int | None = None,
+                 queue_size: int | None = None) -> None:
+        self._max_workers = max_workers or _default_max_workers()
+        self._queue_size = queue_size
+        self._started = False
+        self._pool: _FuturesProcessPoolExecutor | None = None
+        self._lock = Lock()
+        slots = queue_size if queue_size is not None else self._max_workers * 2
+        self._semaphore = BoundedSemaphore(value=max(1, slots))
+
+    def start(self) -> None:
+        if self._started:
+            return
+        with self._lock:
+            if self._started:
+                return
+            self._pool = _FuturesProcessPoolExecutor(
+                max_workers=self._max_workers)
+            self._started = True
+
+    def submit(self, request: ExecutionRequest[Any,
+                                               Any]) -> ExecutionResult[Any]:
+        if not self._started:
+            self.start()
+        if self._pool is None:
+            raise RuntimeError("process pool failed to start")
+
+        result = ExecutionResult[Any](success=False)
+        acquired = self._semaphore.acquire(blocking=False)
+        if not acquired:
+            result.error = ExecutionError(
+                kind="rejected",
+                message="process pool queue is full",
+            )
+            result.ended_at = time.monotonic()
+            return result
+
         try:
-            return exc.errors()
-        except Exception:
-            return None
+            payload_model = _coerce_input_model(request.spec, request.payload)
+            payload_data = payload_model.model_dump()
+            future = self._pool.submit(_worker_execute,
+                                       _WorkerPayload(spec=request.spec,
+                                                      payload=payload_data))
+            timeout = request.effective_timeout()
+            try:
+                worker_result = future.result(
+                    timeout=timeout) if timeout is not None else future.result()
+            except FuturesTimeoutError:
+                future.cancel()
+                result.error = ExecutionError(
+                    kind="timeout",
+                    message="execution exceeded configured timeout",
+                )
+                return result
+
+            result.worker_pid = worker_result.worker_pid
+            if worker_result.success:
+                result.data = _coerce_output_model(request.spec,
+                                                   worker_result.data or {})
+                result.success = True
+            else:
+                result.error = worker_result.error
+            return result
+        except ValidationError as exc:
+            result.error = ExecutionError(
+                kind="validation",
+                message=str(exc),
+                details=_extract_validation_details(exc),
+            )
+            return result
+        except Exception as exc:
+            result.error = ExecutionError(kind="system",
+                                          message=str(exc),
+                                          traceback=traceback.format_exc())
+            return result
+        finally:
+            result.ended_at = time.monotonic()
+            self._semaphore.release()
+
+    def shutdown(self, *, wait: bool = True) -> None:
+        if self._pool is not None:
+            self._pool.shutdown(wait=wait)
+        self._pool = None
+        self._started = False
+
+
+class IsolatedProcessPoolExecutor(ExecutorProtocol):
+    """
+    Process pools isolated per algorithm, honoring per-spec max workers.
+    """
+
+    def __init__(self,
+                 *,
+                 default_max_workers: int | None = None,
+                 queue_size: int | None = None) -> None:
+        self._default_max_workers = default_max_workers or _default_max_workers(
+        )
+        self._queue_size = queue_size
+        self._executors: MutableMapping[tuple[str, str],
+                                        ProcessPoolExecutor] = {}
+        self._lock = Lock()
+        self._started = False
+
+    def start(self) -> None:
+        self._started = True
+
+    def submit(self, request: ExecutionRequest[Any,
+                                               Any]) -> ExecutionResult[Any]:
+        if not self._started:
+            self.start()
+
+        key = request.spec.key()
+        executor = self._get_executor(key, request.spec)
+        return executor.submit(request)
+
+    def shutdown(self, *, wait: bool = True) -> None:
+        for executor in list(self._executors.values()):
+            executor.shutdown(wait=wait)
+        self._executors.clear()
+        self._started = False
+
+    def _get_executor(
+        self, key: tuple[str, str],
+        spec: AlgorithmSpec[Any, Any]
+    ) -> ProcessPoolExecutor:
+        existing = self._executors.get(key)
+        if existing is not None:
+            return existing
+        with self._lock:
+            existing = self._executors.get(key)
+            if existing is not None:
+                return existing
+            workers = spec.execution.max_workers or self._default_max_workers
+            executor = ProcessPoolExecutor(max_workers=workers,
+                                           queue_size=self._queue_size)
+            executor.start()
+            self._executors[key] = executor
+            return executor
+
+
+class DispatchingExecutor(ExecutorProtocol):
+    """
+    Route requests to shared or isolated pools based on AlgorithmSpec hints.
+    """
+
+    def __init__(
+        self,
+        *,
+        global_max_workers: int | None = None,
+        global_queue_size: int | None = None,
+        isolated_default_max_workers: int | None = None,
+        isolated_queue_size: int | None = None,
+    ) -> None:
+        default_workers = global_max_workers or _default_max_workers()
+        self._shared = ProcessPoolExecutor(max_workers=default_workers,
+                                           queue_size=global_queue_size)
+        self._isolated = IsolatedProcessPoolExecutor(
+            default_max_workers=isolated_default_max_workers
+            or default_workers,
+            queue_size=isolated_queue_size)
+        self._started = False
+
+    def start(self) -> None:
+        if self._started:
+            return
+        self._shared.start()
+        self._isolated.start()
+        self._started = True
+
+    def submit(self, request: ExecutionRequest[Any,
+                                               Any]) -> ExecutionResult[Any]:
+        if not self._started:
+            self.start()
+        if request.spec.execution.isolated_pool:
+            return self._isolated.submit(request)
+        return self._shared.submit(request)
+
+    def shutdown(self, *, wait: bool = True) -> None:
+        self._shared.shutdown(wait=wait)
+        self._isolated.shutdown(wait=wait)
+        self._started = False

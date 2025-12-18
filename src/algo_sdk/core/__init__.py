@@ -12,6 +12,9 @@ from .executor import (
     ExecutionResult,
     ExecutorProtocol,
     InProcessExecutor,
+    DispatchingExecutor,
+    IsolatedProcessPoolExecutor,
+    ProcessPoolExecutor,
 )
 from .lifecycle import AlgorithmLifecycleProtocol, BaseAlgorithm
 from .metadata import AlgorithmSpec, ExecutionConfig
@@ -35,4 +38,7 @@ __all__ = [
     "ExecutorProtocol",
     "ExecutionResult",
     "InProcessExecutor",
+    "DispatchingExecutor",
+    "IsolatedProcessPoolExecutor",
+    "ProcessPoolExecutor",
 ]
