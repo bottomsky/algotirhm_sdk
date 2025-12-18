@@ -1,7 +1,9 @@
 # 命名规范检查报告
 
 ## 概述
+
 本项目遵循统一的命名规范：
+
 - **抽象基类 (ABC)**：以 `Base` 开头
 - **协议类 (Protocol)**：以 `Protocol` 结尾
 - **具体实现类**：无特殊前缀/后缀，使用标准大驼峰命名
@@ -42,6 +44,7 @@
 ## 使用示例
 
 ### 定义新的抽象基类
+
 ```python
 from abc import ABC, abstractmethod
 
@@ -63,6 +66,7 @@ class ConsulMyComponent(BaseMyComponent):
 ```
 
 ### 定义新的协议类
+
 ```python
 from typing import Protocol
 
@@ -79,6 +83,7 @@ def use_component(comp: MyComponentProtocol) -> None:
 ```
 
 ### 实现抽象基类
+
 ```python
 from typing import override
 
@@ -93,6 +98,7 @@ class MyImplementation(BaseMyComponent):
 ## 导出规范
 
 ### 公开 API 导出
+
 ```python
 # module/__init__.py
 
