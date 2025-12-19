@@ -20,7 +20,7 @@
 - [ ] 增加可选配置（服务级或执行器构造参数）：
   - [x] `kill_grace_s`：优雅终止等待时间（超时后先 terminate，再 kill）
   - [ ] `hard_timeout_enabled`：是否启用硬超时（生产默认启用）
-  - [ ] `kill_tree`（可选）：杀进程树（Windows/Unix 不同实现）
+  - [x] `kill_tree`（可选）：杀进程树（Windows/Unix 不同实现）
 
 ### B. 执行器实现（核心）
 - [x] 设计并实现 supervised pool（自管 worker 进程）：

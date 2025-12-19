@@ -293,7 +293,12 @@ class OrbitAlgo(BaseAlgorithm[OrbitReq, OrbitResp]):
 - **排队超时（queue timeout）**：请求长时间拿不到 worker（队列压力大），直接返回错误（不涉及资源释放）。
 - **执行超时（execution timeout）**：work 已开始运行但超时，必须强制终止执行进程以释放资源（硬超时）。
 
-当前 SDK 使用 `timeout_s` 作为每次调用的超时上限（由请求与算法配置取最小值），硬超时主要作用在“执行阶段”。
+当前 SDK 使用 `timeout_s` 作为每次调用的超时上限：
+- 算法级默认：`execution.timeout_s`
+- 请求级覆盖：`ExecutionRequest.timeout_s`
+- 生效规则：两者取最小值（如果请求未传，则使用算法默认）
+
+硬超时主要作用在“执行阶段”。
 
 ### 7.2 InProcessExecutor 的限制
 
@@ -312,6 +317,11 @@ class OrbitAlgo(BaseAlgorithm[OrbitReq, OrbitResp]):
   - 拉起新的 worker 进程补位，恢复池容量
 
 这能确保：超时计算占用的 CPU/GPU/内存随进程结束而释放（无需依赖算法自身清理逻辑）。
+
+**进程树终止（可选）**
+- 通过执行器构造参数 `kill_tree=True` 开启
+- Windows 使用 `taskkill /T /F`，Unix 使用 `setsid + killpg` 终止进程组
+- 适合算法内部会派生子进程的场景
 
 ### 7.4 有状态/无状态对硬超时的影响
 
