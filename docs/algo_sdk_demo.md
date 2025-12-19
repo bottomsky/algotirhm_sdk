@@ -281,3 +281,41 @@ class OrbitAlgo(BaseAlgorithm[OrbitReq, OrbitResp]):
 - 需要每次请求干净隔离 → `stateful=False`
 
 提示：在进程池场景下，`stateful=True` 的“状态”是“每个 worker 进程一份状态”。如果业务需要“全局唯一状态”，通常需配合 `isolated_pool=True` 且 `max_workers=1`。
+
+---
+
+## 第七章：超时硬处理与资源释放（针对 CPU/GPU 重计算）
+
+本章说明我们如何在现有计算架构下做到“超时即释放资源”。这里的核心原则是：**要可靠释放 CPU/GPU 资源，必须能终止占用资源的 OS 进程**。
+
+### 7.1 两类超时：排队超时 vs 执行超时
+
+- **排队超时（queue timeout）**：请求长时间拿不到 worker（队列压力大），直接返回错误（不涉及资源释放）。
+- **执行超时（execution timeout）**：work 已开始运行但超时，必须强制终止执行进程以释放资源（硬超时）。
+
+当前 SDK 使用 `timeout_s` 作为每次调用的超时上限（由请求与算法配置取最小值），硬超时主要作用在“执行阶段”。
+
+### 7.2 InProcessExecutor 的限制
+
+`InProcessExecutor` 在同一进程内执行 Python 代码，**无法做到可靠硬超时**（无法安全地强杀正在运行的函数而不破坏进程状态）。因此：
+- 仅建议用于开发/测试
+- 生产如需硬超时，请使用多进程执行器（共享池/独立池）
+
+### 7.3 共享池/独立池如何做到硬超时
+
+为了硬超时，我们采用 **supervised process pool（自管 worker 进程）** 的思想：
+- 主进程维护固定数量的 worker 进程（共享池全局 N 个；独立池每算法 N 个）
+- 每个 work 都在某个 worker 进程里执行
+- 当某个 work 超时：
+  - 主进程立刻终止对应 worker 进程（terminate/kill）
+  - 标记该请求为超时并返回
+  - 拉起新的 worker 进程补位，恢复池容量
+
+这能确保：超时计算占用的 CPU/GPU/内存随进程结束而释放（无需依赖算法自身清理逻辑）。
+
+### 7.4 有状态/无状态对硬超时的影响
+
+- `stateful=False`（默认）：每次请求创建实例，结束后 `shutdown()`。硬超时 kill 可能来不及跑 `shutdown()`，但进程被终止后资源仍会被 OS 回收。
+- `stateful=True`：实例常驻。硬超时 kill 会导致该 worker 进程的常驻状态丢失，重建 worker 后会重新初始化（这是可接受的治理代价）。
+
+提示：如果业务要求“每算法全局唯一状态”，通常需要 `isolated_pool=True` 且 `max_workers=1`，否则会出现“每个 worker 进程一份状态”。
