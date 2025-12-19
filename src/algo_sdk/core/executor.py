@@ -5,7 +5,9 @@ import logging
 import os
 import time
 import traceback
-from concurrent.futures import ProcessPoolExecutor as _FuturesProcessPoolExecutor
+from concurrent.futures import (
+    ProcessPoolExecutor as _FuturesProcessPoolExecutor
+    )
 from concurrent.futures import TimeoutError as FuturesTimeoutError
 from dataclasses import dataclass, field
 from threading import BoundedSemaphore, Lock
@@ -113,7 +115,12 @@ def _coerce_input_model(spec: AlgorithmSpec[Any, Any],
         return input_model.model_validate(payload.model_dump())
     raise ValidationError.from_exception_data(
         "ValidationError",
-        [{"type": "type_error", "loc": ("payload",), "msg": "Unsupported payload type"}],
+        [
+            {
+                "type": "type_error", "loc": ("payload",), "msg":
+                "Unsupported payload type"
+            }
+        ],
     )
 
 
@@ -229,7 +236,9 @@ def _get_or_create_worker_instance(
         created = entrypoint()  # type: ignore[call-arg]
         if not isinstance(created, AlgorithmLifecycleProtocol):
             raise TypeError(
-                f"Entrypoint for {spec.name}:{spec.version} must implement lifecycle")
+                f"Entrypoint for {spec.name}:{spec.version} "
+                f"must implement lifecycle"
+            )
         created.initialize()
         _WORKER_INSTANCES[key] = created
         instance = created
@@ -276,7 +285,9 @@ def _worker_execute(payload: _WorkerPayload[Any, Any]) -> _WorkerResponse[Any]:
 class ExecutorProtocol(Protocol):
     """Contract for executing registered algorithms."""
 
-    def submit(self, request: ExecutionRequest[Any, Any]) -> ExecutionResult[Any]:
+    def submit(self, request: ExecutionRequest[Any, Any]) -> ExecutionResult[
+        Any
+    ]:
         ...
 
     def start(self) -> None:
@@ -321,9 +332,11 @@ class InProcessExecutor(ExecutorProtocol):
             result.data = _coerce_output_model(request.spec, output)
             result.success = True
         except ValidationError as exc:
-            result.error = ExecutionError(kind="validation",
-                                          message=str(exc),
-                                          details=_extract_validation_details(exc))
+            result.error = ExecutionError(
+                kind="validation",
+                message=str(exc),
+                details=_extract_validation_details(exc)
+            )
         except TimeoutError as exc:
             result.error = ExecutionError(kind="timeout",
                                           message=str(exc))
@@ -364,10 +377,16 @@ class InProcessExecutor(ExecutorProtocol):
         if instance is None:
             entrypoint = spec.entrypoint
             if not callable(entrypoint):
-                raise TypeError(f"Entrypoint for {spec.name}:{spec.version} is not callable")
+                raise TypeError(
+                    f"Entrypoint for {spec.name}:{spec.version} "
+                    "is not callable"
+                )
             created = entrypoint()  # type: ignore[call-arg]
             if not isinstance(created, AlgorithmLifecycleProtocol):
-                raise TypeError(f"Entrypoint for {spec.name}:{spec.version} must implement lifecycle")
+                raise TypeError(
+                    f"Entrypoint for {spec.name}:{spec.version} "
+                    "must implement lifecycle"
+                )
             created.initialize()
             self._instances[key] = created
             instance = created
@@ -433,8 +452,10 @@ class ProcessPoolExecutor(ExecutorProtocol):
                                                       payload=payload_data))
             timeout = request.effective_timeout()
             try:
-                worker_result = future.result(
-                    timeout=timeout) if timeout is not None else future.result()
+                if timeout is not None:
+                    worker_result = future.result(timeout=timeout)
+                else:
+                    worker_result = future.result()
             except FuturesTimeoutError:
                 future.cancel()
                 result.error = ExecutionError(
@@ -492,11 +513,13 @@ class IsolatedProcessPoolExecutor(ExecutorProtocol):
     Process pools isolated per algorithm, honoring per-spec max workers.
     """
 
-    def __init__(self,
-                 *,
-                 default_max_workers: int | None = None,
-                 queue_size: int | None = None) -> None:
-        self._default_max_workers = default_max_workers or _default_max_workers(
+    def __init__(
+            self,
+            *,
+            default_max_workers: int | None = None,
+            queue_size: int | None = None) -> None:
+        self._default_max_workers = (
+            default_max_workers or _default_max_workers()
         )
         self._queue_size = queue_size
         self._executors: MutableMapping[tuple[str, str],
