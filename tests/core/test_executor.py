@@ -1,3 +1,4 @@
+import os
 import time
 
 from algo_sdk.core import (
@@ -5,7 +6,9 @@ from algo_sdk.core import (
     BaseAlgorithm,
     BaseModel,
     ExecutionConfig,
+    ExecutionMode,
     ExecutionRequest,
+    DispatchingExecutor,
     InProcessExecutor,
     ProcessPoolExecutor,
 )
@@ -207,6 +210,24 @@ def test_process_pool_recovers_after_timeout() -> None:
         assert fast_result.success is True
         assert fast_result.data is not None
         assert fast_result.data.doubled == 8
+    finally:
+        executor.shutdown()
+
+
+def test_dispatching_executor_routes_in_process() -> None:
+    spec = _build_double_spec(
+        execution=ExecutionConfig(execution_mode=ExecutionMode.IN_PROCESS)
+    )
+    executor = DispatchingExecutor(global_max_workers=1, global_queue_size=1)
+    try:
+        req = ExecutionRequest(spec=spec,
+                               payload=_Req(value=5),
+                               request_id="req-inproc-dispatch")
+        result = executor.submit(req)
+        assert result.success is True
+        assert result.data is not None
+        assert result.data.doubled == 10
+        assert result.worker_pid == os.getpid()
     finally:
         executor.shutdown()
 
