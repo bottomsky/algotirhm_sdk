@@ -86,6 +86,7 @@ SDK 定义统一请求/响应协议：
 - 输出 `data`：按 `AlgorithmSpec.output_model` 做校验与转换
 - 并发/隔离：可选择本进程/共享进程池/独立池；`DispatchingExecutor` 可根据 `execution.isolated_pool` 路由
 - 上下文透传：在执行前设置 runtime context（`request_id/trace_id/context`），执行后清理
+- 状态模式：`execution.stateful=True` 时复用实例（进程内常驻）；默认 `False`（每次请求创建并释放实例）
 
 ### 3.4 最小演示：调用一次算法（不依赖 Web 框架）
 
@@ -158,7 +159,12 @@ from algo_sdk.decorators import Algorithm
     name="orbit",
     version="v2",
     description="轨道周期计算（类式）",
-    execution={"isolated_pool": True, "max_workers": 2, "timeout_s": 30},
+    execution={
+        "stateful": True,
+        "isolated_pool": True,
+        "max_workers": 2,
+        "timeout_s": 30,
+    },
 )
 class OrbitAlgo(BaseAlgorithm[OrbitReq, OrbitResp]):
     def run(self, req: OrbitReq) -> OrbitResp:
@@ -178,7 +184,7 @@ class OrbitAlgo(BaseAlgorithm[OrbitReq, OrbitResp]):
 装饰器会生成 `AlgorithmSpec` 并注册到 `AlgorithmRegistry`，内容包括：
 - `name/version/description`
 - `input_model/output_model`（用于校验与 schema 输出）
-- `execution`：`isolated_pool/max_workers/timeout_s/gpu`（执行 hints）
+- `execution`：`stateful/isolated_pool/max_workers/timeout_s/gpu`（执行 hints）
 - `entrypoint` 与 `is_class`（函数/类入口）
 
 ---
@@ -209,6 +215,7 @@ class OrbitAlgo(BaseAlgorithm[OrbitReq, OrbitResp]):
 - 未集成健康探针与服务注册（Consul/K8s readiness/liveness）
 - Metrics/Tracing 采用 InMemory 记录器（输出格式已具备，但未内置 HTTP 端点）
 - 进程池超时为基础版本（软取消），worker 崩溃检测/重建尚未实现
+- 版本变更：从 `0.2.0` 起，类式算法默认 `execution.stateful=False`（每次请求创建并释放实例）
 
 ## 当前版本：有哪些特性（演示可落地）
 
