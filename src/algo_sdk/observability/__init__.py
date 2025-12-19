@@ -8,6 +8,8 @@ from .metrics import (
     AlgorithmMetricsSnapshot,
     HistogramSnapshot,
     InMemoryMetrics,
+    build_otel_metrics,
+    render_prometheus_text,
 )
 from .tracing import InMemoryTracer, Span
 
@@ -61,5 +63,7 @@ __all__ = [
     "InMemoryTracer",
     "ObservationRecorder",
     "Span",
+    "build_otel_metrics",
     "create_observation_hooks",
+    "render_prometheus_text",
 ]
