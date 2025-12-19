@@ -20,7 +20,7 @@
 
 ## 使用方式（最小可运行示例）
 
-### 1) 定义模型与算法
+### 1) 定义模型与算法（函数式）
 
 ```python
 from algo_sdk.core import BaseModel
@@ -42,6 +42,24 @@ def orbit_fn(req: OrbitReq) -> OrbitResp:
         raise ValueError("semi-major axis must be positive")
     period = 2 * 3.1415926 * (req.a ** 1.5)
     return OrbitResp(period_s=period)
+```
+
+### 1.1) 定义模型与算法（类式）
+
+类式算法必须满足 `AlgorithmLifecycleProtocol`，推荐继承 `BaseAlgorithm` 以获得默认的
+`initialize/after_run/shutdown` 空实现。
+
+```python
+from algo_sdk.core import BaseAlgorithm
+
+
+@Algorithm(name="orbit", version="v2", description="轨道周期计算（类式）")
+class OrbitAlgo(BaseAlgorithm[OrbitReq, OrbitResp]):
+    def run(self, req: OrbitReq) -> OrbitResp:
+        if req.a <= 0:
+            raise ValueError("semi-major axis must be positive")
+        period = 2 * 3.1415926 * (req.a ** 1.5)
+        return OrbitResp(period_s=period)
 ```
 
 ### 2) 构建服务并调用
@@ -115,7 +133,7 @@ otel_payload = metrics.build_otel_metrics()
 
 ## 已实现的特性（可演示）
 
-- 函数/类算法统一注册（`@Algorithm` + `AlgorithmSpec`）
+- 函数/类算法统一注册（函数直接注册；类需实现 `AlgorithmLifecycleProtocol`）
 - 统一输入/输出协议与 Pydantic 校验
 - 执行器：InProcess、ProcessPool、IsolatedPool、Dispatching
 - 执行上下文透传：`request_id/trace_id/tenant/user`
