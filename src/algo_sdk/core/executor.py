@@ -5,6 +5,8 @@ import logging
 import multiprocessing as mp
 import os
 import queue
+import signal
+import subprocess
 import time
 import traceback
 from dataclasses import dataclass, field
@@ -382,6 +384,11 @@ def _managed_worker_loop(
     input_queue: "mp.Queue[tuple[int, _WorkerPayload[Any, Any]] | None]",
     output_queue: "mp.Queue[tuple[int, _WorkerResponse[Any]]]",
 ) -> None:
+    if os.name != "nt":
+        try:
+            os.setsid()
+        except Exception:
+            pass
     while True:
         item = input_queue.get()
         if item is None:
@@ -389,6 +396,31 @@ def _managed_worker_loop(
         task_id, payload = item
         response = _worker_execute(payload)
         output_queue.put((task_id, response))
+
+
+def _kill_process_tree(pid: int, *, grace_s: float) -> bool:
+    if os.name == "nt":
+        try:
+            subprocess.run(
+                ["taskkill", "/T", "/F", "/PID", str(pid)],
+                check=False,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+            return True
+        except Exception:
+            return False
+    try:
+        os.killpg(pid, signal.SIGTERM)
+    except Exception:
+        return False
+    if grace_s > 0:
+        time.sleep(grace_s)
+    try:
+        os.killpg(pid, signal.SIGKILL)
+    except Exception:
+        pass
+    return True
 
 
 @dataclass(slots=True)
@@ -586,10 +618,12 @@ class ProcessPoolExecutor(ExecutorProtocol):
                  max_workers: int | None = None,
                  queue_size: int | None = None,
                  kill_grace_s: float = 0.2,
+                 kill_tree: bool = False,
                  poll_interval_s: float = 0.05) -> None:
         self._max_workers = max_workers or _default_max_workers()
         self._queue_size = queue_size
         self._kill_grace_s = max(0.0, kill_grace_s)
+        self._kill_tree = kill_tree
         self._poll_interval_s = max(0.01, poll_interval_s)
         self._started = False
         self._lock = Lock()
@@ -785,6 +819,15 @@ class ProcessPoolExecutor(ExecutorProtocol):
     def _terminate_process(self, process: mp.Process) -> None:
         if not process.is_alive():
             return
+        pid = process.pid
+        if pid is None:
+            return
+        if self._kill_tree and _kill_process_tree(pid, grace_s=self._kill_grace_s):
+            try:
+                process.join(timeout=self._kill_grace_s)
+            except Exception:
+                pass
+            return
         try:
             process.terminate()
             process.join(timeout=self._kill_grace_s)
@@ -905,11 +948,17 @@ class IsolatedProcessPoolExecutor(ExecutorProtocol):
             self,
             *,
             default_max_workers: int | None = None,
-            queue_size: int | None = None) -> None:
+            queue_size: int | None = None,
+            kill_grace_s: float = 0.2,
+            kill_tree: bool = False,
+            poll_interval_s: float = 0.05) -> None:
         self._default_max_workers = (
             default_max_workers or _default_max_workers()
         )
         self._queue_size = queue_size
+        self._kill_grace_s = kill_grace_s
+        self._kill_tree = kill_tree
+        self._poll_interval_s = poll_interval_s
         self._executors: MutableMapping[tuple[str, str],
                                         ProcessPoolExecutor] = {}
         self._lock = Lock()
@@ -946,7 +995,10 @@ class IsolatedProcessPoolExecutor(ExecutorProtocol):
                 return existing
             workers = spec.execution.max_workers or self._default_max_workers
             executor = ProcessPoolExecutor(max_workers=workers,
-                                           queue_size=self._queue_size)
+                                           queue_size=self._queue_size,
+                                           kill_grace_s=self._kill_grace_s,
+                                           kill_tree=self._kill_tree,
+                                           poll_interval_s=self._poll_interval_s)
             executor.start()
             self._executors[key] = executor
             return executor
@@ -962,16 +1014,34 @@ class DispatchingExecutor(ExecutorProtocol):
         *,
         global_max_workers: int | None = None,
         global_queue_size: int | None = None,
+        global_kill_grace_s: float = 0.2,
+        global_kill_tree: bool = False,
+        global_poll_interval_s: float = 0.05,
         isolated_default_max_workers: int | None = None,
         isolated_queue_size: int | None = None,
+        isolated_kill_grace_s: float | None = None,
+        isolated_kill_tree: bool | None = None,
+        isolated_poll_interval_s: float | None = None,
     ) -> None:
         default_workers = global_max_workers or _default_max_workers()
+        if isolated_kill_grace_s is None:
+            isolated_kill_grace_s = global_kill_grace_s
+        if isolated_kill_tree is None:
+            isolated_kill_tree = global_kill_tree
+        if isolated_poll_interval_s is None:
+            isolated_poll_interval_s = global_poll_interval_s
         self._shared = ProcessPoolExecutor(max_workers=default_workers,
-                                           queue_size=global_queue_size)
+                                           queue_size=global_queue_size,
+                                           kill_grace_s=global_kill_grace_s,
+                                           kill_tree=global_kill_tree,
+                                           poll_interval_s=global_poll_interval_s)
         self._isolated = IsolatedProcessPoolExecutor(
             default_max_workers=isolated_default_max_workers
             or default_workers,
-            queue_size=isolated_queue_size)
+            queue_size=isolated_queue_size,
+            kill_grace_s=isolated_kill_grace_s,
+            kill_tree=isolated_kill_tree,
+            poll_interval_s=isolated_poll_interval_s)
         self._started = False
 
     def start(self) -> None:
