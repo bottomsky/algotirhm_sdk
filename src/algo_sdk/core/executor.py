@@ -28,7 +28,7 @@ from ..protocol.models import AlgorithmContext
 from .base_model_impl import BaseModel
 from .lifecycle import AlgorithmLifecycleProtocol
 from ..runtime.context import reset_execution_context, set_execution_context
-from .metadata import AlgorithmSpec
+from .metadata import AlgorithmSpec, ExecutionMode
 
 TInput = TypeVar("TInput", bound=BaseModel)
 TOutput = TypeVar("TOutput", bound=BaseModel)
@@ -795,12 +795,19 @@ class ProcessPoolExecutor(ExecutorProtocol):
                 except Exception:
                     pass
             if self._listener is not None:
-                self._listener.join(timeout=1.0)
+                self._listener.join(timeout=1.0 if wait else 0.0)
             for worker in list(self._workers):
                 try:
                     worker.input_queue.put(None)
                 except Exception:
                     pass
+            if wait:
+                graceful_timeout_s = max(1.0, self._kill_grace_s)
+                for worker in list(self._workers):
+                    try:
+                        worker.process.join(timeout=graceful_timeout_s)
+                    except Exception:
+                        pass
             for worker in list(self._workers):
                 self._terminate_process(worker.process)
             self._workers.clear()
@@ -1051,11 +1058,13 @@ class DispatchingExecutor(ExecutorProtocol):
             kill_grace_s=isolated_kill_grace_s,
             kill_tree=isolated_kill_tree,
             poll_interval_s=isolated_poll_interval_s)
+        self._in_process = InProcessExecutor()
         self._started = False
 
     def start(self) -> None:
         if self._started:
             return
+        self._in_process.start()
         self._shared.start()
         self._isolated.start()
         self._started = True
@@ -1064,11 +1073,14 @@ class DispatchingExecutor(ExecutorProtocol):
                                                Any]) -> ExecutionResult[Any]:
         if not self._started:
             self.start()
+        if request.spec.execution.execution_mode == ExecutionMode.IN_PROCESS:
+            return self._in_process.submit(request)
         if request.spec.execution.isolated_pool:
             return self._isolated.submit(request)
         return self._shared.submit(request)
 
     def shutdown(self, *, wait: bool = True) -> None:
+        self._in_process.shutdown(wait=wait)
         self._shared.shutdown(wait=wait)
         self._isolated.shutdown(wait=wait)
         self._started = False

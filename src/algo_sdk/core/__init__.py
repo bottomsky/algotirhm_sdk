@@ -17,7 +17,7 @@ from .executor import (
     ProcessPoolExecutor,
 )
 from .lifecycle import AlgorithmLifecycleProtocol, BaseAlgorithm
-from .metadata import AlgorithmSpec, ExecutionConfig
+from .metadata import AlgorithmSpec, ExecutionConfig, ExecutionMode
 from .registry import AlgorithmRegistry, get_registry
 
 __all__ = [
@@ -29,6 +29,7 @@ __all__ = [
     "BaseAlgorithm",
     "AlgorithmSpec",
     "ExecutionConfig",
+    "ExecutionMode",
     "AlgorithmRegistry",
     "BaseModel",
     "get_registry",

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from enum import Enum
 from typing import Any, Callable, Generic, TypeVar
 
 from .base_model_impl import BaseModel
@@ -10,10 +11,16 @@ TInput = TypeVar("TInput", bound=BaseModel)
 TOutput = TypeVar("TOutput", bound=BaseModel)
 
 
+class ExecutionMode(Enum):
+    PROCESS_POOL = "process_pool"
+    IN_PROCESS = "in_process"
+
+
 @dataclass(frozen=True, slots=True)
 class ExecutionConfig:
     """Desired execution hints recorded with the algorithm."""
 
+    execution_mode: ExecutionMode = ExecutionMode.PROCESS_POOL
     stateful: bool = False
     isolated_pool: bool = False
     max_workers: int | None = None
