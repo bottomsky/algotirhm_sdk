@@ -13,7 +13,7 @@
 
 2. **上下文透传**
    - [x] `trace_id/tenant/user` 已进入结构化日志与 tracing span。
-   - [ ] 上下文未直接传入算法执行体（如算法内部访问 context）。
+   - [x] 上下文已通过 `algo_sdk.runtime.context` 透传到算法执行体。
 
 3. **超时/取消与崩溃治理**
    - 进程池超时仅 `future.cancel()`，无法终止已运行的 worker。

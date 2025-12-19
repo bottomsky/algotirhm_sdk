@@ -27,6 +27,7 @@ from pydantic import ValidationError
 from ..protocol.models import AlgorithmContext
 from .base_model_impl import BaseModel
 from .lifecycle import AlgorithmLifecycleProtocol
+from ..runtime.context import reset_execution_context, set_execution_context
 from .metadata import AlgorithmSpec
 
 TInput = TypeVar("TInput", bound=BaseModel)
@@ -141,6 +142,17 @@ def _extract_validation_details(exc: ValidationError) -> Any:
         return None
 
 
+def _resolve_trace_id(
+    trace_id: str | None,
+    context: AlgorithmContext | None,
+) -> str | None:
+    if trace_id is not None:
+        return trace_id
+    if context is not None:
+        return context.traceId
+    return None
+
+
 def _compute_queue_wait_ms(submitted_at: float,
                            started_at: float | None) -> float | None:
     if started_at is None:
@@ -153,9 +165,10 @@ def _build_log_extra(
     request: ExecutionRequest[Any, Any],
     result: ExecutionResult[Any],
 ) -> dict[str, Any]:
+    trace_id = _resolve_trace_id(request.trace_id, request.context)
     extra: dict[str, Any] = {
         "request_id": request.request_id,
-        "trace_id": request.trace_id,
+        "trace_id": trace_id,
         "algo_name": request.spec.name,
         "algo_version": request.spec.version,
         "worker_pid": result.worker_pid,
@@ -194,6 +207,9 @@ def _log_execution_result(request: ExecutionRequest[Any, Any],
 class _WorkerPayload(Generic[TInput, TOutput]):
     spec: AlgorithmSpec[TInput, TOutput]
     payload: Mapping[str, Any]
+    request_id: str
+    trace_id: str | None
+    context: Mapping[str, Any] | None
 
 
 @dataclass(slots=True)
@@ -248,7 +264,12 @@ def _get_or_create_worker_instance(
 def _worker_execute(payload: _WorkerPayload[Any, Any]) -> _WorkerResponse[Any]:
     spec = payload.spec
     started_at = time.monotonic()
+    tokens = None
     try:
+        context = AlgorithmContext.model_validate(
+            payload.context) if payload.context is not None else None
+        trace_id = _resolve_trace_id(payload.trace_id, context)
+        tokens = set_execution_context(payload.request_id, trace_id, context)
         request_model = _coerce_input_model(spec, payload.payload)
         if spec.is_class:
             algo = _get_or_create_worker_instance(spec)
@@ -272,6 +293,9 @@ def _worker_execute(payload: _WorkerPayload[Any, Any]) -> _WorkerResponse[Any]:
         error = ExecutionError(kind="runtime",
                                message=str(exc),
                                traceback=traceback.format_exc())
+    finally:
+        if tokens is not None:
+            reset_execution_context(tokens)
 
     return _WorkerResponse(success=success,
                            data=data,
@@ -326,6 +350,9 @@ class InProcessExecutor(ExecutorProtocol):
                                       worker_pid=os.getpid(),
                                       queue_wait_ms=0.0)
 
+        context = request.context
+        trace_id = _resolve_trace_id(request.trace_id, context)
+        tokens = set_execution_context(request.request_id, trace_id, context)
         try:
             payload_model = _coerce_input_model(request.spec, request.payload)
             output = self._invoke(request.spec, payload_model)
@@ -346,6 +373,7 @@ class InProcessExecutor(ExecutorProtocol):
                                           traceback=traceback.format_exc())
         finally:
             result.ended_at = time.monotonic()
+            reset_execution_context(tokens)
             _log_execution_result(request, result)
 
         return result
@@ -447,9 +475,16 @@ class ProcessPoolExecutor(ExecutorProtocol):
         try:
             payload_model = _coerce_input_model(request.spec, request.payload)
             payload_data = payload_model.model_dump()
+            context_data = (
+                request.context.model_dump()
+                if request.context is not None else None
+            )
             future = self._pool.submit(_worker_execute,
                                        _WorkerPayload(spec=request.spec,
-                                                      payload=payload_data))
+                                                      payload=payload_data,
+                                                      request_id=request.request_id,
+                                                      trace_id=request.trace_id,
+                                                      context=context_data))
             timeout = request.effective_timeout()
             try:
                 if timeout is not None:
