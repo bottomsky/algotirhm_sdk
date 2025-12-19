@@ -5,7 +5,14 @@ from algo_sdk.core import (
     BaseModel,
     ExecutionConfig,
     ExecutionRequest,
+    InProcessExecutor,
     ProcessPoolExecutor,
+)
+from algo_sdk.protocol.models import AlgorithmContext
+from algo_sdk.runtime import (
+    get_current_context,
+    get_current_request_id,
+    get_current_trace_id,
 )
 
 
@@ -34,6 +41,25 @@ def _sleep(req: _SleepReq) -> _SleepResp:
     return _SleepResp(done=True)
 
 
+class _CtxReq(BaseModel):
+    value: int
+
+
+class _CtxResp(BaseModel):
+    trace_id: str | None
+    request_id: str | None
+    tenant_id: str | None
+
+
+def _echo_context(_: _CtxReq) -> _CtxResp:
+    context = get_current_context()
+    return _CtxResp(
+        trace_id=get_current_trace_id(),
+        request_id=get_current_request_id(),
+        tenant_id=context.tenantId if context is not None else None,
+    )
+
+
 def _build_spec(entrypoint: object, *,
                 execution: ExecutionConfig | None = None) -> AlgorithmSpec:
     return AlgorithmSpec(
@@ -43,6 +69,19 @@ def _build_spec(entrypoint: object, *,
         input_model=_Req if entrypoint is _double else _SleepReq,
         output_model=_Resp if entrypoint is _double else _SleepResp,
         execution=execution or ExecutionConfig(),
+        entrypoint=entrypoint,  # type: ignore[arg-type]
+        is_class=False,
+    )
+
+
+def _build_ctx_spec(entrypoint: object) -> AlgorithmSpec:
+    return AlgorithmSpec(
+        name="ctx",
+        version="v1",
+        description=None,
+        input_model=_CtxReq,
+        output_model=_CtxResp,
+        execution=ExecutionConfig(),
         entrypoint=entrypoint,  # type: ignore[arg-type]
         is_class=False,
     )
@@ -76,5 +115,53 @@ def test_process_pool_respects_timeout() -> None:
         assert result.success is False
         assert result.error is not None
         assert result.error.kind == "timeout"
+    finally:
+        executor.shutdown()
+
+
+def test_in_process_propagates_context() -> None:
+    spec = _build_ctx_spec(_echo_context)
+    executor = InProcessExecutor()
+    try:
+        req = ExecutionRequest(
+            spec=spec,
+            payload=_CtxReq(value=1),
+            request_id="req-ctx",
+            trace_id=None,
+            context=AlgorithmContext(
+                traceId="trace-ctx",
+                tenantId="tenant-1",
+            ),
+        )
+        result = executor.submit(req)
+        assert result.success is True
+        assert result.data is not None
+        assert result.data.trace_id == "trace-ctx"
+        assert result.data.request_id == "req-ctx"
+        assert result.data.tenant_id == "tenant-1"
+    finally:
+        executor.shutdown()
+
+
+def test_process_pool_propagates_context() -> None:
+    spec = _build_ctx_spec(_echo_context)
+    executor = ProcessPoolExecutor(max_workers=1, queue_size=1)
+    try:
+        req = ExecutionRequest(
+            spec=spec,
+            payload=_CtxReq(value=2),
+            request_id="req-ctx-pool",
+            trace_id="trace-pool",
+            context=AlgorithmContext(
+                traceId="trace-fallback",
+                tenantId="tenant-2",
+            ),
+        )
+        result = executor.submit(req)
+        assert result.success is True
+        assert result.data is not None
+        assert result.data.trace_id == "trace-pool"
+        assert result.data.request_id == "req-ctx-pool"
+        assert result.data.tenant_id == "tenant-2"
     finally:
         executor.shutdown()
