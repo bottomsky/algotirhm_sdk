@@ -84,7 +84,7 @@ SDK 定义统一请求/响应协议：
 执行器（`ExecutorProtocol` 的实现）负责把“HTTP 层的 request”变成“算法可执行的调用”：
 - 入参 `payload`：支持 dict / BaseModel；执行器会按 `AlgorithmSpec.input_model` 做校验与转换
 - 输出 `data`：按 `AlgorithmSpec.output_model` 做校验与转换
-- 并发/隔离：可选择本进程/共享进程池/独立池；`DispatchingExecutor` 可根据 `execution.isolated_pool` 路由
+- 并发/隔离：可选择本进程/共享进程池/独立池；`DispatchingExecutor` 可根据 `execution.execution_mode` 与 `execution.isolated_pool` 路由
 - 上下文透传：在执行前设置 runtime context（`request_id/trace_id/context`），执行后清理
 - 状态模式：`execution.stateful=True` 时复用实例（进程内常驻）；默认 `False`（每次请求创建并释放实例）
 
@@ -184,8 +184,10 @@ class OrbitAlgo(BaseAlgorithm[OrbitReq, OrbitResp]):
 装饰器会生成 `AlgorithmSpec` 并注册到 `AlgorithmRegistry`，内容包括：
 - `name/version/description`
 - `input_model/output_model`（用于校验与 schema 输出）
-- `execution`：`stateful/isolated_pool/max_workers/timeout_s/gpu`（执行 hints）
+- `execution`：`execution_mode/stateful/isolated_pool/max_workers/timeout_s/gpu`（执行 hints）
 - `entrypoint` 与 `is_class`（函数/类入口）
+
+`execution_mode` 使用枚举 `ExecutionMode`，默认 `ExecutionMode.PROCESS_POOL`；需要本进程执行可设置为 `ExecutionMode.IN_PROCESS`。
 
 ---
 

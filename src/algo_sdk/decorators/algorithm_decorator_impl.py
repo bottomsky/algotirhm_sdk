@@ -11,6 +11,7 @@ from algo_sdk.core import (
     AlgorithmValidationError,
     BaseModel,
     ExecutionConfig,
+    ExecutionMode,
     get_registry,
     AlgorithmLifecycleProtocol,
 )
@@ -82,6 +83,7 @@ class DefaultAlgorithmDecorator:
             return ExecutionConfig()
 
         allowed_keys = {
+            "execution_mode",
             "stateful",
             "isolated_pool",
             "max_workers",
@@ -92,6 +94,12 @@ class DefaultAlgorithmDecorator:
         if unknown:
             raise AlgorithmValidationError(
                 f"unknown execution keys: {', '.join(sorted(unknown))}")
+
+        execution_mode = execution.get("execution_mode",
+                                       ExecutionMode.PROCESS_POOL)
+        if not isinstance(execution_mode, ExecutionMode):
+            raise AlgorithmValidationError(
+                "execution_mode must be an ExecutionMode enum value")
 
         stateful = execution.get("stateful", False)
         if not isinstance(stateful, bool):
@@ -114,6 +122,7 @@ class DefaultAlgorithmDecorator:
             raise AlgorithmValidationError("gpu must be a str")
 
         return ExecutionConfig(
+            execution_mode=execution_mode,
             stateful=stateful,
             isolated_pool=isolated_pool,
             max_workers=max_workers,
