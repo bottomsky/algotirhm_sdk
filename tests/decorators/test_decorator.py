@@ -1,6 +1,13 @@
 import inspect
 
-from algo_sdk.core import AlgorithmRegistry, BaseModel, BaseAlgorithm
+import pytest
+
+from algo_sdk.core import (
+    AlgorithmRegistry,
+    AlgorithmValidationError,
+    BaseAlgorithm,
+    BaseModel,
+)
 from algo_sdk.core.lifecycle import AlgorithmLifecycleProtocol
 from algo_sdk.decorators import DefaultAlgorithmDecorator
 
@@ -13,18 +20,15 @@ class _Resp(BaseModel):
     doubled: int
 
 
-def test_function_registration() -> None:
+def test_function_registration_is_rejected() -> None:
     reg = AlgorithmRegistry()
     deco = DefaultAlgorithmDecorator(registry=reg)
 
-    @deco(name="fn_algo", version="v1", description="demo fn")
-    def fn(req: _Req) -> _Resp:
-        return _Resp(doubled=req.value * 2)
+    with pytest.raises(AlgorithmValidationError):
 
-    spec = reg.get("fn_algo", "v1")
-    assert spec.entrypoint is fn
-    assert spec.description == "demo fn"
-    assert not spec.is_class
+        @deco(name="fn_algo", version="v1", description="demo fn")
+        def fn(req: _Req) -> _Resp:
+            return _Resp(doubled=req.value * 2)
 
 
 def test_class_registration() -> None:

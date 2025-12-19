@@ -35,7 +35,7 @@ class DefaultAlgorithmDecorator:
         [
             type[AlgorithmLifecycleProtocol[BaseModel, BaseModel]]
         ],
-        type[
+            type[
             AlgorithmLifecycleProtocol[BaseModel, BaseModel]
         ],
     ]:
