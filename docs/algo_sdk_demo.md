@@ -226,3 +226,58 @@ class OrbitAlgo(BaseAlgorithm[OrbitReq, OrbitResp]):
 - 结构化日志 + Metrics/Tracing（含 Prometheus/OTel 输出）
 
 说明：如果确实需要“函数式算法”体验，可以通过封装一个生命周期类，在 `run()` 内调用函数逻辑；后续也可以把装饰器扩展回“函数/类两种模式”。
+
+---
+
+## 第六章：计算架构（有状态/共享进程池/独立进程池）
+
+本章解释运行时“计算架构”的几个关键概念，以及它们在当前 SDK 中如何落地。
+
+### 6.1 一次 work 是什么
+
+在 SDK 里，一次 work 可以理解为“一次算法调用请求”：
+- 输入：`ExecutionRequest`（包含 `spec + payload + request_id/context/trace`）
+- 输出：`ExecutionResult`（包含 `success/data/error + timing/worker_pid`）
+
+### 6.2 共享进程池（Shared Pool）
+
+**定义**：多个算法共享同一组 worker 进程来执行 work。
+
+**实现**：`ProcessPoolExecutor` 内部维护一个进程池，并把 `_worker_execute` 作为 worker 侧入口。
+为避免无限排队，使用 `BoundedSemaphore` 做简单背压：拿不到 slot 直接返回 `rejected`。
+
+**优点**
+- 进程复用、资源利用率高，适合大量轻量算法
+- 服务侧管理简单
+
+**缺点**
+- 算法之间相互竞争 worker 资源，重型算法会挤占轻量算法吞吐
+- 即使“无状态模式”，worker 进程仍会复用，因此进程级缓存/全局变量可能残留
+
+### 6.3 独立进程池（Isolated Pool）
+
+**定义**：每个算法（name+version）单独拥有自己的进程池（worker 集合）。
+
+**实现**：`IsolatedProcessPoolExecutor` 为每个算法维护一个 `ProcessPoolExecutor`；
+`DispatchingExecutor` 根据 `spec.execution.isolated_pool` 自动路由到共享池或独立池。
+
+**优点**
+- 资源/故障域隔离，适合 GPU/大模型/初始化昂贵算法
+- 每个算法可单独设置 `max_workers/timeout_s`
+
+**缺点**
+- 进程数量更多，内存占用与管理成本更高
+
+### 6.4 有状态 vs 无状态（算法实例是否复用）
+
+注意：这里的“状态”指**算法实例对象是否跨请求复用**，不是“进程是否复用”。
+
+通过装饰器 `execution.stateful` 控制：
+- `stateful=False`（默认，无状态实例）：每个请求都会创建算法实例并执行，结束后立即 `shutdown()` 释放
+- `stateful=True`（有状态实例）：进程内缓存算法实例，后续请求复用同一个实例，直到进程退出才释放
+
+**业务建议**
+- 需要模型常驻、状态持续（例如加载权重/缓存） → `stateful=True`
+- 需要每次请求干净隔离 → `stateful=False`
+
+提示：在进程池场景下，`stateful=True` 的“状态”是“每个 worker 进程一份状态”。如果业务需要“全局唯一状态”，通常需配合 `isolated_pool=True` 且 `max_workers=1`。
