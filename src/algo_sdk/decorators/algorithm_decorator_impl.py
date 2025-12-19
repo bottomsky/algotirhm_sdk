@@ -81,11 +81,21 @@ class DefaultAlgorithmDecorator:
         if not execution:
             return ExecutionConfig()
 
-        allowed_keys = {"isolated_pool", "max_workers", "timeout_s", "gpu"}
+        allowed_keys = {
+            "stateful",
+            "isolated_pool",
+            "max_workers",
+            "timeout_s",
+            "gpu",
+        }
         unknown = set(execution.keys()) - allowed_keys
         if unknown:
             raise AlgorithmValidationError(
                 f"unknown execution keys: {', '.join(sorted(unknown))}")
+
+        stateful = execution.get("stateful", False)
+        if not isinstance(stateful, bool):
+            raise AlgorithmValidationError("stateful must be a bool")
 
         isolated_pool = execution.get("isolated_pool", False)
         if not isinstance(isolated_pool, bool):
@@ -104,6 +114,7 @@ class DefaultAlgorithmDecorator:
             raise AlgorithmValidationError("gpu must be a str")
 
         return ExecutionConfig(
+            stateful=stateful,
             isolated_pool=isolated_pool,
             max_workers=max_workers,
             timeout_s=timeout_s,
