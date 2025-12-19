@@ -32,10 +32,12 @@ class DefaultAlgorithmDecorator:
         description: str | None = None,
         execution: dict[str, object] | None = None,
     ) -> Callable[
-        [Callable[..., object] | type[AlgorithmLifecycleProtocol[BaseModel,
-                                                                 BaseModel]]],
-        Callable[..., object] | type[AlgorithmLifecycleProtocol[BaseModel,
-                                                                 BaseModel]],
+        [Callable[..., object] | type[AlgorithmLifecycleProtocol[
+                BaseModel, BaseModel
+            ]]],
+        Callable[..., object] | type[AlgorithmLifecycleProtocol[
+                BaseModel, BaseModel]
+            ],
     ]:
         """Register a function- or class-based algorithm.
 
