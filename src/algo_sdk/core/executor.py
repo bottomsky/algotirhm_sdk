@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import atexit
+import logging
 import os
 import time
 import traceback
@@ -30,6 +31,8 @@ TInput = TypeVar("TInput", bound=BaseModel)
 TOutput = TypeVar("TOutput", bound=BaseModel)
 ExecutionErrorKind = Literal["validation", "timeout", "rejected", "runtime",
                              "system"]
+
+_LOGGER = logging.getLogger(__name__)
 
 
 @dataclass(slots=True)
@@ -65,8 +68,12 @@ class ExecutionRequest(Generic[TInput, TOutput]):
 
     def effective_timeout(self) -> int | None:
         """Return the effective timeout combining request and spec hints."""
-
-        return self.timeout_s if self.timeout_s is not None else self.spec.execution.timeout_s
+        spec_timeout = self.spec.execution.timeout_s
+        if self.timeout_s is None:
+            return spec_timeout
+        if spec_timeout is None:
+            return self.timeout_s
+        return min(self.timeout_s, spec_timeout)
 
 
 @dataclass(slots=True)
@@ -79,6 +86,7 @@ class ExecutionResult(Generic[TOutput]):
     started_at: float = field(default_factory=time.monotonic)
     ended_at: float | None = None
     worker_pid: int | None = None
+    queue_wait_ms: float | None = None
 
     @property
     def duration_ms(self) -> float | None:
@@ -126,6 +134,55 @@ def _extract_validation_details(exc: ValidationError) -> Any:
         return None
 
 
+def _compute_queue_wait_ms(submitted_at: float,
+                           started_at: float | None) -> float | None:
+    if started_at is None:
+        return None
+    wait_ms = (started_at - submitted_at) * 1000
+    return max(0.0, wait_ms)
+
+
+def _build_log_extra(
+    request: ExecutionRequest[Any, Any],
+    result: ExecutionResult[Any],
+) -> dict[str, Any]:
+    extra: dict[str, Any] = {
+        "request_id": request.request_id,
+        "trace_id": request.trace_id,
+        "algo_name": request.spec.name,
+        "algo_version": request.spec.version,
+        "worker_pid": result.worker_pid,
+        "duration_ms": result.duration_ms,
+        "queue_wait_ms": result.queue_wait_ms,
+        "status": "success" if result.success else "error",
+    }
+
+    if request.context is not None:
+        if request.context.tenantId is not None:
+            extra["tenant_id"] = request.context.tenantId
+        if request.context.userId is not None:
+            extra["user_id"] = request.context.userId
+
+    if result.error is not None:
+        extra["error_kind"] = result.error.kind
+        extra["error_message"] = result.error.message
+
+    return extra
+
+
+def _log_execution_result(request: ExecutionRequest[Any, Any],
+                          result: ExecutionResult[Any]) -> None:
+    extra = _build_log_extra(request, result)
+    if result.success:
+        _LOGGER.info("algorithm execution completed", extra=extra)
+        return
+    kind = result.error.kind if result.error is not None else "unknown"
+    if kind in {"runtime", "system"}:
+        _LOGGER.error("algorithm execution failed", extra=extra)
+        return
+    _LOGGER.warning("algorithm execution failed", extra=extra)
+
+
 @dataclass(slots=True)
 class _WorkerPayload(Generic[TInput, TOutput]):
     spec: AlgorithmSpec[TInput, TOutput]
@@ -138,6 +195,8 @@ class _WorkerResponse(Generic[TOutput]):
     data: Mapping[str, Any] | None
     error: ExecutionError | None
     worker_pid: int
+    started_at: float
+    ended_at: float
 
 
 _WORKER_INSTANCES: MutableMapping[tuple[str, str],
@@ -179,6 +238,7 @@ def _get_or_create_worker_instance(
 
 def _worker_execute(payload: _WorkerPayload[Any, Any]) -> _WorkerResponse[Any]:
     spec = payload.spec
+    started_at = time.monotonic()
     try:
         request_model = _coerce_input_model(spec, payload.payload)
         if spec.is_class:
@@ -188,24 +248,28 @@ def _worker_execute(payload: _WorkerPayload[Any, Any]) -> _WorkerResponse[Any]:
         else:
             raw_output = spec.entrypoint(request_model)  # type: ignore[arg-type]
         output_model = _coerce_output_model(spec, raw_output)
-        return _WorkerResponse(success=True,
-                               data=output_model.model_dump(),
-                               error=None,
-                               worker_pid=os.getpid())
+        success = True
+        data = output_model.model_dump()
+        error = None
     except ValidationError as exc:
-        return _WorkerResponse(success=False,
-                               data=None,
-                               error=ExecutionError(kind="validation",
-                                                    message=str(exc),
-                                                    details=_extract_validation_details(exc)),
-                               worker_pid=os.getpid())
+        success = False
+        data = None
+        error = ExecutionError(kind="validation",
+                               message=str(exc),
+                               details=_extract_validation_details(exc))
     except Exception as exc:
-        return _WorkerResponse(success=False,
-                               data=None,
-                               error=ExecutionError(kind="runtime",
-                                                    message=str(exc),
-                                                    traceback=traceback.format_exc()),
-                               worker_pid=os.getpid())
+        success = False
+        data = None
+        error = ExecutionError(kind="runtime",
+                               message=str(exc),
+                               traceback=traceback.format_exc())
+
+    return _WorkerResponse(success=success,
+                           data=data,
+                           error=error,
+                           worker_pid=os.getpid(),
+                           started_at=started_at,
+                           ended_at=time.monotonic())
 
 
 @runtime_checkable
@@ -245,9 +309,11 @@ class InProcessExecutor(ExecutorProtocol):
         if not self._started:
             self.start()
 
+        started_at = time.monotonic()
         result = ExecutionResult[Any](success=False,
-                                      started_at=time.monotonic(),
-                                      worker_pid=os.getpid())
+                                      started_at=started_at,
+                                      worker_pid=os.getpid(),
+                                      queue_wait_ms=0.0)
 
         try:
             payload_model = _coerce_input_model(request.spec, request.payload)
@@ -267,6 +333,7 @@ class InProcessExecutor(ExecutorProtocol):
                                           traceback=traceback.format_exc())
         finally:
             result.ended_at = time.monotonic()
+            _log_execution_result(request, result)
 
         return result
 
@@ -344,7 +411,9 @@ class ProcessPoolExecutor(ExecutorProtocol):
         if self._pool is None:
             raise RuntimeError("process pool failed to start")
 
-        result = ExecutionResult[Any](success=False)
+        submitted_at = time.monotonic()
+        result = ExecutionResult[Any](success=False,
+                                      started_at=submitted_at)
         acquired = self._semaphore.acquire(blocking=False)
         if not acquired:
             result.error = ExecutionError(
@@ -352,6 +421,8 @@ class ProcessPoolExecutor(ExecutorProtocol):
                 message="process pool queue is full",
             )
             result.ended_at = time.monotonic()
+            result.queue_wait_ms = 0.0
+            _log_execution_result(request, result)
             return result
 
         try:
@@ -373,6 +444,12 @@ class ProcessPoolExecutor(ExecutorProtocol):
                 return result
 
             result.worker_pid = worker_result.worker_pid
+            result.started_at = worker_result.started_at
+            result.ended_at = worker_result.ended_at
+            result.queue_wait_ms = _compute_queue_wait_ms(
+                submitted_at,
+                worker_result.started_at,
+            )
             if worker_result.success:
                 result.data = _coerce_output_model(request.spec,
                                                    worker_result.data or {})
@@ -393,7 +470,14 @@ class ProcessPoolExecutor(ExecutorProtocol):
                                           traceback=traceback.format_exc())
             return result
         finally:
-            result.ended_at = time.monotonic()
+            if result.ended_at is None:
+                result.ended_at = time.monotonic()
+            if result.queue_wait_ms is None:
+                result.queue_wait_ms = _compute_queue_wait_ms(
+                    submitted_at,
+                    result.started_at,
+                )
+            _log_execution_result(request, result)
             self._semaphore.release()
 
     def shutdown(self, *, wait: bool = True) -> None:
