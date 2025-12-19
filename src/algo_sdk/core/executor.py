@@ -689,6 +689,9 @@ class ProcessPoolExecutor(ExecutorProtocol):
             if timeout is not None else None
         )
 
+        worker_index: int | None = None
+        pending: _PendingTask[Any] | None = None
+        dispatched = False
         try:
             payload_model = _coerce_input_model(request.spec, request.payload)
             payload_data = payload_model.model_dump()
@@ -705,7 +708,7 @@ class ProcessPoolExecutor(ExecutorProtocol):
                 return result
 
             task_id = self._next_task_id()
-            pending: _PendingTask[Any] = _PendingTask(
+            pending = _PendingTask[Any](
                 task_id=task_id,
                 worker_index=worker_index,
                 submitted_at=submitted_at,
@@ -721,6 +724,7 @@ class ProcessPoolExecutor(ExecutorProtocol):
                 context=context_data,
             )
             self._workers[worker_index].input_queue.put((task_id, payload))
+            dispatched = True
 
             worker_response = self._wait_for_task(
                 pending,
@@ -774,6 +778,11 @@ class ProcessPoolExecutor(ExecutorProtocol):
                 )
             _log_execution_result(request, result)
             self._semaphore.release()
+            if worker_index is not None and not dispatched:
+                if pending is not None:
+                    with self._pending_lock:
+                        self._pending.pop(pending.task_id, None)
+                self._restart_worker(worker_index)
 
     def shutdown(self, *, wait: bool = True) -> None:
         with self._lock:
