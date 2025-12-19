@@ -150,6 +150,21 @@ def test_process_pool_respects_timeout() -> None:
         executor.shutdown()
 
 
+def test_process_pool_uses_spec_timeout_by_default() -> None:
+    spec = _build_spec(_sleep, execution=ExecutionConfig(timeout_s=1))
+    executor = ProcessPoolExecutor(max_workers=1, queue_size=1)
+    try:
+        req = ExecutionRequest(spec=spec,
+                               payload=_SleepReq(delay=1.5),
+                               request_id="req-timeout-spec")
+        result = executor.submit(req)
+        assert result.success is False
+        assert result.error is not None
+        assert result.error.kind == "timeout"
+    finally:
+        executor.shutdown()
+
+
 def test_process_pool_recovers_after_timeout() -> None:
     slow_spec = _build_spec(_sleep, execution=ExecutionConfig(timeout_s=1))
     fast_spec = _build_spec(_double)
