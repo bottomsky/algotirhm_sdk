@@ -4,6 +4,7 @@ from typing import Any
 from algo_sdk.core import (
     AlgorithmRegistry,
     AlgorithmSpec,
+    BaseAlgorithm,
     BaseModel,
     ExecutionConfig,
     InProcessExecutor,
@@ -25,12 +26,14 @@ class _Resp(BaseModel):
     doubled: int
 
 
-def _double(req: _Req) -> _Resp:
-    return _Resp(doubled=req.value * 2)
+class _DoubleAlgo(BaseAlgorithm[_Req, _Resp]):
+    def run(self, req: _Req) -> _Resp:  # type: ignore[override]
+        return _Resp(doubled=req.value * 2)
 
 
-def _fail(_: _Req) -> _Resp:
-    raise RuntimeError("boom")
+class _FailAlgo(BaseAlgorithm[_Req, _Resp]):
+    def run(self, _: _Req) -> _Resp:  # type: ignore[override]
+        raise RuntimeError("boom")
 
 
 def _build_spec(entrypoint: object, *, name: str) -> AlgorithmSpec:
@@ -42,7 +45,7 @@ def _build_spec(entrypoint: object, *, name: str) -> AlgorithmSpec:
         output_model=_Resp,
         execution=ExecutionConfig(),
         entrypoint=entrypoint,  # type: ignore[arg-type]
-        is_class=False,
+        is_class=True,
     )
 
 
@@ -59,8 +62,8 @@ def _build_request(
 
 def test_metrics_and_tracing_capture_execution() -> None:
     registry = AlgorithmRegistry()
-    registry.register(_build_spec(_double, name="demo"))
-    registry.register(_build_spec(_fail, name="fail"))
+    registry.register(_build_spec(_DoubleAlgo, name="demo"))
+    registry.register(_build_spec(_FailAlgo, name="fail"))
 
     metrics = InMemoryMetrics()
     tracer = InMemoryTracer()
@@ -101,7 +104,7 @@ def test_metrics_and_tracing_capture_execution() -> None:
 
 def test_metrics_exports_prometheus_and_otel() -> None:
     registry = AlgorithmRegistry()
-    registry.register(_build_spec(_double, name="demo"))
+    registry.register(_build_spec(_DoubleAlgo, name="demo"))
 
     metrics = InMemoryMetrics()
     hooks = create_observation_hooks(metrics)
