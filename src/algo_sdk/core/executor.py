@@ -2,15 +2,13 @@ from __future__ import annotations
 
 import atexit
 import logging
+import multiprocessing as mp
 import os
+import queue
 import time
 import traceback
-from concurrent.futures import (
-    ProcessPoolExecutor as _FuturesProcessPoolExecutor
-    )
-from concurrent.futures import TimeoutError as FuturesTimeoutError
 from dataclasses import dataclass, field
-from threading import BoundedSemaphore, Lock
+from threading import BoundedSemaphore, Condition, Event, Lock, Thread
 from typing import (
     Any,
     Generic,
@@ -380,6 +378,39 @@ def _worker_execute(payload: _WorkerPayload[Any, Any]) -> _WorkerResponse[Any]:
             reset_execution_context(tokens)
 
 
+def _managed_worker_loop(
+    input_queue: "mp.Queue[tuple[int, _WorkerPayload[Any, Any]] | None]",
+    output_queue: "mp.Queue[tuple[int, _WorkerResponse[Any]]]",
+) -> None:
+    while True:
+        item = input_queue.get()
+        if item is None:
+            return
+        task_id, payload = item
+        response = _worker_execute(payload)
+        output_queue.put((task_id, response))
+
+
+@dataclass(slots=True)
+class _ManagedWorker:
+    index: int
+    input_queue: "mp.Queue[tuple[int, _WorkerPayload[Any, Any]] | None]"
+    process: mp.Process
+
+    @property
+    def pid(self) -> int | None:
+        return self.process.pid
+
+
+@dataclass(slots=True)
+class _PendingTask(Generic[TOutput]):
+    task_id: int
+    worker_index: int
+    submitted_at: float
+    event: Event = field(default_factory=Event)
+    response: _WorkerResponse[TOutput] | None = None
+
+
 @runtime_checkable
 class ExecutorProtocol(Protocol):
     """Contract for executing registered algorithms."""
@@ -543,21 +574,35 @@ class InProcessExecutor(ExecutorProtocol):
 
 class ProcessPoolExecutor(ExecutorProtocol):
     """
-    Shared process pool executor honoring execution hints.
+    Shared supervised process pool executor honoring execution hints.
 
-    Uses a bounded queue to provide simple back-pressure and enforces per-call
-    timeouts via Future.result(timeout=...).
+    This executor provides hard timeouts by terminating and restarting a worker
+    process when a task exceeds its deadline. This ensures CPU/GPU resources
+    are released with the process.
     """
 
     def __init__(self,
                  *,
                  max_workers: int | None = None,
-                 queue_size: int | None = None) -> None:
+                 queue_size: int | None = None,
+                 kill_grace_s: float = 0.2,
+                 poll_interval_s: float = 0.05) -> None:
         self._max_workers = max_workers or _default_max_workers()
         self._queue_size = queue_size
+        self._kill_grace_s = max(0.0, kill_grace_s)
+        self._poll_interval_s = max(0.01, poll_interval_s)
         self._started = False
-        self._pool: _FuturesProcessPoolExecutor | None = None
         self._lock = Lock()
+        self._ctx = mp.get_context("spawn")
+        self._output_queue: "mp.Queue[object]" | None = None
+        self._workers: list[_ManagedWorker] = []
+        self._idle_workers: list[int] = []
+        self._worker_cond = Condition(Lock())
+        self._pending: dict[int, _PendingTask[Any]] = {}
+        self._pending_lock = Lock()
+        self._listener: Thread | None = None
+        self._stop_event = Event()
+        self._task_counter = 0
         slots = queue_size if queue_size is not None else self._max_workers * 2
         self._semaphore = BoundedSemaphore(value=max(1, slots))
 
@@ -567,15 +612,27 @@ class ProcessPoolExecutor(ExecutorProtocol):
         with self._lock:
             if self._started:
                 return
-            self._pool = _FuturesProcessPoolExecutor(
-                max_workers=self._max_workers)
+            self._output_queue = self._ctx.Queue()
+            self._workers = []
+            self._idle_workers = []
+            for index in range(self._max_workers):
+                self._workers.append(self._spawn_worker(index))
+                self._idle_workers.append(index)
+
+            self._stop_event.clear()
+            self._listener = Thread(
+                target=self._listen_results,
+                name="algo-sdk-process-pool-listener",
+                daemon=True,
+            )
+            self._listener.start()
             self._started = True
 
     def submit(self, request: ExecutionRequest[Any,
                                                Any]) -> ExecutionResult[Any]:
         if not self._started:
             self.start()
-        if self._pool is None:
+        if self._output_queue is None:
             raise RuntimeError("process pool failed to start")
 
         submitted_at = time.monotonic()
@@ -592,6 +649,12 @@ class ProcessPoolExecutor(ExecutorProtocol):
             _log_execution_result(request, result)
             return result
 
+        timeout = request.effective_timeout()
+        deadline = (
+            submitted_at + timeout
+            if timeout is not None else None
+        )
+
         try:
             payload_model = _coerce_input_model(request.spec, request.payload)
             payload_data = payload_model.model_dump()
@@ -599,41 +662,61 @@ class ProcessPoolExecutor(ExecutorProtocol):
                 request.context.model_dump()
                 if request.context is not None else None
             )
-            future = self._pool.submit(
-                _worker_execute,
-                _WorkerPayload(
-                    spec=request.spec,
-                    payload=payload_data,
-                    request_id=request.request_id,
-                    trace_id=request.trace_id,
-                    context=context_data))
-            timeout = request.effective_timeout()
-            try:
-                if timeout is not None:
-                    worker_result = future.result(timeout=timeout)
-                else:
-                    worker_result = future.result()
-            except FuturesTimeoutError:
-                future.cancel()
+            worker_index = self._acquire_worker(deadline)
+            if worker_index is None:
+                result.error = ExecutionError(
+                    kind="timeout",
+                    message="request timed out before execution started",
+                )
+                return result
+
+            task_id = self._next_task_id()
+            pending: _PendingTask[Any] = _PendingTask(
+                task_id=task_id,
+                worker_index=worker_index,
+                submitted_at=submitted_at,
+            )
+            with self._pending_lock:
+                self._pending[task_id] = pending
+
+            payload = _WorkerPayload(
+                spec=request.spec,
+                payload=payload_data,
+                request_id=request.request_id,
+                trace_id=request.trace_id,
+                context=context_data,
+            )
+            self._workers[worker_index].input_queue.put((task_id, payload))
+
+            worker_response = self._wait_for_task(
+                pending,
+                deadline=deadline,
+            )
+            if worker_response is None:
+                worker_pid = self._workers[worker_index].pid
+                self._restart_worker(worker_index)
+                result.worker_pid = worker_pid
                 result.error = ExecutionError(
                     kind="timeout",
                     message="execution exceeded configured timeout",
                 )
                 return result
 
-            result.worker_pid = worker_result.worker_pid
-            result.started_at = worker_result.started_at
-            result.ended_at = worker_result.ended_at
+            result.worker_pid = worker_response.worker_pid
+            result.started_at = worker_response.started_at
+            result.ended_at = worker_response.ended_at
             result.queue_wait_ms = _compute_queue_wait_ms(
                 submitted_at,
-                worker_result.started_at,
+                worker_response.started_at,
             )
-            if worker_result.success:
-                result.data = _coerce_output_model(request.spec,
-                                                   worker_result.data or {})
+            if worker_response.success:
+                result.data = _coerce_output_model(
+                    request.spec,
+                    worker_response.data or {},
+                )
                 result.success = True
             else:
-                result.error = worker_result.error
+                result.error = worker_response.error
             return result
         except ValidationError as exc:
             result.error = ExecutionError(
@@ -659,10 +742,158 @@ class ProcessPoolExecutor(ExecutorProtocol):
             self._semaphore.release()
 
     def shutdown(self, *, wait: bool = True) -> None:
-        if self._pool is not None:
-            self._pool.shutdown(wait=wait)
-        self._pool = None
+        with self._lock:
+            if not self._started:
+                return
+            self._stop_event.set()
+            if self._output_queue is not None:
+                try:
+                    self._output_queue.put(None)
+                except Exception:
+                    pass
+            if self._listener is not None:
+                self._listener.join(timeout=1.0)
+            for worker in list(self._workers):
+                try:
+                    worker.input_queue.put(None)
+                except Exception:
+                    pass
+            for worker in list(self._workers):
+                self._terminate_process(worker.process)
+            self._workers.clear()
+            self._idle_workers.clear()
+            with self._pending_lock:
+                self._pending.clear()
+            self._output_queue = None
+            self._listener = None
         self._started = False
+
+    def _spawn_worker(self, index: int) -> _ManagedWorker:
+        if self._output_queue is None:
+            raise RuntimeError("output queue not initialised")
+        input_queue: "mp.Queue[tuple[int, _WorkerPayload[Any, Any]] | None]" = (
+            self._ctx.Queue()
+        )
+        process = self._ctx.Process(
+            target=_managed_worker_loop,
+            args=(input_queue, self._output_queue),
+            name=f"algo-sdk-worker-{index}",
+        )
+        process.start()
+        return _ManagedWorker(index=index, input_queue=input_queue, process=process)
+
+    def _terminate_process(self, process: mp.Process) -> None:
+        if not process.is_alive():
+            return
+        try:
+            process.terminate()
+            process.join(timeout=self._kill_grace_s)
+        except Exception:
+            return
+        if process.is_alive():
+            try:
+                process.kill()
+            except Exception:
+                return
+            try:
+                process.join(timeout=self._kill_grace_s)
+            except Exception:
+                return
+
+    def _restart_worker(self, index: int) -> None:
+        with self._lock:
+            if not self._started:
+                return
+            old = self._workers[index]
+            self._terminate_process(old.process)
+            self._workers[index] = self._spawn_worker(index)
+        with self._worker_cond:
+            self._idle_workers.append(index)
+            self._worker_cond.notify()
+
+    def _acquire_worker(self, deadline: float | None) -> int | None:
+        with self._worker_cond:
+            while not self._idle_workers:
+                if deadline is None:
+                    self._worker_cond.wait(timeout=self._poll_interval_s)
+                else:
+                    remaining = deadline - time.monotonic()
+                    if remaining <= 0:
+                        return None
+                    self._worker_cond.wait(timeout=min(self._poll_interval_s,
+                                                       remaining))
+            return self._idle_workers.pop(0)
+
+    def _release_worker(self, worker_index: int) -> None:
+        with self._worker_cond:
+            self._idle_workers.append(worker_index)
+            self._worker_cond.notify()
+
+    def _next_task_id(self) -> int:
+        with self._lock:
+            self._task_counter += 1
+            return self._task_counter
+
+    def _listen_results(self) -> None:
+        if self._output_queue is None:
+            return
+        while not self._stop_event.is_set():
+            try:
+                item = self._output_queue.get(timeout=0.2)
+            except queue.Empty:
+                continue
+            if item is None:
+                return
+            task_id, response = item  # type: ignore[misc]
+            with self._pending_lock:
+                pending = self._pending.get(task_id)
+                if pending is None:
+                    continue
+                pending.response = response
+                pending.event.set()
+            self._release_worker(pending.worker_index)
+
+    def _wait_for_task(
+        self,
+        pending: _PendingTask[Any],
+        *,
+        deadline: float | None,
+    ) -> _WorkerResponse[Any] | None:
+        worker_index = pending.worker_index
+        while True:
+            if pending.event.is_set():
+                with self._pending_lock:
+                    self._pending.pop(pending.task_id, None)
+                return pending.response
+
+            if deadline is not None:
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    with self._pending_lock:
+                        self._pending.pop(pending.task_id, None)
+                    return None
+                wait_s = min(self._poll_interval_s, remaining)
+            else:
+                wait_s = self._poll_interval_s
+
+            pending.event.wait(timeout=wait_s)
+            process = self._workers[worker_index].process
+            if not process.is_alive():
+                with self._pending_lock:
+                    self._pending.pop(pending.task_id, None)
+                self._restart_worker(worker_index)
+                pending.response = _WorkerResponse(
+                    success=False,
+                    data=None,
+                    error=ExecutionError(
+                        kind="system",
+                        message="worker process crashed",
+                    ),
+                    worker_pid=process.pid or -1,
+                    started_at=pending.submitted_at,
+                    ended_at=time.monotonic(),
+                )
+                return pending.response
 
 
 class IsolatedProcessPoolExecutor(ExecutorProtocol):
