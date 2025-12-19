@@ -5,13 +5,14 @@
 ## 核心缺口（按优先级建议）
 
 1. **可观测性**
-   - 结构化日志：写入 `requestId/traceId/algo/version/worker_pid/duration_ms/status/error_type`。
-   - Metrics：请求总数/失败数、延迟直方图、队列长度、活跃 worker 数（按算法标签）。
-   - Tracing：为每次执行建立 span，附带 `algo/version/status/queue_wait/duration`。
+   - [x] 结构化日志：写入 `requestId/traceId/algo/version/worker_pid/duration_ms/status/error_type`。
+   - [x] Metrics 基础实现：请求总数/失败数、延迟直方图、队列等待直方图（见 `src/algo_sdk/observability/metrics.py`）。
+   - [x] Tracing 基础实现：执行 span 与 `queue_wait/duration` 字段（见 `src/algo_sdk/observability/tracing.py`）。
+   - [ ] 队列长度、活跃 worker 数等运行态指标仍未实现。
 
 2. **上下文透传**
-   - `ExecutionRequest` 的 `trace_id/context/request_id` 未进入执行路径与日志/Tracing。
-   - worker 侧错误/日志缺少 `AlgorithmContext` 关联信息。
+   - [x] `trace_id/tenant/user` 已进入结构化日志与 tracing span。
+   - [ ] 上下文未直接传入算法执行体（如算法内部访问 context）。
 
 3. **超时/取消与崩溃治理**
    - 进程池超时仅 `future.cancel()`，无法终止已运行的 worker。
@@ -23,9 +24,9 @@
    - `readyz` 所需执行器状态判断逻辑缺失。
 
 5. **执行策略收敛与治理**
-   - `timeout_s` 仅覆盖，不做上下限或策略合并。
-   - `spec.execution.gpu` 等 hints 未被解释或约束。
-   - 缺少拒绝策略（排队超时/按算法维度限流）。
+   - [x] `timeout_s` 已做 request/spec 取最小值收敛。
+   - [ ] `spec.execution.gpu` 等 hints 未被解释或约束。
+   - [ ] 缺少拒绝策略（排队超时/按算法维度限流）。
 
 6. **扩展执行器**
    - `MockExecutor` / `NoopExecutor` 未实现。
@@ -34,13 +35,12 @@
 ## 已实现但需补充的细节
 
 - `InProcessExecutor` / `ProcessPoolExecutor` / `IsolatedProcessPoolExecutor` / `DispatchingExecutor`
-  - 缺少统一的观测埋点与标准日志结构。
-  - 缺少执行队列等待时长统计。
-  - 缺少 per-algo 维度的运行态指标上报。
+  - [x] 统一的结构化日志与队列等待时长统计。
+  - [ ] per-algo 维度的运行态指标上报仍需接入到实际监控系统。
 
 ## 建议交付拆分（可选）
 
-1. **观测与日志落地**：先打通日志 + Metrics + Tracing，保证可追踪性。
+1. **观测与日志落地**：已完成基础实现（日志 + InMemory Metrics/Tracing）。
 2. **超时/崩溃治理**：补充 worker 崩溃检测与重建策略。
 3. **容量与健康**：补齐执行器状态对外暴露。
 4. **策略与扩展执行器**：引入 Mock/Noop 与策略接口。
