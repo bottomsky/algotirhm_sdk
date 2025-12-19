@@ -97,3 +97,26 @@ def test_metrics_and_tracing_capture_execution() -> None:
     status_map = {span.request_id: span.status for span in spans}
     assert status_map["req-1"] == "success"
     assert status_map["req-2"] == "error"
+
+
+def test_metrics_exports_prometheus_and_otel() -> None:
+    registry = AlgorithmRegistry()
+    registry.register(_build_spec(_double, name="demo"))
+
+    metrics = InMemoryMetrics()
+    hooks = create_observation_hooks(metrics)
+    service = AlgorithmHttpService(
+        registry,
+        executor=InProcessExecutor(),
+        observation=hooks,
+    )
+
+    service.invoke("demo", "v1", _build_request(_Req(value=3),
+                                                request_id="req-3"))
+
+    text = metrics.render_prometheus_text()
+    assert "algo_sdk_requests_total" in text
+    assert "algo_sdk_request_latency_ms_bucket" in text
+
+    otel_payload = metrics.build_otel_metrics()
+    assert "resourceMetrics" in otel_payload
