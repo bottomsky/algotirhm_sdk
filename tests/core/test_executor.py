@@ -150,6 +150,31 @@ def test_process_pool_respects_timeout() -> None:
         executor.shutdown()
 
 
+def test_process_pool_recovers_after_timeout() -> None:
+    slow_spec = _build_spec(_sleep, execution=ExecutionConfig(timeout_s=1))
+    fast_spec = _build_spec(_double)
+    executor = ProcessPoolExecutor(max_workers=1, queue_size=2)
+    try:
+        slow_req = ExecutionRequest(spec=slow_spec,
+                                    payload=_SleepReq(delay=0.2),
+                                    request_id="req-timeout-recover",
+                                    timeout_s=0.05)
+        slow_result = executor.submit(slow_req)
+        assert slow_result.success is False
+        assert slow_result.error is not None
+        assert slow_result.error.kind == "timeout"
+
+        fast_req = ExecutionRequest(spec=fast_spec,
+                                    payload=_Req(value=4),
+                                    request_id="req-after-timeout")
+        fast_result = executor.submit(fast_req)
+        assert fast_result.success is True
+        assert fast_result.data is not None
+        assert fast_result.data.doubled == 8
+    finally:
+        executor.shutdown()
+
+
 def test_in_process_propagates_context() -> None:
     spec = _build_ctx_spec(_echo_context)
     executor = InProcessExecutor()
