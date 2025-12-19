@@ -32,14 +32,14 @@ class DefaultAlgorithmDecorator:
         description: str | None = None,
         execution: dict[str, object] | None = None,
     ) -> Callable[
-        [Callable[..., object] | type[AlgorithmLifecycleProtocol[
-                BaseModel, BaseModel
-            ]]],
-        Callable[..., object] | type[AlgorithmLifecycleProtocol[
-                BaseModel, BaseModel]
-            ],
+        [
+            type[AlgorithmLifecycleProtocol[BaseModel, BaseModel]]
+        ],
+        type[
+            AlgorithmLifecycleProtocol[BaseModel, BaseModel]
+        ],
     ]:
-        """Register a function- or class-based algorithm.
+        """Register a  class-based algorithm.
 
         Args:
             name: Algorithm name
@@ -57,20 +57,10 @@ class DefaultAlgorithmDecorator:
         exec_config = self._build_execution_config(execution)
 
         def _decorator(
-            target: Callable[..., object]
-            | type[AlgorithmLifecycleProtocol[BaseModel, BaseModel]],
-        ) -> Callable[..., object] | type[AlgorithmLifecycleProtocol[BaseModel,
-                                                                     BaseModel]]:
+            target: type[AlgorithmLifecycleProtocol[BaseModel, BaseModel]],
+        ) -> type[AlgorithmLifecycleProtocol[BaseModel, BaseModel]]:
             if inspect.isclass(target):
                 spec = self._build_class_spec(
-                    target,
-                    name=name,
-                    version=version,
-                    description=description,
-                    exec_config=exec_config,
-                )
-            elif callable(target):
-                spec = self._build_function_spec(
                     target,
                     name=name,
                     version=version,
