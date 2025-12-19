@@ -21,8 +21,9 @@ class _DoubleResp(BaseModel):
     doubled: int
 
 
-def _double(req: _DoubleReq) -> _DoubleResp:
-    return _DoubleResp(doubled=req.value * 2)
+class _DoubleAlgo(BaseAlgorithm[_DoubleReq, _DoubleResp]):
+    def run(self, req: _DoubleReq) -> _DoubleResp:  # type: ignore[override]
+        return _DoubleResp(doubled=req.value * 2)
 
 
 class _SleepReq(BaseModel):
@@ -33,9 +34,10 @@ class _SleepResp(BaseModel):
     done: bool
 
 
-def _sleep(req: _SleepReq) -> _SleepResp:
-    time.sleep(req.delay_s)
-    return _SleepResp(done=True)
+class _SleepAlgo(BaseAlgorithm[_SleepReq, _SleepResp]):
+    def run(self, req: _SleepReq) -> _SleepResp:  # type: ignore[override]
+        time.sleep(req.delay_s)
+        return _SleepResp(done=True)
 
 
 class _CrashReq(BaseModel):
@@ -46,8 +48,9 @@ class _CrashResp(BaseModel):
     ok: bool
 
 
-def _crash(req: _CrashReq) -> _CrashResp:
-    os._exit(req.code)
+class _CrashAlgo(BaseAlgorithm[_CrashReq, _CrashResp]):
+    def run(self, req: _CrashReq) -> _CrashResp:  # type: ignore[override]
+        os._exit(req.code)
 
 
 class _StateReq(BaseModel):
@@ -90,10 +93,10 @@ def _build_spec(
 def _warm_up(executor: ProcessPoolExecutor) -> None:
     spec = _build_spec(
         name="warmup",
-        entrypoint=_double,
+        entrypoint=_DoubleAlgo,
         input_model=_DoubleReq,
         output_model=_DoubleResp,
-        is_class=False,
+        is_class=True,
     )
     req = ExecutionRequest(spec=spec, payload=_DoubleReq(value=1), request_id="warmup")
     result = executor.submit(req)
@@ -103,18 +106,18 @@ def _warm_up(executor: ProcessPoolExecutor) -> None:
 def test_hard_timeout_kills_and_restarts_worker_pid_changes() -> None:
     sleep_spec = _build_spec(
         name="sleep",
-        entrypoint=_sleep,
+        entrypoint=_SleepAlgo,
         input_model=_SleepReq,
         output_model=_SleepResp,
         execution=ExecutionConfig(timeout_s=10),
-        is_class=False,
+        is_class=True,
     )
     double_spec = _build_spec(
         name="double",
-        entrypoint=_double,
+        entrypoint=_DoubleAlgo,
         input_model=_DoubleReq,
         output_model=_DoubleResp,
-        is_class=False,
+        is_class=True,
     )
 
     executor = ProcessPoolExecutor(max_workers=1, queue_size=2, poll_interval_s=0.02)
@@ -155,11 +158,11 @@ def test_hard_timeout_kills_and_restarts_worker_pid_changes() -> None:
 def test_timeout_before_execution_started_does_not_kill_busy_worker() -> None:
     sleep_spec = _build_spec(
         name="sleep2",
-        entrypoint=_sleep,
+        entrypoint=_SleepAlgo,
         input_model=_SleepReq,
         output_model=_SleepResp,
         execution=ExecutionConfig(timeout_s=10),
-        is_class=False,
+        is_class=True,
     )
 
     executor = ProcessPoolExecutor(max_workers=1, queue_size=2, poll_interval_s=0.02)
@@ -206,17 +209,17 @@ def test_timeout_before_execution_started_does_not_kill_busy_worker() -> None:
 def test_worker_crash_is_reported_and_pool_recovers() -> None:
     crash_spec = _build_spec(
         name="crash",
-        entrypoint=_crash,
+        entrypoint=_CrashAlgo,
         input_model=_CrashReq,
         output_model=_CrashResp,
-        is_class=False,
+        is_class=True,
     )
     double_spec = _build_spec(
         name="double2",
-        entrypoint=_double,
+        entrypoint=_DoubleAlgo,
         input_model=_DoubleReq,
         output_model=_DoubleResp,
-        is_class=False,
+        is_class=True,
     )
 
     executor = ProcessPoolExecutor(max_workers=1, queue_size=2, poll_interval_s=0.02)
@@ -254,11 +257,11 @@ def test_worker_crash_is_reported_and_pool_recovers() -> None:
 def test_queue_full_is_rejected_under_concurrency() -> None:
     sleep_spec = _build_spec(
         name="sleep3",
-        entrypoint=_sleep,
+        entrypoint=_SleepAlgo,
         input_model=_SleepReq,
         output_model=_SleepResp,
         execution=ExecutionConfig(timeout_s=10),
-        is_class=False,
+        is_class=True,
     )
 
     executor = ProcessPoolExecutor(max_workers=1, queue_size=1, poll_interval_s=0.02)
@@ -311,11 +314,11 @@ def test_stateful_algo_persists_until_worker_killed_then_resets() -> None:
     )
     sleeper_spec = _build_spec(
         name="sleep4",
-        entrypoint=_sleep,
+        entrypoint=_SleepAlgo,
         input_model=_SleepReq,
         output_model=_SleepResp,
         execution=ExecutionConfig(timeout_s=10),
-        is_class=False,
+        is_class=True,
     )
 
     executor = ProcessPoolExecutor(max_workers=1, queue_size=2, poll_interval_s=0.02)

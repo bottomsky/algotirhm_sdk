@@ -25,8 +25,9 @@ class _Resp(BaseModel):
     doubled: int
 
 
-def _double(req: _Req) -> _Resp:
-    return _Resp(doubled=req.value * 2)
+class _DoubleAlgo(BaseAlgorithm[_Req, _Resp]):
+    def run(self, req: _Req) -> _Resp:  # type: ignore[override]
+        return _Resp(doubled=req.value * 2)
 
 
 class _SleepReq(BaseModel):
@@ -37,9 +38,10 @@ class _SleepResp(BaseModel):
     done: bool
 
 
-def _sleep(req: _SleepReq) -> _SleepResp:
-    time.sleep(req.delay)
-    return _SleepResp(done=True)
+class _SleepAlgo(BaseAlgorithm[_SleepReq, _SleepResp]):
+    def run(self, req: _SleepReq) -> _SleepResp:  # type: ignore[override]
+        time.sleep(req.delay)
+        return _SleepResp(done=True)
 
 
 class _CtxReq(BaseModel):
@@ -52,30 +54,49 @@ class _CtxResp(BaseModel):
     tenant_id: str | None
 
 
-def _echo_context(_: _CtxReq) -> _CtxResp:
-    context = get_current_context()
-    return _CtxResp(
-        trace_id=get_current_trace_id(),
-        request_id=get_current_request_id(),
-        tenant_id=context.tenantId if context is not None else None,
-    )
+class _EchoContextAlgo(BaseAlgorithm[_CtxReq, _CtxResp]):
+    def run(self, _: _CtxReq) -> _CtxResp:  # type: ignore[override]
+        context = get_current_context()
+        return _CtxResp(
+            trace_id=get_current_trace_id(),
+            request_id=get_current_request_id(),
+            tenant_id=context.tenantId if context is not None else None,
+        )
 
 
-def _build_spec(entrypoint: object, *,
-                execution: ExecutionConfig | None = None) -> AlgorithmSpec:
+def _build_double_spec(
+    *,
+    execution: ExecutionConfig | None = None,
+) -> AlgorithmSpec:
     return AlgorithmSpec(
-        name="demo",
+        name="double",
         version="v1",
         description=None,
-        input_model=_Req if entrypoint is _double else _SleepReq,
-        output_model=_Resp if entrypoint is _double else _SleepResp,
+        input_model=_Req,
+        output_model=_Resp,
         execution=execution or ExecutionConfig(),
-        entrypoint=entrypoint,  # type: ignore[arg-type]
-        is_class=False,
+        entrypoint=_DoubleAlgo,
+        is_class=True,
     )
 
 
-def _build_ctx_spec(entrypoint: object) -> AlgorithmSpec:
+def _build_sleep_spec(
+    *,
+    execution: ExecutionConfig | None = None,
+) -> AlgorithmSpec:
+    return AlgorithmSpec(
+        name="sleep",
+        version="v1",
+        description=None,
+        input_model=_SleepReq,
+        output_model=_SleepResp,
+        execution=execution or ExecutionConfig(),
+        entrypoint=_SleepAlgo,
+        is_class=True,
+    )
+
+
+def _build_ctx_spec() -> AlgorithmSpec:
     return AlgorithmSpec(
         name="ctx",
         version="v1",
@@ -83,8 +104,8 @@ def _build_ctx_spec(entrypoint: object) -> AlgorithmSpec:
         input_model=_CtxReq,
         output_model=_CtxResp,
         execution=ExecutionConfig(),
-        entrypoint=entrypoint,  # type: ignore[arg-type]
-        is_class=False,
+        entrypoint=_EchoContextAlgo,
+        is_class=True,
     )
 
 
@@ -119,7 +140,7 @@ def _build_counter_spec(*, stateful: bool) -> AlgorithmSpec:
 
 
 def test_process_pool_executes_function() -> None:
-    spec = _build_spec(_double)
+    spec = _build_double_spec()
     executor = ProcessPoolExecutor(max_workers=1, queue_size=2)
     try:
         req = ExecutionRequest(spec=spec,
@@ -135,7 +156,7 @@ def test_process_pool_executes_function() -> None:
 
 
 def test_process_pool_respects_timeout() -> None:
-    spec = _build_spec(_sleep, execution=ExecutionConfig(timeout_s=1))
+    spec = _build_sleep_spec(execution=ExecutionConfig(timeout_s=1))
     executor = ProcessPoolExecutor(max_workers=1, queue_size=1)
     try:
         req = ExecutionRequest(spec=spec,
@@ -151,7 +172,7 @@ def test_process_pool_respects_timeout() -> None:
 
 
 def test_process_pool_uses_spec_timeout_by_default() -> None:
-    spec = _build_spec(_sleep, execution=ExecutionConfig(timeout_s=1))
+    spec = _build_sleep_spec(execution=ExecutionConfig(timeout_s=1))
     executor = ProcessPoolExecutor(max_workers=1, queue_size=1)
     try:
         req = ExecutionRequest(spec=spec,
@@ -166,8 +187,8 @@ def test_process_pool_uses_spec_timeout_by_default() -> None:
 
 
 def test_process_pool_recovers_after_timeout() -> None:
-    slow_spec = _build_spec(_sleep, execution=ExecutionConfig(timeout_s=1))
-    fast_spec = _build_spec(_double)
+    slow_spec = _build_sleep_spec(execution=ExecutionConfig(timeout_s=1))
+    fast_spec = _build_double_spec()
     executor = ProcessPoolExecutor(max_workers=1, queue_size=2)
     try:
         slow_req = ExecutionRequest(spec=slow_spec,
@@ -191,7 +212,7 @@ def test_process_pool_recovers_after_timeout() -> None:
 
 
 def test_in_process_propagates_context() -> None:
-    spec = _build_ctx_spec(_echo_context)
+    spec = _build_ctx_spec()
     executor = InProcessExecutor()
     try:
         req = ExecutionRequest(
@@ -215,7 +236,7 @@ def test_in_process_propagates_context() -> None:
 
 
 def test_process_pool_propagates_context() -> None:
-    spec = _build_ctx_spec(_echo_context)
+    spec = _build_ctx_spec()
     executor = ProcessPoolExecutor(max_workers=1, queue_size=1)
     try:
         req = ExecutionRequest(
@@ -334,12 +355,13 @@ class _AlgoValResp(BaseModel):
     ok: bool
 
 
-def _algo_raises_validation(_: _AlgoValReq) -> _AlgoValResp:
-    _AlgoValReq.model_validate({"value": "not-an-int"})
-    return _AlgoValResp(ok=True)
+class _AlgoRaisesValidationAlgo(BaseAlgorithm[_AlgoValReq, _AlgoValResp]):
+    def run(self, _: _AlgoValReq) -> _AlgoValResp:  # type: ignore[override]
+        _AlgoValReq.model_validate({"value": "not-an-int"})
+        return _AlgoValResp(ok=True)
 
 
-def _build_val_spec(entrypoint: object) -> AlgorithmSpec:
+def _build_val_spec() -> AlgorithmSpec:
     return AlgorithmSpec(
         name="algo-val",
         version="v1",
@@ -347,13 +369,13 @@ def _build_val_spec(entrypoint: object) -> AlgorithmSpec:
         input_model=_AlgoValReq,
         output_model=_AlgoValResp,
         execution=ExecutionConfig(),
-        entrypoint=entrypoint,  # type: ignore[arg-type]
-        is_class=False,
+        entrypoint=_AlgoRaisesValidationAlgo,
+        is_class=True,
     )
 
 
 def test_in_process_algorithm_validation_error_is_runtime() -> None:
-    spec = _build_val_spec(_algo_raises_validation)
+    spec = _build_val_spec()
     executor = InProcessExecutor()
     try:
         req = ExecutionRequest(
@@ -371,7 +393,7 @@ def test_in_process_algorithm_validation_error_is_runtime() -> None:
 
 
 def test_process_pool_algorithm_validation_error_is_runtime() -> None:
-    spec = _build_val_spec(_algo_raises_validation)
+    spec = _build_val_spec()
     executor = ProcessPoolExecutor(max_workers=1, queue_size=1)
     try:
         req = ExecutionRequest(
