@@ -165,3 +165,65 @@ def test_process_pool_propagates_context() -> None:
         assert result.data.tenant_id == "tenant-2"
     finally:
         executor.shutdown()
+
+
+class _AlgoValReq(BaseModel):
+    value: int
+
+
+class _AlgoValResp(BaseModel):
+    ok: bool
+
+
+def _algo_raises_validation(_: _AlgoValReq) -> _AlgoValResp:
+    _AlgoValReq.model_validate({"value": "not-an-int"})
+    return _AlgoValResp(ok=True)
+
+
+def _build_val_spec(entrypoint: object) -> AlgorithmSpec:
+    return AlgorithmSpec(
+        name="algo-val",
+        version="v1",
+        description=None,
+        input_model=_AlgoValReq,
+        output_model=_AlgoValResp,
+        execution=ExecutionConfig(),
+        entrypoint=entrypoint,  # type: ignore[arg-type]
+        is_class=False,
+    )
+
+
+def test_in_process_algorithm_validation_error_is_runtime() -> None:
+    spec = _build_val_spec(_algo_raises_validation)
+    executor = InProcessExecutor()
+    try:
+        req = ExecutionRequest(
+            spec=spec,
+            payload=_AlgoValReq(value=1),
+            request_id="req-algo-val-inproc",
+        )
+        result = executor.submit(req)
+        assert result.success is False
+        assert result.error is not None
+        assert result.error.kind == "runtime"
+        assert result.error.traceback is not None
+    finally:
+        executor.shutdown()
+
+
+def test_process_pool_algorithm_validation_error_is_runtime() -> None:
+    spec = _build_val_spec(_algo_raises_validation)
+    executor = ProcessPoolExecutor(max_workers=1, queue_size=1)
+    try:
+        req = ExecutionRequest(
+            spec=spec,
+            payload=_AlgoValReq(value=1),
+            request_id="req-algo-val-pool",
+        )
+        result = executor.submit(req)
+        assert result.success is False
+        assert result.error is not None
+        assert result.error.kind == "runtime"
+        assert result.error.traceback is not None
+    finally:
+        executor.shutdown()

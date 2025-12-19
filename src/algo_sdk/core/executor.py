@@ -266,45 +266,95 @@ def _worker_execute(payload: _WorkerPayload[Any, Any]) -> _WorkerResponse[Any]:
     started_at = time.monotonic()
     tokens = None
     try:
-        context = AlgorithmContext.model_validate(
-            payload.context) if payload.context is not None else None
+        try:
+            context = (
+                AlgorithmContext.model_validate(payload.context)
+                if payload.context is not None
+                else None
+            )
+        except ValidationError as exc:
+            return _WorkerResponse(
+                success=False,
+                data=None,
+                error=ExecutionError(
+                    kind="validation",
+                    message=str(exc),
+                    details=_extract_validation_details(exc),
+                ),
+                worker_pid=os.getpid(),
+                started_at=started_at,
+                ended_at=time.monotonic(),
+            )
+
         trace_id = _resolve_trace_id(payload.trace_id, context)
         tokens = set_execution_context(payload.request_id, trace_id, context)
-        request_model = _coerce_input_model(spec, payload.payload)
-        if spec.is_class:
-            algo = _get_or_create_worker_instance(spec)
-            raw_output = algo.run(request_model)
-            algo.after_run()
-        else:
-            raw_output: AlgorithmLifecycleProtocol[Any, Any] | Any = (
-                spec.entrypoint(request_model)  # type: ignore[arg-type]
+
+        try:
+            request_model = _coerce_input_model(spec, payload.payload)
+        except ValidationError as exc:
+            return _WorkerResponse(
+                success=False,
+                data=None,
+                error=ExecutionError(
+                    kind="validation",
+                    message=str(exc),
+                    details=_extract_validation_details(exc),
+                ),
+                worker_pid=os.getpid(),
+                started_at=started_at,
+                ended_at=time.monotonic(),
+            )
+
+        try:
+            if spec.is_class:
+                algo = _get_or_create_worker_instance(spec)
+                raw_output = algo.run(request_model)
+                algo.after_run()
+            else:
+                raw_output: AlgorithmLifecycleProtocol[Any, Any] | Any = (
+                    spec.entrypoint(request_model)  # type: ignore[arg-type]
                 )
-        output_model = _coerce_output_model(spec, raw_output)
-        success = True
-        data = output_model.model_dump()
-        error = None
-    except ValidationError as exc:
-        success = False
-        data = None
-        error = ExecutionError(kind="validation",
-                               message=str(exc),
-                               details=_extract_validation_details(exc))
-    except Exception as exc:
-        success = False
-        data = None
-        error = ExecutionError(kind="runtime",
-                               message=str(exc),
-                               traceback=traceback.format_exc())
+        except Exception as exc:
+            return _WorkerResponse(
+                success=False,
+                data=None,
+                error=ExecutionError(
+                    kind="runtime",
+                    message=str(exc),
+                    traceback=traceback.format_exc(),
+                ),
+                worker_pid=os.getpid(),
+                started_at=started_at,
+                ended_at=time.monotonic(),
+            )
+
+        try:
+            output_model = _coerce_output_model(spec, raw_output)
+        except ValidationError as exc:
+            return _WorkerResponse(
+                success=False,
+                data=None,
+                error=ExecutionError(
+                    kind="validation",
+                    message=str(exc),
+                    details=_extract_validation_details(exc),
+                ),
+                worker_pid=os.getpid(),
+                started_at=started_at,
+                ended_at=time.monotonic(),
+            )
+
+        return _WorkerResponse(
+            success=True,
+            data=output_model.model_dump(),
+            error=None,
+            worker_pid=os.getpid(),
+            started_at=started_at,
+            ended_at=time.monotonic(),
+        )
     finally:
         if tokens is not None:
             reset_execution_context(tokens)
-
-    return _WorkerResponse(success=success,
-                           data=data,
-                           error=error,
-                           worker_pid=os.getpid(),
-                           started_at=started_at,
-                           ended_at=time.monotonic())
 
 
 @runtime_checkable
@@ -356,23 +406,46 @@ class InProcessExecutor(ExecutorProtocol):
         trace_id = _resolve_trace_id(request.trace_id, context)
         tokens = set_execution_context(request.request_id, trace_id, context)
         try:
-            payload_model = _coerce_input_model(request.spec, request.payload)
-            output = self._invoke(request.spec, payload_model)
-            result.data = _coerce_output_model(request.spec, output)
+            try:
+                payload_model = _coerce_input_model(request.spec,
+                                                    request.payload)
+            except ValidationError as exc:
+                result.error = ExecutionError(
+                    kind="validation",
+                    message=str(exc),
+                    details=_extract_validation_details(exc),
+                )
+                return result
+
+            try:
+                output = self._invoke(request.spec, payload_model)
+            except TimeoutError as exc:
+                result.error = ExecutionError(kind="timeout",
+                                              message=str(exc))
+                return result
+            except ValidationError as exc:
+                result.error = ExecutionError(kind="runtime",
+                                              message=str(exc),
+                                              traceback=traceback.format_exc())
+                return result
+            except Exception as exc:
+                result.error = ExecutionError(kind="runtime",
+                                              message=str(exc),
+                                              traceback=traceback.format_exc())
+                return result
+
+            try:
+                result.data = _coerce_output_model(request.spec, output)
+            except ValidationError as exc:
+                result.error = ExecutionError(
+                    kind="validation",
+                    message=str(exc),
+                    details=_extract_validation_details(exc),
+                )
+                return result
+
             result.success = True
-        except ValidationError as exc:
-            result.error = ExecutionError(
-                kind="validation",
-                message=str(exc),
-                details=_extract_validation_details(exc)
-            )
-        except TimeoutError as exc:
-            result.error = ExecutionError(kind="timeout",
-                                          message=str(exc))
-        except Exception as exc:
-            result.error = ExecutionError(kind="runtime",
-                                          message=str(exc),
-                                          traceback=traceback.format_exc())
+            return result
         finally:
             result.ended_at = time.monotonic()
             reset_execution_context(tokens)
