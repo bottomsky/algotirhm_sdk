@@ -331,3 +331,68 @@ class OrbitAlgo(BaseAlgorithm[OrbitReq, OrbitResp]):
 - `stateful=True`：实例常驻。硬超时 kill 会导致该 worker 进程的常驻状态丢失，重建 worker 后会重新初始化（这是可接受的治理代价）。
 
 提示：如果业务要求“每算法全局唯一状态”，通常需要 `isolated_pool=True` 且 `max_workers=1`，否则会出现“每个 worker 进程一份状态”。
+
+---
+
+## 第八章：HTTP 一键启动设计（面向算法开发者）
+
+目标：让只会写算法的同学最小成本启动 HTTP 服务。
+
+### 8.1 最简使用方式（建议入口）
+
+**算法脚本：**
+
+```python
+from algo_sdk.core import BaseAlgorithm, BaseModel
+from algo_sdk.decorators import Algorithm
+
+
+class Req(BaseModel):
+    x: int
+
+
+class Resp(BaseModel):
+    y: int
+
+
+@Algorithm(name="double", version="v1")
+class DoubleAlgo(BaseAlgorithm[Req, Resp]):
+    def run(self, req: Req) -> Resp:
+        return Resp(y=req.x * 2)
+```
+
+**启动命令：**
+
+```bash
+set ALGO_MODULES=algo
+python -c "from algo_sdk.http import server; server.run()"
+```
+
+### 8.2 推荐的 `server.run()` 行为
+
+`server.run()` 应该完成以下流程：
+1. 读取环境变量（如 `ALGO_MODULES/SERVICE_HOST/SERVICE_PORT/EXECUTOR_*`）
+2. 导入算法模块（触发 `@Algorithm` 注册）
+3. 创建 `AlgorithmHttpService`（默认 `DispatchingExecutor`）
+4. 绑定观测 hooks（metrics/tracing）
+5. 构建 HTTP 路由并启动 `uvicorn`
+
+### 8.3 默认路由（规划）
+
+- `POST /algorithms/{name}/{version}`：执行算法
+- `GET /algorithms`：算法清单
+- `GET /algorithms/{name}/{version}/schema`：输入/输出 schema
+- `GET /healthz`：存活探针
+- `GET /readyz`：就绪探针
+- `GET /metrics`：Prometheus 指标文本
+
+### 8.4 高级用法（可选）
+
+- `server.create_app()`：返回 ASGI app 供二次集成
+- `server.run(modules=..., host=..., port=..., executor=...)`：覆盖默认行为
+
+### 8.5 设计原则
+
+- **最小成本**：不要求算法开发者理解 FastAPI/ASGI
+- **默认安全**：默认走进程池执行（支持硬超时）
+- **可扩展**：支持用户传入 executor 或自定义路由
