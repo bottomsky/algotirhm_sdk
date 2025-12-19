@@ -32,8 +32,7 @@ from .metadata import AlgorithmSpec, ExecutionMode
 
 TInput = TypeVar("TInput", bound=BaseModel)
 TOutput = TypeVar("TOutput", bound=BaseModel)
-ExecutionErrorKind = Literal["validation", "timeout", "rejected", "runtime",
-                             "system"]
+ExecutionErrorKind = Literal["validation", "timeout", "rejected", "runtime", "system"]
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -105,8 +104,7 @@ def _default_max_workers() -> int:
     return max(1, workers)
 
 
-def _coerce_input_model(spec: AlgorithmSpec[Any, Any],
-                        payload: Any) -> BaseModel:
+def _coerce_input_model(spec: AlgorithmSpec[Any, Any], payload: Any) -> BaseModel:
     input_model = spec.input_model
     if isinstance(payload, input_model):
         return payload
@@ -118,15 +116,15 @@ def _coerce_input_model(spec: AlgorithmSpec[Any, Any],
         "ValidationError",
         [
             {
-                "type": "type_error", "loc": ("payload",), "msg":
-                "Unsupported payload type"
+                "type": "type_error",
+                "loc": ("payload",),
+                "msg": "Unsupported payload type",
             }
         ],
     )
 
 
-def _coerce_output_model(spec: AlgorithmSpec[Any, Any],
-                         output: Any) -> BaseModel:
+def _coerce_output_model(spec: AlgorithmSpec[Any, Any], output: Any) -> BaseModel:
     output_model = spec.output_model
     if isinstance(output, output_model):
         return output
@@ -153,8 +151,9 @@ def _resolve_trace_id(
     return None
 
 
-def _compute_queue_wait_ms(submitted_at: float,
-                           started_at: float | None) -> float | None:
+def _compute_queue_wait_ms(
+    submitted_at: float, started_at: float | None
+) -> float | None:
     if started_at is None:
         return None
     wait_ms = (started_at - submitted_at) * 1000
@@ -190,8 +189,9 @@ def _build_log_extra(
     return extra
 
 
-def _log_execution_result(request: ExecutionRequest[Any, Any],
-                          result: ExecutionResult[Any]) -> None:
+def _log_execution_result(
+    request: ExecutionRequest[Any, Any], result: ExecutionResult[Any]
+) -> None:
     extra = _build_log_extra(request, result)
     if result.success:
         _LOGGER.info("algorithm execution completed", extra=extra)
@@ -222,9 +222,9 @@ class _WorkerResponse(Generic[TOutput]):
     ended_at: float
 
 
-_WORKER_INSTANCES: MutableMapping[tuple[str, str],
-                                  AlgorithmLifecycleProtocol[Any,
-                                                             Any]] = {}
+_WORKER_INSTANCES: MutableMapping[
+    tuple[str, str], AlgorithmLifecycleProtocol[Any, Any]
+] = {}
 
 
 def _worker_shutdown() -> None:
@@ -240,7 +240,7 @@ atexit.register(_worker_shutdown)
 
 
 def _get_or_create_worker_instance(
-    spec: AlgorithmSpec[Any, Any]
+    spec: AlgorithmSpec[Any, Any],
 ) -> AlgorithmLifecycleProtocol[Any, Any]:
     key = spec.key()
     instance = _WORKER_INSTANCES.get(key)
@@ -248,7 +248,8 @@ def _get_or_create_worker_instance(
         entrypoint = spec.entrypoint
         if not callable(entrypoint):
             raise TypeError(
-                f"Entrypoint for {spec.name}:{spec.version} is not callable")
+                f"Entrypoint for {spec.name}:{spec.version} is not callable"
+            )
         created = entrypoint()  # type: ignore[call-arg]
         if not isinstance(created, AlgorithmLifecycleProtocol):
             raise TypeError(
@@ -447,16 +448,11 @@ class _PendingTask(Generic[TOutput]):
 class ExecutorProtocol(Protocol):
     """Contract for executing registered algorithms."""
 
-    def submit(self, request: ExecutionRequest[Any, Any]) -> ExecutionResult[
-        Any
-    ]:
-        ...
+    def submit(self, request: ExecutionRequest[Any, Any]) -> ExecutionResult[Any]: ...
 
-    def start(self) -> None:
-        ...
+    def start(self) -> None: ...
 
-    def shutdown(self, *, wait: bool = True) -> None:
-        ...
+    def shutdown(self, *, wait: bool = True) -> None: ...
 
 
 class InProcessExecutor(ExecutorProtocol):
@@ -470,31 +466,31 @@ class InProcessExecutor(ExecutorProtocol):
 
     def __init__(self) -> None:
         self._started = False
-        self._instances: MutableMapping[tuple[str, str],
-                                        AlgorithmLifecycleProtocol[Any,
-                                                                   Any]] = {}
+        self._instances: MutableMapping[
+            tuple[str, str], AlgorithmLifecycleProtocol[Any, Any]
+        ] = {}
 
     def start(self) -> None:
         self._started = True
 
-    def submit(self, request: ExecutionRequest[Any,
-                                               Any]) -> ExecutionResult[Any]:
+    def submit(self, request: ExecutionRequest[Any, Any]) -> ExecutionResult[Any]:
         if not self._started:
             self.start()
 
         started_at = time.monotonic()
-        result = ExecutionResult[Any](success=False,
-                                      started_at=started_at,
-                                      worker_pid=os.getpid(),
-                                      queue_wait_ms=0.0)
+        result = ExecutionResult[Any](
+            success=False,
+            started_at=started_at,
+            worker_pid=os.getpid(),
+            queue_wait_ms=0.0,
+        )
 
         context = request.context
         trace_id = _resolve_trace_id(request.trace_id, context)
         tokens = set_execution_context(request.request_id, trace_id, context)
         try:
             try:
-                payload_model = _coerce_input_model(request.spec,
-                                                    request.payload)
+                payload_model = _coerce_input_model(request.spec, request.payload)
             except ValidationError as exc:
                 result.error = ExecutionError(
                     kind="validation",
@@ -506,18 +502,17 @@ class InProcessExecutor(ExecutorProtocol):
             try:
                 output = self._invoke(request.spec, payload_model)
             except TimeoutError as exc:
-                result.error = ExecutionError(kind="timeout",
-                                              message=str(exc))
+                result.error = ExecutionError(kind="timeout", message=str(exc))
                 return result
             except ValidationError as exc:
-                result.error = ExecutionError(kind="runtime",
-                                              message=str(exc),
-                                              traceback=traceback.format_exc())
+                result.error = ExecutionError(
+                    kind="runtime", message=str(exc), traceback=traceback.format_exc()
+                )
                 return result
             except Exception as exc:
-                result.error = ExecutionError(kind="runtime",
-                                              message=str(exc),
-                                              traceback=traceback.format_exc())
+                result.error = ExecutionError(
+                    kind="runtime", message=str(exc), traceback=traceback.format_exc()
+                )
                 return result
 
             try:
@@ -549,8 +544,7 @@ class InProcessExecutor(ExecutorProtocol):
         self._instances.clear()
         self._started = False
 
-    def _invoke(self, spec: AlgorithmSpec[Any, Any],
-                payload_model: BaseModel) -> Any:
+    def _invoke(self, spec: AlgorithmSpec[Any, Any], payload_model: BaseModel) -> Any:
         if spec.is_class:
             if spec.execution.stateful:
                 instance = self._get_instance(spec)
@@ -561,8 +555,7 @@ class InProcessExecutor(ExecutorProtocol):
             entrypoint = spec.entrypoint
             if not callable(entrypoint):
                 raise TypeError(
-                    f"Entrypoint for {spec.name}:{spec.version} "
-                    "is not callable"
+                    f"Entrypoint for {spec.name}:{spec.version} " "is not callable"
                 )
             created = entrypoint()  # type: ignore[call-arg]
             if not isinstance(created, AlgorithmLifecycleProtocol):
@@ -591,8 +584,7 @@ class InProcessExecutor(ExecutorProtocol):
             entrypoint = spec.entrypoint
             if not callable(entrypoint):
                 raise TypeError(
-                    f"Entrypoint for {spec.name}:{spec.version} "
-                    "is not callable"
+                    f"Entrypoint for {spec.name}:{spec.version} " "is not callable"
                 )
             created = entrypoint()  # type: ignore[call-arg]
             if not isinstance(created, AlgorithmLifecycleProtocol):
@@ -615,13 +607,15 @@ class ProcessPoolExecutor(ExecutorProtocol):
     are released with the process.
     """
 
-    def __init__(self,
-                 *,
-                 max_workers: int | None = None,
-                 queue_size: int | None = None,
-                 kill_grace_s: float = 0.2,
-                 kill_tree: bool = False,
-                 poll_interval_s: float = 0.05) -> None:
+    def __init__(
+        self,
+        *,
+        max_workers: int | None = None,
+        queue_size: int | None = None,
+        kill_grace_s: float = 0.2,
+        kill_tree: bool = False,
+        poll_interval_s: float = 0.05,
+    ) -> None:
         self._max_workers = max_workers or _default_max_workers()
         self._queue_size = queue_size
         self._kill_grace_s = max(0.0, kill_grace_s)
@@ -664,16 +658,14 @@ class ProcessPoolExecutor(ExecutorProtocol):
             self._listener.start()
             self._started = True
 
-    def submit(self, request: ExecutionRequest[Any,
-                                               Any]) -> ExecutionResult[Any]:
+    def submit(self, request: ExecutionRequest[Any, Any]) -> ExecutionResult[Any]:
         if not self._started:
             self.start()
         if self._output_queue is None:
             raise RuntimeError("process pool failed to start")
 
         submitted_at = time.monotonic()
-        result = ExecutionResult[Any](success=False,
-                                      started_at=submitted_at)
+        result = ExecutionResult[Any](success=False, started_at=submitted_at)
         acquired = self._semaphore.acquire(blocking=False)
         if not acquired:
             result.error = ExecutionError(
@@ -686,10 +678,7 @@ class ProcessPoolExecutor(ExecutorProtocol):
             return result
 
         timeout = request.effective_timeout()
-        deadline = (
-            submitted_at + timeout
-            if timeout is not None else None
-        )
+        deadline = submitted_at + timeout if timeout is not None else None
 
         worker_index: int | None = None
         pending: _PendingTask[Any] | None = None
@@ -698,8 +687,7 @@ class ProcessPoolExecutor(ExecutorProtocol):
             payload_model = _coerce_input_model(request.spec, request.payload)
             payload_data = payload_model.model_dump()
             context_data = (
-                request.context.model_dump()
-                if request.context is not None else None
+                request.context.model_dump() if request.context is not None else None
             )
             worker_index = self._acquire_worker(deadline)
             if worker_index is None:
@@ -766,9 +754,9 @@ class ProcessPoolExecutor(ExecutorProtocol):
             )
             return result
         except Exception as exc:
-            result.error = ExecutionError(kind="system",
-                                          message=str(exc),
-                                          traceback=traceback.format_exc())
+            result.error = ExecutionError(
+                kind="system", message=str(exc), traceback=traceback.format_exc()
+            )
             return result
         finally:
             if result.ended_at is None:
@@ -832,9 +820,7 @@ class ProcessPoolExecutor(ExecutorProtocol):
             name=f"algo-sdk-worker-{index}",
         )
         process.start()
-        return _ManagedWorker(
-            index=index, input_queue=input_queue, process=process
-            )
+        return _ManagedWorker(index=index, input_queue=input_queue, process=process)
 
     def _terminate_process(self, process: mp.Process) -> None:
         if not process.is_alive():
@@ -842,9 +828,7 @@ class ProcessPoolExecutor(ExecutorProtocol):
         pid = process.pid
         if pid is None:
             return
-        if self._kill_tree and _kill_process_tree(
-            pid, grace_s=self._kill_grace_s
-        ):
+        if self._kill_tree and _kill_process_tree(pid, grace_s=self._kill_grace_s):
             try:
                 process.join(timeout=self._kill_grace_s)
             except Exception:
@@ -885,8 +869,9 @@ class ProcessPoolExecutor(ExecutorProtocol):
                     remaining = deadline - time.monotonic()
                     if remaining <= 0:
                         return None
-                    self._worker_cond.wait(timeout=min(self._poll_interval_s,
-                                                       remaining))
+                    self._worker_cond.wait(
+                        timeout=min(self._poll_interval_s, remaining)
+                    )
             return self._idle_workers.pop(0)
 
     def _release_worker(self, worker_index: int) -> None:
@@ -967,30 +952,27 @@ class IsolatedProcessPoolExecutor(ExecutorProtocol):
     """
 
     def __init__(
-            self,
-            *,
-            default_max_workers: int | None = None,
-            queue_size: int | None = None,
-            kill_grace_s: float = 0.2,
-            kill_tree: bool = False,
-            poll_interval_s: float = 0.05) -> None:
-        self._default_max_workers = (
-            default_max_workers or _default_max_workers()
-        )
+        self,
+        *,
+        default_max_workers: int | None = None,
+        queue_size: int | None = None,
+        kill_grace_s: float = 0.2,
+        kill_tree: bool = False,
+        poll_interval_s: float = 0.05,
+    ) -> None:
+        self._default_max_workers = default_max_workers or _default_max_workers()
         self._queue_size = queue_size
         self._kill_grace_s = kill_grace_s
         self._kill_tree = kill_tree
         self._poll_interval_s = poll_interval_s
-        self._executors: MutableMapping[tuple[str, str],
-                                        ProcessPoolExecutor] = {}
+        self._executors: MutableMapping[tuple[str, str], ProcessPoolExecutor] = {}
         self._lock = Lock()
         self._started = False
 
     def start(self) -> None:
         self._started = True
 
-    def submit(self, request: ExecutionRequest[Any,
-                                               Any]) -> ExecutionResult[Any]:
+    def submit(self, request: ExecutionRequest[Any, Any]) -> ExecutionResult[Any]:
         if not self._started:
             self.start()
 
@@ -1005,8 +987,7 @@ class IsolatedProcessPoolExecutor(ExecutorProtocol):
         self._started = False
 
     def _get_executor(
-        self, key: tuple[str, str],
-        spec: AlgorithmSpec[Any, Any]
+        self, key: tuple[str, str], spec: AlgorithmSpec[Any, Any]
     ) -> ProcessPoolExecutor:
         existing = self._executors.get(key)
         if existing is not None:
@@ -1016,11 +997,13 @@ class IsolatedProcessPoolExecutor(ExecutorProtocol):
             if existing is not None:
                 return existing
             workers = spec.execution.max_workers or self._default_max_workers
-            executor = ProcessPoolExecutor(max_workers=workers,
-                                           queue_size=self._queue_size,
-                                           kill_grace_s=self._kill_grace_s,
-                                           kill_tree=self._kill_tree,
-                                           poll_interval_s=self._poll_interval_s)
+            executor = ProcessPoolExecutor(
+                max_workers=workers,
+                queue_size=self._queue_size,
+                kill_grace_s=self._kill_grace_s,
+                kill_tree=self._kill_tree,
+                poll_interval_s=self._poll_interval_s,
+            )
             executor.start()
             self._executors[key] = executor
             return executor
@@ -1052,18 +1035,20 @@ class DispatchingExecutor(ExecutorProtocol):
             isolated_kill_tree = global_kill_tree
         if isolated_poll_interval_s is None:
             isolated_poll_interval_s = global_poll_interval_s
-        self._shared = ProcessPoolExecutor(max_workers=default_workers,
-                                           queue_size=global_queue_size,
-                                           kill_grace_s=global_kill_grace_s,
-                                           kill_tree=global_kill_tree,
-                                           poll_interval_s=global_poll_interval_s)
+        self._shared = ProcessPoolExecutor(
+            max_workers=default_workers,
+            queue_size=global_queue_size,
+            kill_grace_s=global_kill_grace_s,
+            kill_tree=global_kill_tree,
+            poll_interval_s=global_poll_interval_s,
+        )
         self._isolated = IsolatedProcessPoolExecutor(
-            default_max_workers=isolated_default_max_workers
-            or default_workers,
+            default_max_workers=isolated_default_max_workers or default_workers,
             queue_size=isolated_queue_size,
             kill_grace_s=isolated_kill_grace_s,
             kill_tree=isolated_kill_tree,
-            poll_interval_s=isolated_poll_interval_s)
+            poll_interval_s=isolated_poll_interval_s,
+        )
         self._in_process = InProcessExecutor()
         self._started = False
 
@@ -1075,8 +1060,7 @@ class DispatchingExecutor(ExecutorProtocol):
         self._isolated.start()
         self._started = True
 
-    def submit(self, request: ExecutionRequest[Any,
-                                               Any]) -> ExecutionResult[Any]:
+    def submit(self, request: ExecutionRequest[Any, Any]) -> ExecutionResult[Any]:
         if not self._started:
             self.start()
         if request.spec.execution.execution_mode == ExecutionMode.IN_PROCESS:
