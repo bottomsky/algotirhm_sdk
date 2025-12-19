@@ -10,7 +10,7 @@ dependencies = [
 ]
 
 [tool.pyright]
-# Type checking settings
+# Type checking settingsa
 typeCheckingMode = "strict"
 pythonVersion = "3.11"
 pythonPlatform = "Windows"
@@ -39,3 +39,7 @@ exclude = ["**/__pycache__", "**/.venv", "build", "dist"]
 
 # Naming convention checks (via reportGeneralTypeIssues)
 reportGeneralTypeIssues = "warning"
+
+
+[tool.black]
+line-length = 79
