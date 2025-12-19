@@ -7,8 +7,11 @@ from algo_sdk.core import (
     BaseAlgorithm,
     BaseModel,
     ExecutionConfig,
+    ExecutionMode,
     ExecutionRequest,
+    DispatchingExecutor,
     InProcessExecutor,
+    IsolatedProcessPoolExecutor,
     ProcessPoolExecutor,
 )
 
@@ -294,6 +297,142 @@ def test_process_pool_stateful_calls_shutdown_on_worker_exit(tmp_path) -> None:
             spec=spec,
             payload=_ShutdownProbeReq(file_path=str(marker)),
             request_id="probe-1",
+        )
+        result = executor.submit(req)
+        assert result.success is True
+    finally:
+        executor.shutdown(wait=True)
+
+    deadline = time.monotonic() + 3.0
+    content = ""
+    while time.monotonic() < deadline:
+        if marker.exists():
+            content = marker.read_text(encoding="utf-8")
+            if "shutdown" in content:
+                break
+        time.sleep(0.05)
+
+    assert "shutdown" in content
+
+
+def test_isolated_process_pool_stateful_calls_shutdown_on_worker_exit(tmp_path) -> None:
+    marker = tmp_path / "shutdown-isolated.txt"
+    spec = AlgorithmSpec(
+        name="shutdown-probe-iso",
+        version="v1",
+        description=None,
+        input_model=_ShutdownProbeReq,
+        output_model=_ShutdownProbeResp,
+        execution=ExecutionConfig(stateful=True, isolated_pool=True),
+        entrypoint=_ShutdownProbeAlgo,
+        is_class=True,
+    )
+
+    executor = IsolatedProcessPoolExecutor(
+        default_max_workers=1,
+        queue_size=1,
+        kill_grace_s=1.0,
+    )
+    try:
+        req = ExecutionRequest(
+            spec=spec,
+            payload=_ShutdownProbeReq(file_path=str(marker)),
+            request_id="probe-iso-1",
+        )
+        result = executor.submit(req)
+        assert result.success is True
+    finally:
+        executor.shutdown(wait=True)
+
+    deadline = time.monotonic() + 3.0
+    content = ""
+    while time.monotonic() < deadline:
+        if marker.exists():
+            content = marker.read_text(encoding="utf-8")
+            if "shutdown" in content:
+                break
+        time.sleep(0.05)
+
+    assert "shutdown" in content
+
+
+def test_dispatching_executor_shared_pool_stateful_calls_shutdown_on_worker_exit(tmp_path) -> None:
+    marker = tmp_path / "shutdown-dispatch-shared.txt"
+    spec = AlgorithmSpec(
+        name="shutdown-probe-dispatch-shared",
+        version="v1",
+        description=None,
+        input_model=_ShutdownProbeReq,
+        output_model=_ShutdownProbeResp,
+        execution=ExecutionConfig(
+            stateful=True,
+            isolated_pool=False,
+            execution_mode=ExecutionMode.PROCESS_POOL,
+        ),
+        entrypoint=_ShutdownProbeAlgo,
+        is_class=True,
+    )
+
+    executor = DispatchingExecutor(
+        global_max_workers=1,
+        global_queue_size=1,
+        global_kill_grace_s=1.0,
+        isolated_default_max_workers=1,
+        isolated_queue_size=1,
+    )
+    try:
+        req = ExecutionRequest(
+            spec=spec,
+            payload=_ShutdownProbeReq(file_path=str(marker)),
+            request_id="probe-dispatch-shared-1",
+        )
+        result = executor.submit(req)
+        assert result.success is True
+    finally:
+        executor.shutdown(wait=True)
+
+    deadline = time.monotonic() + 3.0
+    content = ""
+    while time.monotonic() < deadline:
+        if marker.exists():
+            content = marker.read_text(encoding="utf-8")
+            if "shutdown" in content:
+                break
+        time.sleep(0.05)
+
+    assert "shutdown" in content
+
+
+def test_dispatching_executor_isolated_pool_stateful_calls_shutdown_on_worker_exit(tmp_path) -> None:
+    marker = tmp_path / "shutdown-dispatch-isolated.txt"
+    spec = AlgorithmSpec(
+        name="shutdown-probe-dispatch-iso",
+        version="v1",
+        description=None,
+        input_model=_ShutdownProbeReq,
+        output_model=_ShutdownProbeResp,
+        execution=ExecutionConfig(
+            stateful=True,
+            isolated_pool=True,
+            execution_mode=ExecutionMode.PROCESS_POOL,
+        ),
+        entrypoint=_ShutdownProbeAlgo,
+        is_class=True,
+    )
+
+    executor = DispatchingExecutor(
+        global_max_workers=1,
+        global_queue_size=1,
+        global_kill_grace_s=1.0,
+        isolated_default_max_workers=1,
+        isolated_queue_size=1,
+        isolated_kill_grace_s=1.0,
+    )
+    try:
+        req = ExecutionRequest(
+            spec=spec,
+            payload=_ShutdownProbeReq(file_path=str(marker)),
+            request_id="probe-dispatch-iso-1",
         )
         result = executor.submit(req)
         assert result.success is True

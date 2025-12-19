@@ -561,12 +561,14 @@ class InProcessExecutor(ExecutorProtocol):
             entrypoint = spec.entrypoint
             if not callable(entrypoint):
                 raise TypeError(
-                    f"Entrypoint for {spec.name}:{spec.version} is not callable"
+                    f"Entrypoint for {spec.name}:{spec.version} "
+                    "is not callable"
                 )
             created = entrypoint()  # type: ignore[call-arg]
             if not isinstance(created, AlgorithmLifecycleProtocol):
                 raise TypeError(
-                    f"Entrypoint for {spec.name}:{spec.version} must implement lifecycle"
+                    f"Entrypoint for {spec.name}:{spec.version} "
+                    "must implement lifecycle"
                 )
             created.initialize()
             try:
@@ -830,7 +832,9 @@ class ProcessPoolExecutor(ExecutorProtocol):
             name=f"algo-sdk-worker-{index}",
         )
         process.start()
-        return _ManagedWorker(index=index, input_queue=input_queue, process=process)
+        return _ManagedWorker(
+            index=index, input_queue=input_queue, process=process
+            )
 
     def _terminate_process(self, process: mp.Process) -> None:
         if not process.is_alive():
@@ -838,7 +842,9 @@ class ProcessPoolExecutor(ExecutorProtocol):
         pid = process.pid
         if pid is None:
             return
-        if self._kill_tree and _kill_process_tree(pid, grace_s=self._kill_grace_s):
+        if self._kill_tree and _kill_process_tree(
+            pid, grace_s=self._kill_grace_s
+        ):
             try:
                 process.join(timeout=self._kill_grace_s)
             except Exception:
