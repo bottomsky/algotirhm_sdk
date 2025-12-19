@@ -307,9 +307,32 @@ def _worker_execute(payload: _WorkerPayload[Any, Any]) -> _WorkerResponse[Any]:
 
         try:
             if spec.is_class:
-                algo = _get_or_create_worker_instance(spec)
-                raw_output = algo.run(request_model)
-                algo.after_run()
+                if spec.execution.stateful:
+                    algo = _get_or_create_worker_instance(spec)
+                    raw_output = algo.run(request_model)
+                    algo.after_run()
+                else:
+                    entrypoint = spec.entrypoint
+                    if not callable(entrypoint):
+                        raise TypeError(
+                            f"Entrypoint for {spec.name}:{spec.version} "
+                            "is not callable"
+                        )
+                    created = entrypoint()  # type: ignore[call-arg]
+                    if not isinstance(created, AlgorithmLifecycleProtocol):
+                        raise TypeError(
+                            f"Entrypoint for {spec.name}:{spec.version} "
+                            "must implement lifecycle"
+                        )
+                    created.initialize()
+                    try:
+                        raw_output = created.run(request_model)
+                        created.after_run()
+                    finally:
+                        try:
+                            created.shutdown()
+                        except Exception:
+                            pass
             else:
                 raw_output: AlgorithmLifecycleProtocol[Any, Any] | Any = (
                     spec.entrypoint(request_model)  # type: ignore[arg-type]
@@ -466,10 +489,32 @@ class InProcessExecutor(ExecutorProtocol):
     def _invoke(self, spec: AlgorithmSpec[Any, Any],
                 payload_model: BaseModel) -> Any:
         if spec.is_class:
-            instance = self._get_instance(spec)
-            result = instance.run(payload_model)
-            instance.after_run()
-            return result
+            if spec.execution.stateful:
+                instance = self._get_instance(spec)
+                result = instance.run(payload_model)
+                instance.after_run()
+                return result
+
+            entrypoint = spec.entrypoint
+            if not callable(entrypoint):
+                raise TypeError(
+                    f"Entrypoint for {spec.name}:{spec.version} is not callable"
+                )
+            created = entrypoint()  # type: ignore[call-arg]
+            if not isinstance(created, AlgorithmLifecycleProtocol):
+                raise TypeError(
+                    f"Entrypoint for {spec.name}:{spec.version} must implement lifecycle"
+                )
+            created.initialize()
+            try:
+                result = created.run(payload_model)
+                created.after_run()
+                return result
+            finally:
+                try:
+                    created.shutdown()
+                except Exception:
+                    pass
         return spec.entrypoint(payload_model)  # type: ignore[arg-type]
 
     def _get_instance(

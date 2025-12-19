@@ -14,6 +14,7 @@ TOutput = TypeVar("TOutput", bound=BaseModel)
 class ExecutionConfig:
     """Desired execution hints recorded with the algorithm."""
 
+    stateful: bool = False
     isolated_pool: bool = False
     max_workers: int | None = None
     timeout_s: int | None = None
