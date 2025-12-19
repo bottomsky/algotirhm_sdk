@@ -276,7 +276,9 @@ def _worker_execute(payload: _WorkerPayload[Any, Any]) -> _WorkerResponse[Any]:
             raw_output = algo.run(request_model)
             algo.after_run()
         else:
-            raw_output = spec.entrypoint(request_model)  # type: ignore[arg-type]
+            raw_output: AlgorithmLifecycleProtocol[Any, Any] | Any = (
+                spec.entrypoint(request_model)  # type: ignore[arg-type]
+                )
         output_model = _coerce_output_model(spec, raw_output)
         success = True
         data = output_model.model_dump()
@@ -479,12 +481,14 @@ class ProcessPoolExecutor(ExecutorProtocol):
                 request.context.model_dump()
                 if request.context is not None else None
             )
-            future = self._pool.submit(_worker_execute,
-                                       _WorkerPayload(spec=request.spec,
-                                                      payload=payload_data,
-                                                      request_id=request.request_id,
-                                                      trace_id=request.trace_id,
-                                                      context=context_data))
+            future = self._pool.submit(
+                _worker_execute,
+                _WorkerPayload(
+                    spec=request.spec,
+                    payload=payload_data,
+                    request_id=request.request_id,
+                    trace_id=request.trace_id,
+                    context=context_data))
             timeout = request.effective_timeout()
             try:
                 if timeout is not None:
