@@ -168,6 +168,11 @@ class OrbitAlgo(BaseAlgorithm[OrbitReq, OrbitResp]):
         return OrbitResp(period_s=period)
 ```
 
+注意（进程池/Windows 兼容性）：
+- 当使用 `ProcessPoolExecutor` / `DispatchingExecutor` 等“多进程执行器”时，算法入口（类/函数）以及其输入/输出 `BaseModel` 类型必须是 **可被 pickle 序列化** 的对象。
+- 实践约束：请把算法类/函数、以及请求/响应模型 **定义在模块顶层**（可通过 `module.path:SymbolName` 导入），不要定义在函数内部/闭包中，也不要使用 lambda。
+- SDK 在 `@Algorithm` 注册时会做一次 pickle 冒烟测试，不满足条件会直接报 `AlgorithmValidationError`，避免运行时在 worker 侧才失败。
+
 ### 4.3 注册内容（AlgorithmSpec）包含什么
 
 装饰器会生成 `AlgorithmSpec` 并注册到 `AlgorithmRegistry`，内容包括：

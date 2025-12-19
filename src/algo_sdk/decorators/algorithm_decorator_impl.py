@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import inspect
+import pickle
 from typing import Callable
 
 from algo_sdk.core import (
@@ -141,6 +142,10 @@ class DefaultAlgorithmDecorator:
                 raise AlgorithmValidationError(
                     f"hook '{hook_name}' must be callable or absent")
 
+        self._assert_picklable(target_cls, label="algorithm entrypoint")
+        self._assert_picklable(input_model, label="algorithm input model")
+        self._assert_picklable(output_model, label="algorithm output model")
+
         return AlgorithmSpec(
             name=name,
             version=version,
@@ -164,6 +169,10 @@ class DefaultAlgorithmDecorator:
         if not callable(func):
             raise AlgorithmValidationError("algorithm must be callable")
         input_model, output_model = self._extract_io(func, skip_first=False)
+
+        self._assert_picklable(func, label="algorithm entrypoint")
+        self._assert_picklable(input_model, label="algorithm input model")
+        self._assert_picklable(output_model, label="algorithm output model")
         return AlgorithmSpec(
             name=name,
             version=version,
@@ -174,6 +183,23 @@ class DefaultAlgorithmDecorator:
             entrypoint=func,
             is_class=False,
         )
+
+    def _assert_picklable(self, obj: object, *, label: str) -> None:
+        try:
+            pickle.dumps(obj)
+        except Exception as exc:
+            qualname = getattr(obj, "__qualname__", None)
+            module = getattr(obj, "__module__", None)
+            hint = (
+                "Entrypoint and model types must be defined at module top "
+                "level (not inside a function), and must be importable by "
+                "module path. Avoid lambdas/closures/local classes."
+            )
+            details = (
+                f"{label} is not picklable"
+                f" (module={module!r}, qualname={qualname!r}): {exc}"
+            )
+            raise AlgorithmValidationError(f"{details}. {hint}") from exc
 
     def _extract_io(
         self,
