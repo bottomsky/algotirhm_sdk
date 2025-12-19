@@ -361,11 +361,18 @@ class DoubleAlgo(BaseAlgorithm[Req, Resp]):
         return Resp(y=req.x * 2)
 ```
 
-**启动命令：**
+**启动命令（推荐模块式 API）：**
 
 ```bash
 set ALGO_MODULES=algo
 python -c "from algo_sdk.http import server; server.run()"
+```
+
+**启动命令（可选类式 API，规划接口）：**
+
+```bash
+set ALGO_MODULES=algo
+python -c "from algo_sdk.http import Server; Server.run()"
 ```
 
 ### 8.2 推荐的 `server.run()` 行为
@@ -396,3 +403,84 @@ python -c "from algo_sdk.http import server; server.run()"
 - **最小成本**：不要求算法开发者理解 FastAPI/ASGI
 - **默认安全**：默认走进程池执行（支持硬超时）
 - **可扩展**：支持用户传入 executor 或自定义路由
+
+### 8.6 示例：临时测试 vs 生产启动
+
+**临时测试（不推荐生产）**  
+算法脚本中直接启动 HTTP，仅用于本地调试：
+
+```python
+from algo_sdk.core import BaseAlgorithm, BaseModel
+from algo_sdk.decorators import Algorithm
+
+
+class Req(BaseModel):
+    x: int
+
+
+class Resp(BaseModel):
+    y: int
+
+
+@Algorithm(name="double", version="v1")
+class DoubleAlgo(BaseAlgorithm[Req, Resp]):
+    def run(self, req: Req) -> Resp:
+        return Resp(y=req.x * 2)
+
+
+if __name__ == "__main__":
+    from algo_sdk.http import Server
+    Server.run()
+```
+
+**生产推荐方式**  
+算法模块只负责定义/注册，HTTP 服务由独立启动脚本负责。
+
+算法模块（`algos.py`）：
+
+```python
+from algo_sdk.core import BaseAlgorithm, BaseModel
+from algo_sdk.decorators import Algorithm
+
+
+class Req(BaseModel):
+    x: int
+
+
+class Resp(BaseModel):
+    y: int
+
+
+@Algorithm(name="double", version="v1")
+class DoubleAlgo(BaseAlgorithm[Req, Resp]):
+    def run(self, req: Req) -> Resp:
+        return Resp(y=req.x * 2)
+```
+
+服务启动脚本（`run_server.py`）：
+
+```python
+import os
+
+from algo_sdk.http import Server
+
+os.environ.setdefault("ALGO_MODULES", "algos")
+os.environ.setdefault("SERVICE_HOST", "0.0.0.0")
+os.environ.setdefault("SERVICE_PORT", "8000")
+
+Server.run()
+```
+
+**同等可行方式：在启动脚本中直接 import 算法模块**
+
+当算法模块数量较少，或你希望明确控制导入顺序时，可以在启动脚本中直接导入算法模块：
+
+```python
+# run_server.py
+import my_algos  # 触发 @Algorithm 注册
+from algo_sdk.http import Server
+
+Server.run()
+```
+
+这与配置 `ALGO_MODULES` 的效果等价，但更显式、可控。

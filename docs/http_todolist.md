@@ -7,6 +7,7 @@
   - [ ] `run()`：默认读取环境变量并启动服务
   - [ ] `create_app()`：返回 ASGI app 供外部框架集成
   - [ ] `load_modules(modules: list[str])`：导入算法模块触发注册
+- [ ] 新增类式 API `Server.run()`（语义与 `server.run()` 一致）
 
 ## B. 配置与环境变量
 - [ ] 读取环境变量：
@@ -35,4 +36,3 @@
 - [ ] 启动测试：`server.run()` 可在最小配置下启动
 - [ ] 路由测试：`/algorithms`、`/schema`、`/healthz`、`/readyz`、`/metrics`
 - [ ] 端到端：加载模块 + 调用算法成功
-
