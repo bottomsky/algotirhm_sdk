@@ -44,7 +44,9 @@ class AlgorithmResponse(_PydanticBaseModel, Generic[T]):
     code: int
     message: str
     requestId: Optional[str] = None
-    datetime: DateTime = Field(default_factory=lambda: DateTime.now(timezone.utc))
+    datetime: DateTime = Field(
+        default_factory=lambda: DateTime.now(timezone.utc)
+    )
     context: Optional[AlgorithmContext] = None
     data: Optional[T] = None
 
