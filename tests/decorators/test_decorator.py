@@ -47,7 +47,9 @@ def test_class_registration() -> None:
     reg = AlgorithmRegistry()
     deco = DefaultAlgorithmDecorator(registry=reg)
 
-    deco(name="cls_algo", version="v1", execution={"isolated_pool": True})(
+    deco(name="cls_algo",
+         version="v1",
+         execution={"isolated_pool": True, "stateful": True})(
         _AlgoForRegistration
     )
 
@@ -55,6 +57,7 @@ def test_class_registration() -> None:
     assert inspect.isclass(spec.entrypoint)
     assert spec.is_class
     assert spec.execution.isolated_pool is True
+    assert spec.execution.stateful is True
 
 
 def test_local_class_registration_is_rejected_for_pickle() -> None:

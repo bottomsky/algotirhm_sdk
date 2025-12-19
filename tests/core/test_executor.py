@@ -2,6 +2,7 @@ import time
 
 from algo_sdk.core import (
     AlgorithmSpec,
+    BaseAlgorithm,
     BaseModel,
     ExecutionConfig,
     ExecutionRequest,
@@ -87,6 +88,36 @@ def _build_ctx_spec(entrypoint: object) -> AlgorithmSpec:
     )
 
 
+class _CounterReq(BaseModel):
+    value: int
+
+
+class _CounterResp(BaseModel):
+    count: int
+
+
+class _CounterAlgo(BaseAlgorithm[_CounterReq, _CounterResp]):
+    def initialize(self) -> None:
+        self._count = 0
+
+    def run(self, req: _CounterReq) -> _CounterResp:  # type: ignore[override]
+        self._count += 1
+        return _CounterResp(count=self._count)
+
+
+def _build_counter_spec(*, stateful: bool) -> AlgorithmSpec:
+    return AlgorithmSpec(
+        name="counter",
+        version="v1",
+        description=None,
+        input_model=_CounterReq,
+        output_model=_CounterResp,
+        execution=ExecutionConfig(stateful=stateful),
+        entrypoint=_CounterAlgo,
+        is_class=True,
+    )
+
+
 def test_process_pool_executes_function() -> None:
     spec = _build_spec(_double)
     executor = ProcessPoolExecutor(max_workers=1, queue_size=2)
@@ -163,6 +194,94 @@ def test_process_pool_propagates_context() -> None:
         assert result.data.trace_id == "trace-pool"
         assert result.data.request_id == "req-ctx-pool"
         assert result.data.tenant_id == "tenant-2"
+    finally:
+        executor.shutdown()
+
+
+def test_inprocess_stateless_creates_instance_per_request() -> None:
+    spec = _build_counter_spec(stateful=False)
+    executor = InProcessExecutor()
+    try:
+        req1 = ExecutionRequest(spec=spec,
+                                payload=_CounterReq(value=1),
+                                request_id="counter-1")
+        req2 = ExecutionRequest(spec=spec,
+                                payload=_CounterReq(value=1),
+                                request_id="counter-2")
+        res1 = executor.submit(req1)
+        res2 = executor.submit(req2)
+        assert res1.success is True
+        assert res2.success is True
+        assert res1.data is not None
+        assert res2.data is not None
+        assert res1.data.count == 1
+        assert res2.data.count == 1
+    finally:
+        executor.shutdown()
+
+
+def test_inprocess_stateful_reuses_instance() -> None:
+    spec = _build_counter_spec(stateful=True)
+    executor = InProcessExecutor()
+    try:
+        req1 = ExecutionRequest(spec=spec,
+                                payload=_CounterReq(value=1),
+                                request_id="counter-s-1")
+        req2 = ExecutionRequest(spec=spec,
+                                payload=_CounterReq(value=1),
+                                request_id="counter-s-2")
+        res1 = executor.submit(req1)
+        res2 = executor.submit(req2)
+        assert res1.success is True
+        assert res2.success is True
+        assert res1.data is not None
+        assert res2.data is not None
+        assert res1.data.count == 1
+        assert res2.data.count == 2
+    finally:
+        executor.shutdown()
+
+
+def test_process_pool_stateless_creates_instance_per_request() -> None:
+    spec = _build_counter_spec(stateful=False)
+    executor = ProcessPoolExecutor(max_workers=1, queue_size=2)
+    try:
+        req1 = ExecutionRequest(spec=spec,
+                                payload=_CounterReq(value=1),
+                                request_id="pool-counter-1")
+        req2 = ExecutionRequest(spec=spec,
+                                payload=_CounterReq(value=1),
+                                request_id="pool-counter-2")
+        res1 = executor.submit(req1)
+        res2 = executor.submit(req2)
+        assert res1.success is True
+        assert res2.success is True
+        assert res1.data is not None
+        assert res2.data is not None
+        assert res1.data.count == 1
+        assert res2.data.count == 1
+    finally:
+        executor.shutdown()
+
+
+def test_process_pool_stateful_reuses_instance() -> None:
+    spec = _build_counter_spec(stateful=True)
+    executor = ProcessPoolExecutor(max_workers=1, queue_size=2)
+    try:
+        req1 = ExecutionRequest(spec=spec,
+                                payload=_CounterReq(value=1),
+                                request_id="pool-counter-s-1")
+        req2 = ExecutionRequest(spec=spec,
+                                payload=_CounterReq(value=1),
+                                request_id="pool-counter-s-2")
+        res1 = executor.submit(req1)
+        res2 = executor.submit(req2)
+        assert res1.success is True
+        assert res2.success is True
+        assert res1.data is not None
+        assert res2.data is not None
+        assert res1.data.count == 1
+        assert res2.data.count == 2
     finally:
         executor.shutdown()
 
