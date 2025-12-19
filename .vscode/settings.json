@@ -27,5 +27,6 @@
         "dist": true,
         "build": true
     },
-    "basedpyright.disableLanguageServices": true
+    "basedpyright.disableLanguageServices": true,
+    "docsifyPreview.indexFile": "/docs/index.html"
 }
