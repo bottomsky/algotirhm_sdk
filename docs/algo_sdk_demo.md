@@ -20,6 +20,7 @@ HTTP 请求(AlgorithmRequest) -> AlgorithmHttpService -> Executor -> 算法（�
 现实算法通常不仅是一次函数调用，还需要：初始化（加载模型/连接资源）、每次执行后的清理、服务退出时释放资源。
 
 SDK 用 `AlgorithmLifecycleProtocol` 定义类式算法的标准生命周期：
+
 - `initialize()`：一次性初始化（可选，默认可为空实现）
 - `run(req)`：核心执行（必需）
 - `after_run()`：每次执行后的回调（可选，默认可为空实现）
@@ -28,6 +29,7 @@ SDK 用 `AlgorithmLifecycleProtocol` 定义类式算法的标准生命周期：
 ### 1.2 BaseAlgorithm 的定位与简化点
 
 `BaseAlgorithm` 是一个“少写样板代码”的基类：
+
 - 提供 `initialize/after_run/shutdown` 的默认 no-op 实现，算法开发者只需实现 `run()`。
 - 通过抽象方法强制 `run()` 存在，避免生命周期类缺少核心逻辑。
 - 仍然遵循 `AlgorithmLifecycleProtocol`，可被执行器统一驱动。
@@ -41,6 +43,7 @@ SDK 用 `AlgorithmLifecycleProtocol` 定义类式算法的标准生命周期：
 ### 2.1 BaseModel（统一协议与强校验）
 
 算法的输入/输出模型统一使用 `algo_sdk.core.BaseModel`（Pydantic v2）：
+
 - 禁止多余字段（`extra="forbid"`），避免前后端字段漂移
 - 支持严格校验与可预测的序列化（`model_dump()`）
 
@@ -66,6 +69,7 @@ class OrbitResp(BaseModel):
 ### 3.1 HTTP 消息接入（统一 Envelope）
 
 SDK 定义统一请求/响应协议：
+
 - 请求：`AlgorithmRequest`（含 `requestId/datetime/context/data`）
 - 响应：`AlgorithmResponse`（含 `code/message/requestId/datetime/context/data`）
 
@@ -74,6 +78,7 @@ SDK 定义统一请求/响应协议：
 ### 3.2 AlgorithmHttpService 的职责（接入层“胶水”）
 
 `AlgorithmHttpService` 是 HTTP 框架与执行器之间的桥接层：
+
 1. 依据 `name/version` 从 `AlgorithmRegistry` 获取 `AlgorithmSpec`
 2. 构造 `ExecutionRequest` 并调用 `executor.submit()`
 3. 将 `ExecutionResult` 映射为 `AlgorithmResponse`（成功/错误统一封装）
@@ -82,6 +87,7 @@ SDK 定义统一请求/响应协议：
 ### 3.3 执行器如何把消息传递给算法
 
 执行器（`ExecutorProtocol` 的实现）负责把“HTTP 层的 request”变成“算法可执行的调用”：
+
 - 入参 `payload`：支持 dict / BaseModel；执行器会按 `AlgorithmSpec.input_model` 做校验与转换
 - 输出 `data`：按 `AlgorithmSpec.output_model` 做校验与转换
 - 并发/隔离：可选择本进程/共享进程池/独立池；`DispatchingExecutor` 可根据 `execution.execution_mode` 与 `execution.isolated_pool` 路由
@@ -175,6 +181,7 @@ class OrbitAlgo(BaseAlgorithm[OrbitReq, OrbitResp]):
 ```
 
 注意（进程池/Windows 兼容性）：
+
 - 当使用 `ProcessPoolExecutor` / `DispatchingExecutor` 等“多进程执行器”时，算法入口（类/函数）以及其输入/输出 `BaseModel` 类型必须是 **可被 pickle 序列化** 的对象。
 - 实践约束：请把算法类/函数、以及请求/响应模型 **定义在模块顶层**（可通过 `module.path:SymbolName` 导入），不要定义在函数内部/闭包中，也不要使用 lambda。
 - SDK 在 `@Algorithm` 注册时会做一次 pickle 冒烟测试，不满足条件会直接报 `AlgorithmValidationError`，避免运行时在 worker 侧才失败。
@@ -182,6 +189,7 @@ class OrbitAlgo(BaseAlgorithm[OrbitReq, OrbitResp]):
 ### 4.3 注册内容（AlgorithmSpec）包含什么
 
 装饰器会生成 `AlgorithmSpec` 并注册到 `AlgorithmRegistry`，内容包括：
+
 - `name/version/description`
 - `input_model/output_model`（用于校验与 schema 输出）
 - `execution`：`execution_mode/stateful/isolated_pool/max_workers/timeout_s/gpu`（执行 hints）
@@ -196,6 +204,7 @@ class OrbitAlgo(BaseAlgorithm[OrbitReq, OrbitResp]):
 ### 5.1 设计目标（规划的默认接口）
 
 按设计稿，算法核心服务建议暴露以下 HTTP 接口：
+
 - `GET /algorithms`：算法清单（name/version/description/execution hints）
 - `GET /algorithms/{name}/{version}/schema`：输入/输出 schema（便于联调与自动化）
 - `GET /healthz`：存活探针（HTTP 可响应即存活）
@@ -205,6 +214,7 @@ class OrbitAlgo(BaseAlgorithm[OrbitReq, OrbitResp]):
 ### 5.2 当前版本实现状态（避免演示误解）
 
 本仓库当前实现到“接入层 + 执行器 + 协议”，但尚未提供默认 FastAPI app/router：
+
 - 已有：`AlgorithmHttpService`（可嵌入任意 HTTP 框架），以及 `AlgorithmRequest/AlgorithmResponse` 协议模型
 - 已有：Metrics 输出 `InMemoryMetrics.render_prometheus_text()` / OTel JSON `build_otel_metrics()`（可直接作为 `/metrics` 响应体）
 - 未内置：`/algorithms`、`/schema`、`/healthz`、`/readyz` 的 FastAPI 路由实现（属于下一阶段集成工作）
@@ -238,6 +248,7 @@ class OrbitAlgo(BaseAlgorithm[OrbitReq, OrbitResp]):
 ### 6.1 一次 work 是什么
 
 在 SDK 里，一次 work 可以理解为“一次算法调用请求”：
+
 - 输入：`ExecutionRequest`（包含 `spec + payload + request_id/context/trace`）
 - 输出：`ExecutionResult`（包含 `success/data/error + timing/worker_pid`）
 
@@ -249,10 +260,12 @@ class OrbitAlgo(BaseAlgorithm[OrbitReq, OrbitResp]):
 为避免无限排队，使用 `BoundedSemaphore` 做简单背压：拿不到 slot 直接返回 `rejected`。
 
 **优点**
+
 - 进程复用、资源利用率高，适合大量轻量算法
 - 服务侧管理简单
 
 **缺点**
+
 - 算法之间相互竞争 worker 资源，重型算法会挤占轻量算法吞吐
 - 即使“无状态模式”，worker 进程仍会复用，因此进程级缓存/全局变量可能残留
 
@@ -264,10 +277,12 @@ class OrbitAlgo(BaseAlgorithm[OrbitReq, OrbitResp]):
 `DispatchingExecutor` 根据 `spec.execution.isolated_pool` 自动路由到共享池或独立池。
 
 **优点**
+
 - 资源/故障域隔离，适合 GPU/大模型/初始化昂贵算法
 - 每个算法可单独设置 `max_workers/timeout_s`
 
 **缺点**
+
 - 进程数量更多，内存占用与管理成本更高
 
 ### 6.4 有状态 vs 无状态（算法实例是否复用）
@@ -275,10 +290,12 @@ class OrbitAlgo(BaseAlgorithm[OrbitReq, OrbitResp]):
 注意：这里的“状态”指**算法实例对象是否跨请求复用**，不是“进程是否复用”。
 
 通过装饰器 `execution.stateful` 控制：
+
 - `stateful=False`（默认，无状态实例）：每个请求都会创建算法实例并执行，结束后立即 `shutdown()` 释放
 - `stateful=True`（有状态实例）：进程内缓存算法实例，后续请求复用同一个实例，直到进程退出才释放
 
 **业务建议**
+
 - 需要模型常驻、状态持续（例如加载权重/缓存） → `stateful=True`
 - 需要每次请求干净隔离 → `stateful=False`
 
@@ -296,6 +313,7 @@ class OrbitAlgo(BaseAlgorithm[OrbitReq, OrbitResp]):
 - **执行超时（execution timeout）**：work 已开始运行但超时，必须强制终止执行进程以释放资源（硬超时）。
 
 当前 SDK 使用 `timeout_s` 作为每次调用的超时上限：
+
 - 算法级默认：`execution.timeout_s`
 - 请求级覆盖：`ExecutionRequest.timeout_s`
 - 生效规则：两者取最小值（如果请求未传，则使用算法默认）
@@ -305,12 +323,14 @@ class OrbitAlgo(BaseAlgorithm[OrbitReq, OrbitResp]):
 ### 7.2 InProcessExecutor 的限制
 
 `InProcessExecutor` 在同一进程内执行 Python 代码，**无法做到可靠硬超时**（无法安全地强杀正在运行的函数而不破坏进程状态）。因此：
+
 - 仅建议用于开发/测试
 - 生产如需硬超时，请使用多进程执行器（共享池/独立池）
 
 ### 7.3 共享池/独立池如何做到硬超时
 
 为了硬超时，我们采用 **supervised process pool（自管 worker 进程）** 的思想：
+
 - 主进程维护固定数量的 worker 进程（共享池全局 N 个；独立池每算法 N 个）
 - 每个 work 都在某个 worker 进程里执行
 - 当某个 work 超时：
@@ -321,6 +341,7 @@ class OrbitAlgo(BaseAlgorithm[OrbitReq, OrbitResp]):
 这能确保：超时计算占用的 CPU/GPU/内存随进程结束而释放（无需依赖算法自身清理逻辑）。
 
 **进程树终止（可选）**
+
 - 通过执行器构造参数 `kill_tree=True` 开启
 - Windows 使用 `taskkill /T /F`，Unix 使用 `setsid + killpg` 终止进程组
 - 适合算法内部会派生子进程的场景
@@ -378,6 +399,7 @@ python -c "from algo_sdk.http import Server; Server.run()"
 ### 8.2 推荐的 `server.run()` 行为
 
 `server.run()` 应该完成以下流程：
+
 1. 读取环境变量（如 `ALGO_MODULES/SERVICE_HOST/SERVICE_PORT/EXECUTOR_*`）
 2. 导入算法模块（触发 `@Algorithm` 注册）
 3. 创建 `AlgorithmHttpService`（默认 `DispatchingExecutor`）
