@@ -8,6 +8,7 @@
    - [x] 结构化日志：写入 `requestId/traceId/algo/version/worker_pid/duration_ms/status/error_type`。
    - [x] Metrics 基础实现：请求总数/失败数、延迟直方图、队列等待直方图（见 `src/algo_sdk/observability/metrics.py`）。
    - [x] Tracing 基础实现：执行 span 与 `queue_wait/duration` 字段（见 `src/algo_sdk/observability/tracing.py`）。
+   - [x] Metrics 输出：提供 Prometheus 文本与 OpenTelemetry JSON 输出（见 `src/algo_sdk/observability/metrics.py`）。
    - [ ] 队列长度、活跃 worker 数等运行态指标仍未实现。
 
 2. **上下文透传**
@@ -37,6 +38,7 @@
 - `InProcessExecutor` / `ProcessPoolExecutor` / `IsolatedProcessPoolExecutor` / `DispatchingExecutor`
   - [x] 统一的结构化日志与队列等待时长统计。
   - [ ] per-algo 维度的运行态指标上报仍需接入到实际监控系统。
+  - [x] 服务启动侧默认接入观测 hooks（见 `src/algo_core_service/main.py`）。
 
 ## 建议交付拆分（可选）
 
