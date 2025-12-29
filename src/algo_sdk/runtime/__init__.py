@@ -7,6 +7,7 @@ from .context import (
     reset_execution_context,
     set_execution_context,
 )
+from .service_runtime import ServiceRuntime
 
 __all__ = [
     "ContextTokens",
@@ -16,4 +17,5 @@ __all__ = [
     "get_current_trace_id",
     "reset_execution_context",
     "set_execution_context",
+    "ServiceRuntime",
 ]

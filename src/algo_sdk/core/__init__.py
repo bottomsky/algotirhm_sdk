@@ -24,6 +24,16 @@ from .metadata import (
     ExecutionMode,
 )
 from .registry import AlgorithmRegistry, get_registry
+from .service_lifecycle import (
+    AlreadyInStateError,
+    InvalidTransitionError,
+    ServiceLifecycleContext,
+    ServiceLifecycleError,
+    ServiceLifecycleHookProtocol,
+    ServiceLifecyclePhase,
+    ServiceLifecycleProtocol,
+    ServiceState,
+)
 
 __all__ = [
     "AlgorithmError",
@@ -48,4 +58,12 @@ __all__ = [
     "DispatchingExecutor",
     "IsolatedProcessPoolExecutor",
     "ProcessPoolExecutor",
+    "ServiceState",
+    "ServiceLifecyclePhase",
+    "ServiceLifecycleContext",
+    "ServiceLifecycleError",
+    "AlreadyInStateError",
+    "InvalidTransitionError",
+    "ServiceLifecycleHookProtocol",
+    "ServiceLifecycleProtocol",
 ]

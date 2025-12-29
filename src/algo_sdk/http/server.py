@@ -14,11 +14,17 @@ from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 from fastapi.responses import PlainTextResponse
 
+from ..core.service_lifecycle import (
+    AlreadyInStateError,
+    InvalidTransitionError,
+    ServiceState,
+)
 from ..core.executor import DispatchingExecutor
 from ..core.registry import AlgorithmRegistry, get_registry
 from ..observability.metrics import InMemoryMetrics
 from ..observability.tracing import InMemoryTracer
 from ..protocol.models import AlgorithmRequest, api_error, api_success
+from ..runtime import ServiceRuntime
 from .service import AlgorithmHttpService, ObservationHooks
 
 _LOGGER = logging.getLogger(__name__)
@@ -121,19 +127,28 @@ def create_app(registry: Optional[AlgorithmRegistry] = None) -> FastAPI:
     service = AlgorithmHttpService(
         registry=reg, executor=_build_executor_from_env(), observation=hooks
     )
+    runtime = ServiceRuntime(
+        on_provisioning=lambda _: service.start(),
+        on_shutdown=lambda _: service.shutdown(),
+    )
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
-        app.state.ready = False
-        service.start()
-        app.state.ready = True
+        app.state.runtime = runtime
         try:
+            await runtime.provisioning(reason="startup")
+            await runtime.ready(reason="startup")
+            await runtime.running(reason="startup")
             yield
         finally:
-            app.state.ready = False
-            service.shutdown()
+            try:
+                await runtime.shutdown(reason="shutdown")
+            except AlreadyInStateError:
+                pass
 
     app = FastAPI(title="Algorithm Service", lifespan=lifespan)
+
+    admin_enabled = _get_env_bool("SERVICE_ADMIN_ENABLED") or False
 
     @app.get("/healthz")
     async def healthz():
@@ -143,9 +158,12 @@ def create_app(registry: Optional[AlgorithmRegistry] = None) -> FastAPI:
     @app.get("/readyz")
     async def readyz():
         """Readiness probe."""
-        if not getattr(app.state, "ready", False):
+        service_runtime: ServiceRuntime | None = getattr(app.state, "runtime", None)
+        if service_runtime is None or not service_runtime.accepting_requests:
+            state = service_runtime.state.value if service_runtime else "Unknown"
             return JSONResponse(
-                status_code=503, content={"status": "not_ready"}
+                status_code=503,
+                content={"status": "not_ready", "state": state},
             )
         return {"status": "ready"}
 
@@ -188,11 +206,84 @@ def create_app(registry: Optional[AlgorithmRegistry] = None) -> FastAPI:
         name: str, version: str, request: AlgorithmRequest
     ):
         """Execute a specific algorithm."""
+        service_runtime: ServiceRuntime | None = getattr(app.state, "runtime", None)
+        if service_runtime is not None and not service_runtime.accepting_requests:
+            state = service_runtime.state
+            status_code = 503
+            if state is ServiceState.DRAINING:
+                status_code = 429
+            envelope = api_error(
+                code=status_code,
+                message=f"service not accepting requests: {state.value}",
+                request_id=request.requestId,
+                context=request.context,
+            )
+            return JSONResponse(
+                status_code=status_code, content=envelope.model_dump()
+            )
         try:
             response = service.invoke(name, version, request)
             return response
         except Exception as e:
             return api_error(code=500, message=str(e))
+
+    if admin_enabled:
+
+        @app.get("/admin/lifecycle/state")
+        async def lifecycle_state():
+            service_runtime: ServiceRuntime | None = getattr(app.state, "runtime", None)
+            if service_runtime is None:
+                return JSONResponse(
+                    status_code=503,
+                    content={"status": "not_ready", "state": "Unknown"},
+                )
+            return {
+                "state": service_runtime.state.value,
+                "accepting_requests": service_runtime.accepting_requests,
+            }
+
+        def _lifecycle_error(exc: Exception) -> JSONResponse:
+            if isinstance(exc, (AlreadyInStateError, InvalidTransitionError)):
+                return JSONResponse(
+                    status_code=409,
+                    content={"error": type(exc).__name__, "message": str(exc)},
+                )
+            return JSONResponse(
+                status_code=500,
+                content={"error": type(exc).__name__, "message": str(exc)},
+            )
+
+        @app.post("/admin/lifecycle/degraded")
+        async def lifecycle_degraded():
+            try:
+                await runtime.degraded(reason="admin")
+                return {"state": runtime.state.value}
+            except Exception as exc:
+                return _lifecycle_error(exc)
+
+        @app.post("/admin/lifecycle/draining")
+        async def lifecycle_draining():
+            try:
+                await runtime.draining(reason="admin")
+                return {"state": runtime.state.value}
+            except Exception as exc:
+                return _lifecycle_error(exc)
+
+        @app.post("/admin/lifecycle/running")
+        async def lifecycle_running():
+            try:
+                await runtime.running(reason="admin")
+                return {"state": runtime.state.value}
+            except Exception as exc:
+                return _lifecycle_error(exc)
+
+        @app.post("/admin/lifecycle/shutdown")
+        async def lifecycle_shutdown():
+            try:
+                await runtime.shutdown(reason="admin")
+                return {"state": runtime.state.value}
+            except Exception as exc:
+                return _lifecycle_error(exc)
 
     return app
 
