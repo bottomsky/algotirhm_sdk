@@ -3,11 +3,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Iterable
 
-from algo_sdk.core import (
-    AlgorithmRegistry,
-    ExecutorProtocol,
-    ServiceLifecycleHookProtocol,
-)
+from algo_sdk.core.executor import ExecutorProtocol
+from algo_sdk.core.registry import AlgorithmRegistry
+from algo_sdk.core.service_lifecycle import ServiceLifecycleHookProtocol
 from algo_sdk.http import (
     AlgorithmHttpService,
     AlgorithmHttpServiceHook,
