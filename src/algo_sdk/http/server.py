@@ -21,12 +21,8 @@ from ..core.service_lifecycle import (
 )
 from ..core.executor import DispatchingExecutor
 from ..core.registry import AlgorithmRegistry, get_registry
-from ..observability.metrics import InMemoryMetrics
-from ..observability.tracing import InMemoryTracer
 from ..protocol.models import AlgorithmRequest, api_error, api_success
-from ..runtime import ServiceRuntime
-from .lifecycle_hooks import AlgorithmHttpServiceHook
-from .service import AlgorithmHttpService, ObservationHooks
+from ..runtime import ServiceRuntime, build_service_runtime
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -105,30 +101,13 @@ def create_app(registry: Optional[AlgorithmRegistry] = None) -> FastAPI:
     """Create and configure the FastAPI application."""
     reg = registry or get_registry()
 
-    metrics_store = InMemoryMetrics()
-    tracer_store = InMemoryTracer()
-
-    # Configure hooks for metrics and tracing
-    hooks = ObservationHooks(
-        on_start=lambda req: (
-            metrics_store.on_start(req),
-            tracer_store.on_start(req),
-        ),
-        on_complete=lambda req, res: (
-            metrics_store.on_complete(req, res),
-            tracer_store.on_complete(req, res),
-        ),
-        on_error=lambda req, res: (
-            metrics_store.on_error(req, res),
-            tracer_store.on_error(req, res),
-        ),
+    bundle = build_service_runtime(
+        registry=reg,
+        executor=_build_executor_from_env(),
     )
-
-    # Initialize service
-    service = AlgorithmHttpService(
-        registry=reg, executor=_build_executor_from_env(), observation=hooks
-    )
-    runtime = ServiceRuntime(hooks=[AlgorithmHttpServiceHook(service)])
+    service = bundle.service
+    runtime = bundle.runtime
+    metrics_store = bundle.metrics
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
