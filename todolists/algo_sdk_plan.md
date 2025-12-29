@@ -1,11 +1,13 @@
 # algo_sdk 開發規劃（protocol/core/decorators）
 
 ## 前置假設
+
 - 使用根目錄 `.venv` 內的解釋器與環境；依賴新增統一用 `uv add`。
 - 代碼佈局：源碼 `src/`、測試 `tests/`、文檔 `docs/`；遵循 `Python開發規範.md`。
 - 以 Agents.md 設計和 docs/algo_core_design.md 為基線，不偏離協議/接口。
 
 ## 執行步驟與節點
+
 - [ ] 1) 基線準備
   - [ ] 確認虛擬環境可用，`pyproject.toml` 依賴同步；補充必要的 dev 依賴（如測試/型別工具）。
   - [x] 建立/確認測試骨架：`tests/protocol/`、`tests/core/`、`tests/decorators/`。
