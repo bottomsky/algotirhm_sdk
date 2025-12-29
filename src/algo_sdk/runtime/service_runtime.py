@@ -4,7 +4,7 @@ import inspect
 import logging
 import time
 from collections.abc import Iterable
-from typing import Awaitable, Callable
+from typing import Awaitable
 
 from algo_sdk.core.service_lifecycle import (
     AlreadyInStateError,
@@ -18,9 +18,6 @@ from algo_sdk.core.service_lifecycle import (
 
 _LOGGER = logging.getLogger(__name__)
 
-LifecycleAction = Callable[[ServiceLifecycleContext], Awaitable[None] | None]
-
-
 async def _maybe_await(result: Awaitable[None] | None) -> None:
     if result is None:
         return
@@ -33,7 +30,8 @@ class ServiceRuntime(ServiceLifecycleProtocol):
     Default implementation of ServiceLifecycleProtocol.
 
     - Executes lifecycle phases under a single async lock.
-    - Runs hooks with descending priority for before, and reverse order for after.
+    - Runs hooks with descending priority for before, and reverse order for
+      after.
     - If any before hook fails, blocks the transition.
     - After hook failures are logged and never block.
     """
@@ -42,12 +40,6 @@ class ServiceRuntime(ServiceLifecycleProtocol):
         self,
         *,
         hooks: Iterable[ServiceLifecycleHookProtocol] | None = None,
-        on_provisioning: LifecycleAction | None = None,
-        on_ready: LifecycleAction | None = None,
-        on_running: LifecycleAction | None = None,
-        on_degraded: LifecycleAction | None = None,
-        on_draining: LifecycleAction | None = None,
-        on_shutdown: LifecycleAction | None = None,
         logger: logging.Logger | None = None,
     ) -> None:
         import asyncio
@@ -55,14 +47,6 @@ class ServiceRuntime(ServiceLifecycleProtocol):
         self._lock = asyncio.Lock()
         self._state = ServiceState.CREATED
         self._hooks = list(hooks) if hooks is not None else []
-        self._actions: dict[ServiceLifecyclePhase, LifecycleAction | None] = {
-            ServiceLifecyclePhase.PROVISIONING: on_provisioning,
-            ServiceLifecyclePhase.READY: on_ready,
-            ServiceLifecyclePhase.RUNNING: on_running,
-            ServiceLifecyclePhase.DEGRADED: on_degraded,
-            ServiceLifecyclePhase.DRAINING: on_draining,
-            ServiceLifecyclePhase.SHUTDOWN: on_shutdown,
-        }
         self._logger = logger or _LOGGER
 
     def add_hook(self, hook: ServiceLifecycleHookProtocol) -> None:
@@ -185,14 +169,6 @@ class ServiceRuntime(ServiceLifecycleProtocol):
                         raise
 
                 self._state = to_state
-                action = self._actions.get(phase)
-                if action is not None:
-                    try:
-                        await _maybe_await(action(ctx))
-                    except BaseException as exc:
-                        ctx.exc_main = exc
-                        self._state = from_state
-                        raise
             except BaseException as exc:
                 if ctx.exc_before is None and ctx.exc_main is None:
                     ctx.exc_main = exc

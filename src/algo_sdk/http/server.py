@@ -25,6 +25,7 @@ from ..observability.metrics import InMemoryMetrics
 from ..observability.tracing import InMemoryTracer
 from ..protocol.models import AlgorithmRequest, api_error, api_success
 from ..runtime import ServiceRuntime
+from .lifecycle_hooks import AlgorithmHttpServiceHook
 from .service import AlgorithmHttpService, ObservationHooks
 
 _LOGGER = logging.getLogger(__name__)
@@ -127,10 +128,7 @@ def create_app(registry: Optional[AlgorithmRegistry] = None) -> FastAPI:
     service = AlgorithmHttpService(
         registry=reg, executor=_build_executor_from_env(), observation=hooks
     )
-    runtime = ServiceRuntime(
-        on_provisioning=lambda _: service.start(),
-        on_shutdown=lambda _: service.shutdown(),
-    )
+    runtime = ServiceRuntime(hooks=[AlgorithmHttpServiceHook(service)])
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
