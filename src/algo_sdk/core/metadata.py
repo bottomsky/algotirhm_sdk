@@ -16,6 +16,12 @@ class ExecutionMode(Enum):
     IN_PROCESS = "in_process"
 
 
+class AlgorithmType(str, Enum):
+    PLANNING = "Planning"
+    PREPARE = "Prepare"
+    PRECITION = "Precition"
+
+
 @dataclass(frozen=True, slots=True)
 class ExecutionConfig:
     """Desired execution hints recorded with the algorithm."""
@@ -34,6 +40,7 @@ class AlgorithmSpec(Generic[TInput, TOutput]):
 
     name: str
     version: str
+    algorithm_type: AlgorithmType
     description: str | None
     input_model: type[TInput]
     output_model: type[TOutput]

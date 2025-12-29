@@ -12,12 +12,10 @@ T = TypeVar("T")
 
 class AlgorithmContext(_PydanticBaseModel):
     """Shared context carried with every algorithm invocation."""
-
     traceId: Optional[str] = None
     tenantId: Optional[str] = None
     userId: Optional[str] = None
     extra: CtxExtra = Field(default_factory=dict)
-
     model_config = ConfigDict(extra="ignore", populate_by_name=True)
 
 

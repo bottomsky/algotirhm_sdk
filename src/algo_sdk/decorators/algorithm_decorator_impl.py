@@ -14,6 +14,7 @@ from algo_sdk.core import (
     ExecutionMode,
     get_registry,
     AlgorithmLifecycleProtocol,
+    AlgorithmType,
 )
 from algo_sdk.core.registry import AlgorithmRegistry
 
@@ -31,6 +32,7 @@ class DefaultAlgorithmDecorator:
         *,
         name: str,
         version: str,
+        algorithm_type: AlgorithmType | str,
         description: str | None = None,
         execution: dict[str, object] | None = None,
     ) -> Callable[
@@ -41,11 +43,12 @@ class DefaultAlgorithmDecorator:
             AlgorithmLifecycleProtocol[BaseModel, BaseModel]
         ],
     ]:
-        """Register a  class-based algorithm.
+        """Register a class-based algorithm.
 
         Args:
             name: Algorithm name
             version: Algorithm version
+            algorithm_type: Algorithm type (Planning, Prepare, Precition)
             description: Optional description
             execution: Optional execution config dict
 
@@ -55,6 +58,14 @@ class DefaultAlgorithmDecorator:
         if not name or not version:
             raise AlgorithmValidationError(
                 "name and version are required for registration")
+
+        if isinstance(algorithm_type, str):
+            try:
+                algorithm_type = AlgorithmType(algorithm_type)
+            except ValueError:
+                raise AlgorithmValidationError(
+                    f"Invalid algorithm_type: {algorithm_type}. "
+                    f"Must be one of {[t.value for t in AlgorithmType]}")
 
         exec_config = self._build_execution_config(execution)
 
@@ -66,6 +77,7 @@ class DefaultAlgorithmDecorator:
                     target,
                     name=name,
                     version=version,
+                    algorithm_type=algorithm_type,
                     description=description,
                     exec_config=exec_config,
                 )
@@ -136,6 +148,7 @@ class DefaultAlgorithmDecorator:
         *,
         name: str,
         version: str,
+        algorithm_type: AlgorithmType,
         description: str | None,
         exec_config: ExecutionConfig,
     ) -> AlgorithmSpec[BaseModel, BaseModel]:
@@ -169,6 +182,7 @@ class DefaultAlgorithmDecorator:
         return AlgorithmSpec(
             name=name,
             version=version,
+            algorithm_type=algorithm_type,
             description=description,
             input_model=input_model,
             output_model=output_model,
@@ -183,6 +197,7 @@ class DefaultAlgorithmDecorator:
         *,
         name: str,
         version: str,
+        algorithm_type: AlgorithmType,
         description: str | None,
         exec_config: ExecutionConfig,
     ) -> AlgorithmSpec[BaseModel, BaseModel]:
@@ -196,6 +211,7 @@ class DefaultAlgorithmDecorator:
         return AlgorithmSpec(
             name=name,
             version=version,
+            algorithm_type=algorithm_type,
             description=description,
             input_model=input_model,
             output_model=output_model,
