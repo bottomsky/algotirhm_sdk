@@ -21,7 +21,7 @@ _metrics = InMemoryMetrics()
 _tracer = InMemoryTracer()
 
 
-def load_modules(modules: List[str]) -> None:
+def load_algorithm_modules(modules: List[str]) -> None:
     """Import modules to trigger algorithm registration."""
     for module_path in modules:
         if not module_path:
@@ -136,7 +136,7 @@ def run():
     # Load modules to register algorithms
     modules_str = os.getenv("ALGO_MODULES", "")
     if modules_str:
-        load_modules([m.strip() for m in modules_str.split(",")])
+        load_algorithm_modules([m.strip() for m in modules_str.split(",")])
 
     app = create_app()
     uvicorn.run(app, host=host, port=port)

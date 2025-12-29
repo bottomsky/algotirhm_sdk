@@ -86,7 +86,7 @@ class AlgorithmHttpService:
         )
 
         self._emit_start(exec_request)
-        result = self._executor.submit(exec_request)
+        result: ExecutionResult[Any] = self._executor.submit(exec_request)
         if result.ended_at is None:
             result.ended_at = self._now().timestamp()
 
