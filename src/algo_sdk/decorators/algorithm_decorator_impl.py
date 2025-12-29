@@ -32,7 +32,7 @@ class DefaultAlgorithmDecorator:
         *,
         name: str,
         version: str,
-        algorithm_type: AlgorithmType | str,
+        algorithm_type: AlgorithmType | str = AlgorithmType.PRECITION,
         description: str | None = None,
         execution: dict[str, object] | None = None,
     ) -> Callable[
@@ -48,7 +48,7 @@ class DefaultAlgorithmDecorator:
         Args:
             name: Algorithm name
             version: Algorithm version
-            algorithm_type: Algorithm type (Planning, Prepare, Precition)
+            algorithm_type: Optional algorithm type (Planning, Prepare, Precition)
             description: Optional description
             execution: Optional execution config dict
 

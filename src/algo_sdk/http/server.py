@@ -1,12 +1,17 @@
 from __future__ import annotations
 
+import logging
 import importlib
 import os
+from contextlib import asynccontextmanager
+from dataclasses import asdict
+from enum import Enum
 from typing import List, Optional
 
 import uvicorn
 from dotenv import load_dotenv
 from fastapi import FastAPI
+from fastapi.responses import JSONResponse
 from fastapi.responses import PlainTextResponse
 
 from ..core.executor import DispatchingExecutor
@@ -16,9 +21,65 @@ from ..observability.tracing import InMemoryTracer
 from ..protocol.models import AlgorithmRequest, api_error, api_success
 from .service import AlgorithmHttpService, ObservationHooks
 
-# Initialize global metrics and tracer
-_metrics = InMemoryMetrics()
-_tracer = InMemoryTracer()
+_LOGGER = logging.getLogger(__name__)
+
+
+def _get_env_int(name: str) -> int | None:
+    raw = os.getenv(name)
+    if raw is None or not raw.strip():
+        return None
+    return int(raw)
+
+
+def _get_env_float(name: str) -> float | None:
+    raw = os.getenv(name)
+    if raw is None or not raw.strip():
+        return None
+    return float(raw)
+
+
+def _get_env_bool(name: str) -> bool | None:
+    raw = os.getenv(name)
+    if raw is None or not raw.strip():
+        return None
+    raw = raw.strip().lower()
+    if raw in {"1", "true", "yes", "y", "on"}:
+        return True
+    if raw in {"0", "false", "no", "n", "off"}:
+        return False
+    raise ValueError(f"Invalid bool env var {name}={raw!r}")
+
+
+def _build_executor_from_env() -> DispatchingExecutor:
+    global_max_workers = _get_env_int("EXECUTOR_GLOBAL_MAX_WORKERS")
+    global_queue_size = _get_env_int("EXECUTOR_GLOBAL_QUEUE_SIZE")
+    global_kill_tree = _get_env_bool("EXECUTOR_KILL_TREE")
+    global_kill_grace_s = _get_env_float("EXECUTOR_KILL_GRACE_S")
+
+    kwargs: dict[str, object] = {}
+    if global_max_workers is not None:
+        kwargs["global_max_workers"] = global_max_workers
+    if global_queue_size is not None:
+        kwargs["global_queue_size"] = global_queue_size
+    if global_kill_tree is not None:
+        kwargs["global_kill_tree"] = global_kill_tree
+    if global_kill_grace_s is not None:
+        kwargs["global_kill_grace_s"] = global_kill_grace_s
+
+    return DispatchingExecutor(**kwargs)  # type: ignore[arg-type]
+
+
+def _execution_to_dict(execution: object) -> dict[str, object]:
+    payload: dict[str, object] = {}
+    if hasattr(execution, "__dataclass_fields__"):
+        payload = asdict(execution)  # type: ignore[arg-type]
+    elif hasattr(execution, "__dict__"):
+        payload = dict(execution.__dict__)  # type: ignore[attr-defined]
+
+    for key, value in list(payload.items()):
+        if isinstance(value, Enum):
+            payload[key] = value.value
+    return payload
 
 
 def load_algorithm_modules(modules: List[str]) -> None:
@@ -28,35 +89,51 @@ def load_algorithm_modules(modules: List[str]) -> None:
             continue
         try:
             importlib.import_module(module_path)
-            print(f"Loaded module: {module_path}")
-        except Exception as e:
-            print(f"Failed to load module {module_path}: {e}")
+            _LOGGER.info("Loaded algorithm module: %s", module_path)
+        except Exception:
+            _LOGGER.exception("Failed to load module %s", module_path)
 
 
 def create_app(registry: Optional[AlgorithmRegistry] = None) -> FastAPI:
     """Create and configure the FastAPI application."""
     reg = registry or get_registry()
 
+    metrics_store = InMemoryMetrics()
+    tracer_store = InMemoryTracer()
+
     # Configure hooks for metrics and tracing
     hooks = ObservationHooks(
-        on_start=lambda req: (_metrics.on_start(req), _tracer.on_start(req)),
+        on_start=lambda req: (
+            metrics_store.on_start(req),
+            tracer_store.on_start(req),
+        ),
         on_complete=lambda req, res: (
-            _metrics.on_complete(req, res),
-            _tracer.on_complete(req, res),
+            metrics_store.on_complete(req, res),
+            tracer_store.on_complete(req, res),
         ),
         on_error=lambda req, res: (
-            _metrics.on_error(req, res),
-            _tracer.on_error(req, res),
+            metrics_store.on_error(req, res),
+            tracer_store.on_error(req, res),
         ),
     )
 
     # Initialize service
     service = AlgorithmHttpService(
-        registry=reg, executor=DispatchingExecutor(), observation=hooks
+        registry=reg, executor=_build_executor_from_env(), observation=hooks
     )
-    service.start()
 
-    app = FastAPI(title="Algorithm Service")
+    @asynccontextmanager
+    async def lifespan(app: FastAPI):
+        app.state.ready = False
+        service.start()
+        app.state.ready = True
+        try:
+            yield
+        finally:
+            app.state.ready = False
+            service.shutdown()
+
+    app = FastAPI(title="Algorithm Service", lifespan=lifespan)
 
     @app.get("/healthz")
     async def healthz():
@@ -66,12 +143,16 @@ def create_app(registry: Optional[AlgorithmRegistry] = None) -> FastAPI:
     @app.get("/readyz")
     async def readyz():
         """Readiness probe."""
+        if not getattr(app.state, "ready", False):
+            return JSONResponse(
+                status_code=503, content={"status": "not_ready"}
+            )
         return {"status": "ready"}
 
     @app.get("/metrics")
     async def metrics():
         """Prometheus metrics endpoint."""
-        return PlainTextResponse(_metrics.render_prometheus_text())
+        return PlainTextResponse(metrics_store.render_prometheus_text())
 
     @app.get("/algorithms")
     async def list_algorithms():
@@ -96,7 +177,7 @@ def create_app(registry: Optional[AlgorithmRegistry] = None) -> FastAPI:
                 data={
                     "input": spec.input_schema(),
                     "output": spec.output_schema(),
-                    "execution": spec.execution.model_dump(),
+                    "execution": _execution_to_dict(spec.execution),
                 }
             )
         except Exception as e:
@@ -112,10 +193,6 @@ def create_app(registry: Optional[AlgorithmRegistry] = None) -> FastAPI:
             return response
         except Exception as e:
             return api_error(code=500, message=str(e))
-
-    @app.on_event("shutdown")
-    def shutdown_event():
-        service.shutdown()
 
     return app
 

@@ -40,13 +40,13 @@ class AlgorithmSpec(Generic[TInput, TOutput]):
 
     name: str
     version: str
-    algorithm_type: AlgorithmType
     description: str | None
     input_model: type[TInput]
     output_model: type[TOutput]
     entrypoint: Callable[[TInput],
                          TOutput] | type[AlgorithmLifecycleProtocol[TInput,
                                                                     TOutput]]
+    algorithm_type: AlgorithmType = AlgorithmType.PRECITION
     execution: ExecutionConfig = field(default_factory=ExecutionConfig)
     is_class: bool = False
 
