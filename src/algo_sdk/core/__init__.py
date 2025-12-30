@@ -24,7 +24,7 @@ from .metadata import (
     ExecutionMode,
 )
 from .registry import AlgorithmRegistry, get_registry
-from .service_lifecycle import (
+from ..runtime.protocol import (
     AlreadyInStateError,
     InvalidTransitionError,
     ServiceLifecycleContext,

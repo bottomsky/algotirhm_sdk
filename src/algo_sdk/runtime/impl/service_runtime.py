@@ -6,7 +6,7 @@ import time
 from collections.abc import Iterable
 from typing import Awaitable
 
-from algo_sdk.core.service_lifecycle import (
+from ..protocol import (
     AlreadyInStateError,
     InvalidTransitionError,
     ServiceLifecycleContext,

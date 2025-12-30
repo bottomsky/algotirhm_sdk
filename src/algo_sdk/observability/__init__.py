@@ -1,30 +1,18 @@
 from __future__ import annotations
 
-from typing import Any, Protocol
+from typing import Any
 
-from ..core.executor import ExecutionRequest, ExecutionResult
-from ..http import ObservationHooks
-from .metrics import (
+from ..core import ExecutionRequest, ExecutionResult
+from ..http.impl.service import ObservationHooks
+from .impl.metrics import (
     AlgorithmMetricsSnapshot,
     HistogramSnapshot,
     InMemoryMetrics,
     build_otel_metrics,
     render_prometheus_text,
 )
-from .tracing import InMemoryTracer, Span
-
-
-class ObservationRecorder(Protocol):
-    def on_start(self, request: ExecutionRequest[Any, Any]) -> None:
-        ...
-
-    def on_complete(self, request: ExecutionRequest[Any, Any],
-                    result: ExecutionResult[Any]) -> None:
-        ...
-
-    def on_error(self, request: ExecutionRequest[Any, Any],
-                 result: ExecutionResult[Any]) -> None:
-        ...
+from .impl.tracing import InMemoryTracer, Span
+from .protocol import ObservationRecorder
 
 
 def create_observation_hooks(

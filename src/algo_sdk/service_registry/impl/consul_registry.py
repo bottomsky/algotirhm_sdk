@@ -11,15 +11,15 @@ from collections.abc import Iterable, Mapping
 from http.client import HTTPResponse
 from typing import ClassVar, cast, override
 
-from .config import ServiceRegistryConfig, load_config
-from .errors import (
+from ..config import ServiceRegistryConfig, load_config
+from ..errors import (
     KVOperationError,
     ServiceDeregistrationError,
     ServiceDiscoveryError,
     ServiceRegistrationError,
     ServiceRegistryConnectionError,
 )
-from .protocol import (
+from ..protocol import (
     HealthCheck,
     ServiceInstance,
     ServiceRegistration,

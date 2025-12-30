@@ -10,7 +10,7 @@ from algo_sdk.core import AlgorithmSpec, BaseModel, get_registry
 from algo_sdk.core.registry import AlgorithmRegistry
 
 from .config import ServiceRegistryConfig, load_config
-from .consul_registry import ConsulRegistry
+from .impl.consul_registry import ConsulRegistry
 from .errors import ServiceRegistryError
 from .protocol import ServiceRegistryProtocol
 

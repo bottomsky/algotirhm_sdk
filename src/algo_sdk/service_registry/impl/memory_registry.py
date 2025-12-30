@@ -6,13 +6,13 @@ import threading
 from collections import defaultdict
 from typing import override
 
-from .errors import (
+from ..errors import (
     KVOperationError,
     ServiceDeregistrationError,
     ServiceDiscoveryError,
     ServiceRegistrationError,
 )
-from .protocol import (
+from ..protocol import (
     ServiceInstance,
     ServiceRegistration,
     BaseServiceRegistry,

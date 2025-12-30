@@ -5,14 +5,12 @@ from typing import Iterable
 
 from algo_sdk.core.executor import ExecutorProtocol
 from algo_sdk.core.registry import AlgorithmRegistry
-from algo_sdk.core.service_lifecycle import ServiceLifecycleHookProtocol
-from algo_sdk.http import (
-    AlgorithmHttpService,
-    AlgorithmHttpServiceHook,
-    ObservationHooks,
-)
+from algo_sdk.http.impl.lifecycle_hooks import AlgorithmHttpServiceHook
+from algo_sdk.http.impl.service import AlgorithmHttpService, ObservationHooks
 from algo_sdk.observability import InMemoryMetrics, InMemoryTracer
-from .service_runtime import ServiceRuntime
+
+from .impl.service_runtime import ServiceRuntime
+from .protocol import ServiceLifecycleHookProtocol
 
 
 @dataclass(slots=True)

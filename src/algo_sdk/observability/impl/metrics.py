@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 from threading import Lock
 from typing import Any
 
-from ..core.executor import ExecutionRequest, ExecutionResult
+from ...core import ExecutionRequest, ExecutionResult
 
 DEFAULT_LATENCY_BUCKETS_MS: tuple[float, ...] = (
     5,

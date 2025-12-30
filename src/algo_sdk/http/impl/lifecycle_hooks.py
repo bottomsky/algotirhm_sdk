@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from algo_sdk.core.service_lifecycle import (
+from ...runtime import (
     ServiceLifecycleContext,
     ServiceLifecycleHookProtocol,
     ServiceLifecyclePhase,

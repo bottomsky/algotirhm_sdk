@@ -4,14 +4,14 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any, Callable
 
-from algo_sdk.protocol.models import (
+from ...protocol.models import (
     AlgorithmRequest,
     AlgorithmResponse,
     api_error,
     api_success,
 )
 
-from ..core import (
+from ...core import (
     AlgorithmRegistry,
     DispatchingExecutor,
     ExecutionError,

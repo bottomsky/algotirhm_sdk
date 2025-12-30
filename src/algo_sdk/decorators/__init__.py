@@ -1,3 +1,3 @@
-from .algorithm_decorator_impl import Algorithm, DefaultAlgorithmDecorator
+from ..algorithm_api.decorators import Algorithm, DefaultAlgorithmDecorator
 
 __all__ = ["Algorithm", "DefaultAlgorithmDecorator"]

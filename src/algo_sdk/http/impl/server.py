@@ -14,18 +14,18 @@ from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 from fastapi.responses import PlainTextResponse
 
-from ..core.service_lifecycle import (
+from ...runtime import (
     AlreadyInStateError,
     InvalidTransitionError,
     ServiceLifecycleProtocol,
     ServiceState,
 )
-from ..core.executor import DispatchingExecutor
-from ..core.registry import AlgorithmRegistry, get_registry
-from ..protocol.models import AlgorithmRequest, api_error, api_success
-from ..runtime.factory import build_service_runtime
-from ..service_registry.catalog import fetch_registry_algorithm_catalogs
-from ..service_registry.errors import ServiceRegistryError
+from ...core.executor import DispatchingExecutor
+from ...core.registry import AlgorithmRegistry, get_registry
+from ...protocol.models import AlgorithmRequest, api_error, api_success
+from ...runtime.factory import build_service_runtime
+from ...service_registry.catalog import fetch_registry_algorithm_catalogs
+from ...service_registry.errors import ServiceRegistryError
 
 _LOGGER = logging.getLogger(__name__)
 
