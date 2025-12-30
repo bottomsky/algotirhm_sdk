@@ -6,8 +6,8 @@ from fastapi.testclient import TestClient
 from algo_sdk.core.base_model_impl import BaseModel
 from algo_sdk.core.metadata import AlgorithmSpec, AlgorithmType, ExecutionConfig
 from algo_sdk.core.registry import AlgorithmRegistry
-from algo_sdk.http import server as server_module
-from algo_sdk.http.server import create_app
+from algo_sdk.http import create_app
+from algo_sdk.http.impl import server as server_module
 
 
 class Req(BaseModel):
