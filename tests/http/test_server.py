@@ -6,6 +6,7 @@ from fastapi.testclient import TestClient
 from algo_sdk.core.base_model_impl import BaseModel
 from algo_sdk.core.metadata import AlgorithmSpec, AlgorithmType, ExecutionConfig
 from algo_sdk.core.registry import AlgorithmRegistry
+from algo_sdk.http import server as server_module
 from algo_sdk.http.server import create_app
 
 
@@ -81,3 +82,46 @@ def test_metrics(client):
     response = client.get("/metrics")
     assert response.status_code == 200
     assert "requests_total" in response.text
+
+
+def test_list_registry_algorithms(monkeypatch):
+    registry = AlgorithmRegistry()
+
+    def _fake_fetch_registry_algorithm_catalogs(*, kv_prefix: str):
+        _ = kv_prefix
+        return (
+            [
+                {
+                    "service": "svc-a",
+                    "algorithms": [
+                        {
+                            "name": "algo-1",
+                            "version": "v1",
+                            "description": "demo",
+                        }
+                    ],
+                },
+                {
+                    "service": "svc-b",
+                    "algorithms": [],
+                },
+            ],
+            [],
+        )
+
+    monkeypatch.setattr(
+        server_module,
+        "fetch_registry_algorithm_catalogs",
+        _fake_fetch_registry_algorithm_catalogs,
+    )
+
+    app = create_app(registry)
+    with TestClient(app) as client:
+        response = client.get("/registry/algorithms")
+        assert response.status_code == 200
+        payload = response.json()
+        assert payload["code"] == 0
+        data = payload["data"]
+        assert len(data["catalogs"]) == 2
+        assert len(data["algorithms"]) == 1
+        assert data["algorithms"][0]["service"] == "svc-a"
