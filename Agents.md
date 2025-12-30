@@ -47,6 +47,16 @@ algo-platform/
 - `logging`：结构化异常日志与崩溃事件记录（多进程汇聚）。
 - `service_registry`：按环境变量开关对接 Consul 服务注册。
 
+## 模块设计规范
+
+- 先定义协议：每个模块优先定义 Protocol/接口，放在独立文件（如 protocol.py）或 protocol/ 目录。
+- 如需共享逻辑：定义抽象类继承 Protocol（ABC），只承载通用实现，避免业务副作用。
+- 具体实现：各场景实现类继承抽象类，放在实现目录（如 impl/ 或 concrete/）。
+- 跨模块依赖：其他模块仅依赖 Protocol/抽象类，不直接依赖具体实现。
+- 装配集中：提供独立装配/工厂模块（factory/assembler），负责实现选择与组装（如 ServiceRuntime）。
+- 命名约定：Protocol 以 Protocol 结尾，ABC 以 Base 开头，实现类不加 Base 前缀。
+
+
 ## HTTP 接口
 
 - `GET /algorithms`：算法清单（名称/版本/描述/执行策略等）。
