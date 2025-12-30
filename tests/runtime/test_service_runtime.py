@@ -9,7 +9,7 @@ from algo_sdk.core import (
     ServiceLifecyclePhase,
     ServiceState,
 )
-from algo_sdk.runtime import ServiceRuntime
+from algo_sdk.runtime.impl.service_runtime import ServiceRuntime
 
 
 class _Hook:
