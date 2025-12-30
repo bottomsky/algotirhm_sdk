@@ -29,3 +29,10 @@ class PredictionRequest(CamelBaseModel):
     target_sats: list[SatOrbitVVLHRv]
     sim_time: SimTime
     duration_s: float = Field(alias="duration_s")
+
+
+class PredictionResponseItem(CamelBaseModel):
+    min_distance: float
+    relative_state_vvlh: list[Vector6]
+    sore: float
+    t_nearest_time: SimTime

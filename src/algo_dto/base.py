@@ -58,6 +58,50 @@ class Vector6(_VectorBase):
     size = 6
 
 
+class VVLHRv(Vector6):
+    """VVLH coordinates and rates [rx, ry, rz, vx, vy, vz]."""
+
+    def relative_position_vector(self) -> Vector3:
+        """Returns the relative position as a Vector3."""
+        return Vector3.from_values(*self.root[:3])
+
+    def relative_position_array(self) -> list[float]:
+        """Returns the relative position as a list of 3 floats."""
+        return list(self.root[:3])
+
+    def velocity_vector(self) -> Vector3:
+        """Returns the velocity as a Vector3."""
+        return Vector3.from_values(*self.root[3:])
+
+    def velocity_array(self) -> list[float]:
+        """Returns the velocity as a list of 3 floats."""
+        return list(self.root[3:])
+
+    def update(
+        self,
+        pos: Vector3 | list[float] | None = None,
+        vel: Vector3 | list[float] | None = None,
+    ) -> Self:
+        """Returns a new VVLHRv with updated position and/or velocity."""
+        new_pos = pos if pos is not None else self.relative_position_array()
+        new_vel = vel if vel is not None else self.velocity_array()
+        return self.create(pos=new_pos, vel=new_vel)
+
+    def update_rv(self, rv: Vector6 | list[float]) -> Self:
+        """Returns a new instance from a Vector6 or 6-element array."""
+        data = rv.root if isinstance(rv, Vector6) else list(rv)
+        return self.model_validate(data)
+
+    @classmethod
+    def create(
+        cls, pos: Vector3 | list[float], vel: Vector3 | list[float]
+    ) -> Self:
+        """Creates a VVLHRv from position and velocity vectors or lists."""
+        p_list = pos.root if isinstance(pos, Vector3) else list(pos)
+        v_list = vel.root if isinstance(vel, Vector3) else list(vel)
+        return cls.from_values(*(p_list + v_list))
+
+
 class SimTime(RootModel[list[int]]):
     """Time representation as a fixed-length array
     [year, month, day, hour, minute, second]."""
@@ -149,6 +193,7 @@ __all__ = [
     "Vector3",
     "Vector4",
     "Vector6",
+    "VVLHRv",
     "SimTime",
     "MessageResponse"
 ]
