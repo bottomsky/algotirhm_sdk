@@ -8,6 +8,9 @@ from algo_sdk.core.registry import AlgorithmRegistry
 from algo_sdk.http.impl.lifecycle_hooks import AlgorithmHttpServiceHook
 from algo_sdk.http.impl.service import AlgorithmHttpService, ObservationHooks
 from algo_sdk.observability import InMemoryMetrics, InMemoryTracer
+from algo_sdk.service_registry.config import ServiceRegistryConfig, load_config
+from algo_sdk.service_registry.impl.lifecycle_hooks import ServiceRegistryHook
+from algo_sdk.service_registry.protocol import ServiceRegistryProtocol
 
 from .impl.service_runtime import ServiceRuntime
 from .protocol import ServiceLifecycleHookProtocol
@@ -27,6 +30,9 @@ def build_service_runtime(
     executor: ExecutorProtocol | None = None,
     hooks: Iterable[ServiceLifecycleHookProtocol] | None = None,
     service_hook_priority: int | None = None,
+    service_registry: ServiceRegistryProtocol | None = None,
+    service_registry_config: ServiceRegistryConfig | None = None,
+    service_registry_hook_priority: int | None = None,
 ) -> ServiceRuntimeBundle:
     metrics = InMemoryMetrics()
     tracer = InMemoryTracer()
@@ -52,6 +58,16 @@ def build_service_runtime(
             priority=service_hook_priority,
         )
     ]
+    registry_config = service_registry_config or load_config()
+    if registry_config.enabled:
+        runtime_hooks.append(
+            ServiceRegistryHook(
+                registry=service_registry,
+                config=registry_config,
+                algorithm_registry=registry,
+                priority=service_registry_hook_priority,
+            )
+        )
     if hooks:
         runtime_hooks.extend(hooks)
 

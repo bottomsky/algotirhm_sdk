@@ -48,7 +48,8 @@ class DefaultAlgorithmDecorator:
         Args:
             name: Algorithm name
             version: Algorithm version
-            algorithm_type: Optional algorithm type (Planning, Prepare, Precition)
+            algorithm_type: Optional algorithm type (Planning, Prepare, 
+            Precition)
             description: Optional description
             execution: Optional execution config dict
 
