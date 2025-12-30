@@ -52,6 +52,7 @@ from .protocol import (
     ServiceInstance,
     ServiceRegistration,
     BaseServiceRegistry,
+    ServiceRegistryProtocol,
     ServiceStatus,
 )
 
@@ -61,6 +62,7 @@ __all__ = [
     "load_config",
     # Protocol
     "BaseServiceRegistry",
+    "ServiceRegistryProtocol",
     "ServiceInstance",
     "ServiceRegistration",
     "HealthCheck",

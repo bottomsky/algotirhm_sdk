@@ -5,6 +5,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from enum import Enum
+from typing import Protocol, runtime_checkable
 
 
 class ServiceStatus(Enum):
@@ -59,7 +60,39 @@ class ServiceRegistration:
     health_check: HealthCheck | None = None
 
 
-class BaseServiceRegistry(ABC):
+@runtime_checkable
+class ServiceRegistryProtocol(Protocol):
+    """Protocol for service registry implementations."""
+
+    def register(self, registration: ServiceRegistration) -> None:
+        """Register a service instance."""
+
+    def deregister(self, service_id: str) -> None:
+        """Deregister a service instance."""
+
+    def get_service(self, service_name: str) -> list[ServiceInstance]:
+        """Get all instances of a service."""
+
+    def get_healthy_service(self, service_name: str) -> list[ServiceInstance]:
+        """Get all healthy instances of a service."""
+
+    def set_kv(self, key: str, value: str) -> None:
+        """Set a key-value pair in the registry."""
+
+    def get_kv(self, key: str) -> str | None:
+        """Get a value by key from the registry."""
+
+    def list_kv_prefix(self, prefix: str) -> dict[str, str]:
+        """List key-value entries under a prefix."""
+
+    def delete_kv(self, key: str) -> None:
+        """Delete a key-value pair from the registry."""
+
+    def is_healthy(self) -> bool:
+        """Check if the registry connection is healthy."""
+
+
+class BaseServiceRegistry(ABC, ServiceRegistryProtocol):
     """Abstract base class for service registry implementations.
 
     This class defines the interface for service discovery and registration.
