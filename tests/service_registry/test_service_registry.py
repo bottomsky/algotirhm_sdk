@@ -9,7 +9,9 @@ from unittest.mock import MagicMock, patch
 from algo_sdk.service_registry import (
     ConsulRegistry,
     HealthCheck,
+    MemoryRegistry,
     ServiceRegistration,
+    ServiceRegistryProtocol,
     ServiceRegistryConfig,
     ServiceStatus,
     load_config,
@@ -80,6 +82,11 @@ class TestServiceRegistration:
         assert reg.health_check is not None
         assert reg.health_check.http_endpoint == "/healthz"
         assert reg.health_check.interval_seconds == 15
+
+
+def test_memory_registry_implements_protocol() -> None:
+    registry = MemoryRegistry()
+    assert isinstance(registry, ServiceRegistryProtocol)
 
 
 class TestConsulRegistry:
