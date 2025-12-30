@@ -11,6 +11,7 @@ from algo_sdk.core.registry import AlgorithmRegistry
 
 from .config import ServiceRegistryConfig, load_config
 from .consul_registry import ConsulRegistry
+from .errors import ServiceRegistryError
 from .protocol import BaseServiceRegistry
 
 logger = logging.getLogger(__name__)
@@ -80,3 +81,42 @@ def publish_algorithm_catalog(
     key = kv_key or f"services/{cfg.service_name}/algorithms"
     registry.set_kv(key, json.dumps(payload))
     logger.info("Published algorithm catalog to registry key=%s", key)
+
+
+def fetch_registry_algorithm_catalogs(
+    *,
+    registry: BaseServiceRegistry | None = None,
+    config: ServiceRegistryConfig | None = None,
+    kv_prefix: str = "services/",
+) -> tuple[list[dict[str, object]], list[dict[str, str]]]:
+    """Fetch algorithm catalogs from the registry KV prefix."""
+    cfg = config or load_config()
+    if registry is None:
+        registry = ConsulRegistry(cfg)
+
+    try:
+        entries = registry.list_kv_prefix(kv_prefix)
+    except ServiceRegistryError:
+        raise
+    except Exception as exc:
+        raise ServiceRegistryError(str(exc)) from exc
+
+    catalogs: list[dict[str, object]] = []
+    errors: list[dict[str, str]] = []
+    for key, value in entries.items():
+        if not key.endswith("/algorithms"):
+            continue
+        try:
+            payload = json.loads(value)
+        except json.JSONDecodeError as exc:
+            errors.append({"key": key, "error": str(exc)})
+            continue
+        if not isinstance(payload, dict):
+            errors.append(
+                {"key": key, "error": "catalog payload is not a dict"}
+                )
+            continue
+        payload.setdefault("kv_key", key)
+        catalogs.append(payload)
+
+    return catalogs, errors

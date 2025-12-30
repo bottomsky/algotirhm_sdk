@@ -17,12 +17,15 @@ from fastapi.responses import PlainTextResponse
 from ..core.service_lifecycle import (
     AlreadyInStateError,
     InvalidTransitionError,
+    ServiceLifecycleProtocol,
     ServiceState,
 )
 from ..core.executor import DispatchingExecutor
 from ..core.registry import AlgorithmRegistry, get_registry
 from ..protocol.models import AlgorithmRequest, api_error, api_success
-from ..runtime import ServiceRuntime, build_service_runtime
+from ..runtime.factory import build_service_runtime
+from ..service_registry.catalog import fetch_registry_algorithm_catalogs
+from ..service_registry.errors import ServiceRegistryError
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -135,7 +138,9 @@ def create_app(registry: Optional[AlgorithmRegistry] = None) -> FastAPI:
     @app.get("/readyz")
     async def readyz():
         """Readiness probe."""
-        service_runtime: ServiceRuntime | None = getattr(app.state, "runtime", None)
+        service_runtime: ServiceLifecycleProtocol | None = getattr(
+            app.state, "runtime", None
+        )
         if service_runtime is None or not service_runtime.accepting_requests:
             state = service_runtime.state.value if service_runtime else "Unknown"
             return JSONResponse(
@@ -178,12 +183,47 @@ def create_app(registry: Optional[AlgorithmRegistry] = None) -> FastAPI:
         except Exception as e:
             return api_error(code=404, message=str(e))
 
+    @app.get("/registry/algorithms")
+    async def list_registry_algorithms(prefix: str = "services/"):
+        """List algorithms registered in the service registry."""
+        try:
+            catalogs, errors = fetch_registry_algorithm_catalogs(
+                kv_prefix=prefix
+            )
+        except ServiceRegistryError as exc:
+            return api_error(code=502, message=str(exc))
+
+        algorithms: list[dict[str, object]] = []
+        for catalog in catalogs:
+            service_name = catalog.get("service")
+            items = catalog.get("algorithms", [])
+            if not isinstance(items, list):
+                continue
+            for algo in items:
+                if not isinstance(algo, dict):
+                    continue
+                entry = dict(algo)
+                if service_name:
+                    entry["service"] = service_name
+                entry["kv_key"] = catalog.get("kv_key")
+                algorithms.append(entry)
+
+        return api_success(
+            data={
+                "catalogs": catalogs,
+                "algorithms": algorithms,
+                "errors": errors,
+            }
+        )
+
     @app.post("/algorithms/{name}/{version}")
     async def invoke_algorithm(
         name: str, version: str, request: AlgorithmRequest
     ):
         """Execute a specific algorithm."""
-        service_runtime: ServiceRuntime | None = getattr(app.state, "runtime", None)
+        service_runtime: ServiceLifecycleProtocol | None = getattr(
+            app.state, "runtime", None
+        )
         if service_runtime is not None and not service_runtime.accepting_requests:
             state = service_runtime.state
             status_code = 503
@@ -208,7 +248,9 @@ def create_app(registry: Optional[AlgorithmRegistry] = None) -> FastAPI:
 
         @app.get("/admin/lifecycle/state")
         async def lifecycle_state():
-            service_runtime: ServiceRuntime | None = getattr(app.state, "runtime", None)
+            service_runtime: ServiceLifecycleProtocol | None = getattr(
+                app.state, "runtime", None
+            )
             if service_runtime is None:
                 return JSONResponse(
                     status_code=503,

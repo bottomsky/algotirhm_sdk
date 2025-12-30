@@ -102,6 +102,16 @@ class MemoryRegistry(BaseServiceRegistry):
             return self._kv_store.get(key)
 
     @override
+    def list_kv_prefix(self, prefix: str) -> dict[str, str]:
+        """List key-value entries under a prefix."""
+        with self._lock:
+            return {
+                key: value
+                for key, value in self._kv_store.items()
+                if key.startswith(prefix)
+            }
+
+    @override
     def delete_kv(self, key: str) -> None:
         """Delete a key-value entry."""
         with self._lock:

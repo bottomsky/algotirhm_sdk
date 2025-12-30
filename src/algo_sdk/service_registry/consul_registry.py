@@ -289,6 +289,40 @@ class ConsulRegistry(BaseServiceRegistry):
             raise KVOperationError(msg) from e
 
     @override
+    def list_kv_prefix(self, prefix: str) -> dict[str, str]:
+        """List key-value entries under a prefix from Consul KV store."""
+        url = f"{self._base_url}/v1/kv/{prefix}?recurse=true"
+        entries: dict[str, str] = {}
+
+        try:
+            data = self._http_get(url)
+            if not data:
+                return {}
+            for item in data:
+                key = item.get("Key")
+                if not isinstance(key, str):
+                    continue
+                encoded_value = item.get("Value")
+                if isinstance(encoded_value, str):
+                    raw = base64.b64decode(encoded_value.encode("utf-8"))
+                elif isinstance(encoded_value, (bytes, bytearray)):
+                    raw = base64.b64decode(encoded_value)
+                else:
+                    continue
+                entries[key] = raw.decode("utf-8")
+            return entries
+        except urllib.error.HTTPError as e:
+            if e.code == 404:
+                return {}
+            msg = f"Failed to list KV prefix: {prefix}"
+            logger.exception(msg)
+            raise KVOperationError(msg) from e
+        except Exception as e:
+            msg = f"Failed to list KV prefix: {prefix}"
+            logger.exception(msg)
+            raise KVOperationError(msg) from e
+
+    @override
     def delete_kv(self, key: str) -> None:
         """Delete a key-value pair from Consul KV store.
 

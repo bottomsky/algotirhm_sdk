@@ -153,6 +153,20 @@ class BaseServiceRegistry(ABC):
         """
 
     @abstractmethod
+    def list_kv_prefix(self, prefix: str) -> dict[str, str]:
+        """List key-value entries under a prefix.
+
+        Args:
+            prefix: Key prefix to query
+
+        Returns:
+            Mapping of key to value (decoded as text)
+
+        Raises:
+            ServiceRegistryError: If query fails
+        """
+
+    @abstractmethod
     def delete_kv(self, key: str) -> None:
         """Delete a key-value pair from the registry.
 
