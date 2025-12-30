@@ -3,7 +3,7 @@ from __future__ import annotations
 from pydantic import BaseModel, ConfigDict, Field
 from pydantic.alias_generators import to_camel
 
-from algo_dto.base import Vector6, SimTime
+from algo_dto.base import Vector6, SimTime, VVLHRv, Vector3
 
 
 class CamelBaseModel(BaseModel):
@@ -36,3 +36,21 @@ class PredictionResponseItem(CamelBaseModel):
     relative_state_vvlh: list[Vector6]
     sore: float
     t_nearest_time: SimTime
+
+
+class Planning(CamelBaseModel):
+    sat_id: int
+    vvlh_rv: VVLHRv
+    dwellDis: Vector3
+    dwellTime: Vector3
+    spray_time: int
+    power_density: Vector3
+    miss_dis: int
+
+
+class ProgrammeRequest(CamelBaseModel):
+    sat: SatOrbitJ2000
+    plannings: list[Planning]
+    simt_time: SimTime
+
+

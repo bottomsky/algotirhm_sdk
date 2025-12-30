@@ -7,7 +7,10 @@ from pydantic import BaseModel, ConfigDict, RootModel, field_validator
 from datetime import datetime
 
 
-class _VectorBase(RootModel[list[float]]):
+TVal = TypeVar("TVal", float, int)
+
+
+class _VectorBase(RootModel[list[TVal]], Generic[TVal]):
     """Fixed-length vector that serializes as a JSON array."""
 
     model_config = ConfigDict(frozen=True)
@@ -15,7 +18,7 @@ class _VectorBase(RootModel[list[float]]):
 
     @field_validator("root")
     @classmethod
-    def _validate_length(cls, value: list[float]) -> list[float]:
+    def _validate_length(cls, value: list[TVal]) -> list[TVal]:
         if len(value) != cls.size:
             raise ValueError(
                 f"expected {cls.size} elements, got {len(value)}"
@@ -23,13 +26,13 @@ class _VectorBase(RootModel[list[float]]):
         return value
 
     @classmethod
-    def from_values(cls, *values: float) -> Self:
+    def from_values(cls, *values: TVal) -> Self:
         return cls.model_validate(list(values))
 
-    def to_list(self) -> list[float]:
+    def to_list(self) -> list[TVal]:
         return list(self.root)
 
-    def to_tuple(self) -> tuple[float, ...]:
+    def to_tuple(self) -> tuple[TVal, ...]:
         return tuple(self.root)
 
     def __iter__(self):
@@ -38,23 +41,39 @@ class _VectorBase(RootModel[list[float]]):
     def __len__(self) -> int:
         return len(self.root)
 
-    def __getitem__(self, index: int) -> float:
+    def __getitem__(self, index: int) -> TVal:
         return self.root[index]
 
 
-class Vector2(_VectorBase):
+class Vector2(_VectorBase[float]):
     size = 2
 
 
-class Vector3(_VectorBase):
+class Vector3(_VectorBase[float]):
     size = 3
 
 
-class Vector4(_VectorBase):
+class Vector4(_VectorBase[float]):
     size = 4
 
 
-class Vector6(_VectorBase):
+class Vector6(_VectorBase[float]):
+    size = 6
+
+
+class Vector2i(_VectorBase[int]):
+    size = 2
+
+
+class Vector3i(_VectorBase[int]):
+    size = 3
+
+
+class Vector4i(_VectorBase[int]):
+    size = 4
+
+
+class Vector6i(_VectorBase[int]):
     size = 6
 
 
@@ -193,6 +212,10 @@ __all__ = [
     "Vector3",
     "Vector4",
     "Vector6",
+    "Vector2i",
+    "Vector3i",
+    "Vector4i",
+    "Vector6i",
     "VVLHRv",
     "SimTime",
     "MessageResponse"
