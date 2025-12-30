@@ -12,7 +12,7 @@ from algo_sdk.core.registry import AlgorithmRegistry
 from .config import ServiceRegistryConfig, load_config
 from .consul_registry import ConsulRegistry
 from .errors import ServiceRegistryError
-from .protocol import BaseServiceRegistry
+from .protocol import ServiceRegistryProtocol
 
 logger = logging.getLogger(__name__)
 
@@ -55,7 +55,7 @@ def build_algorithm_catalog(
 
 def publish_algorithm_catalog(
     *,
-    registry: BaseServiceRegistry | None = None,
+    registry: ServiceRegistryProtocol | None = None,
     config: ServiceRegistryConfig | None = None,
     algorithm_registry: AlgorithmRegistry | None = None,
     kv_key: str | None = None,
@@ -85,7 +85,7 @@ def publish_algorithm_catalog(
 
 def fetch_registry_algorithm_catalogs(
     *,
-    registry: BaseServiceRegistry | None = None,
+    registry: ServiceRegistryProtocol | None = None,
     config: ServiceRegistryConfig | None = None,
     kv_prefix: str = "services/",
 ) -> tuple[list[dict[str, object]], list[dict[str, str]]]:
