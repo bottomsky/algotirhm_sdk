@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from pydantic import Field
+from pydantic import Field, RootModel
 
 from algo_dto.base import (
     CamelBaseModel,
@@ -72,10 +72,13 @@ class PlanningSource(SatOrbit, CamelBaseModel):
     sat_type: int
 
 
-class PlanningBase(CamelBaseModel):
-    planning_id: str
+class TaskBase(CamelBaseModel):
     task_id: str
     sub_task_id: str
+
+
+class PlanningBase(TaskBase, CamelBaseModel):
+    planning_id: str
 
 
 class Planning(PlanningBase, CamelBaseModel):
@@ -132,11 +135,35 @@ class PrepareSource(SatTypeOrbit, CamelBaseModel):
     dn_map: DnMap
 
 
-class PrepareTask(CamelBaseModel):
+class Prepare(TaskBase, TimeRange, CamelBaseModel):
     target_sats: list[TargetSatBase]
     source: list[PlanningSource]
+    algorithm_name: str
 
 
 class PrepareRequest(CamelBaseModel):
+    """
+    规划算法的请求信息
+    """
+
     sat: SatOrbitJ2000
     sim_time: SimTime
+    task: list[Prepare]
+
+
+class PrepareResultItem(SatBase, TimeRange, TaskBase, CamelBaseModel):
+    """
+    规划算法的结果信息
+    """
+
+    task_mode: int
+
+
+class PrepareResult(RootModel[dict[str, PrepareResultItem]], CamelBaseModel):
+    """规划算法的结果信息（字典形式）
+
+    Key: str
+    Value: PrepareResultItem
+    """
+
+    model_config = CamelBaseModel.model_config
