@@ -12,6 +12,8 @@ from algo_dto.base import (
     Vector3,
 )
 
+from algo_dto.device import ControlledMap, PlatformMap, LaserMap, DnMap
+
 
 class SatBase(CamelBaseModel):
     sat_id: int
@@ -33,28 +35,15 @@ class SatOrbit(SatOrbitVVLHRv, SatOrbitJ2000):
     pass
 
 
+class SatTypeOrbit(SatOrbitVVLHRv, SatOrbitJ2000):
+    sat_type: int
+
+
 class PredictionRequest(CamelBaseModel):
     sat_states: SatOrbitVVLHRv
     target_sats: list[SatOrbitVVLHRv]
     sim_time: SimTime
     duration_s: float = Field(alias="duration_s")
-
-
-class ControlledMap(CamelBaseModel):
-    diss_coe: int
-    area: int
-    relative_v: Vector3
-    relative_w: Vector3
-    evasion_ang: Vector3
-    peration_interval: int
-    operation_num: int
-    operation_dis: int
-
-
-class PlatformMap(CamelBaseModel):
-    single_maneuver: int
-    all_manuever: int
-    orbit_ctrl_interval: int
 
 
 class PredictionResponseItem(CamelBaseModel):
@@ -64,7 +53,7 @@ class PredictionResponseItem(CamelBaseModel):
     t_nearest_time: SimTime
 
 
-class PlanningTarget(SatOrbit, CamelBaseModel):
+class TargetSatBase(SatOrbit, CamelBaseModel):
     dwellDis: Vector3
     dwellTime: Vector3
     spray_time: int
@@ -73,7 +62,6 @@ class PlanningTarget(SatOrbit, CamelBaseModel):
     fixed_axis: Vector3
     q4: Vector4
     sat_type: int
-    palnning_id: str
 
 
 class PlanningSource(SatOrbit, CamelBaseModel):
@@ -91,7 +79,7 @@ class PlanningBase(CamelBaseModel):
 
 
 class Planning(PlanningBase, CamelBaseModel):
-    target: PlanningTarget
+    target: TargetSatBase
     source: PlanningSource
     task_time_start: SimTime
     task_time_end: SimTime
@@ -127,4 +115,28 @@ class ProgrammeResult(SatTypeBase, PlanningBase, CamelBaseModel):
 class ProgrammeRequest(CamelBaseModel):
     sat: SatOrbitJ2000
     plannings: list[Planning]
+    sim_time: SimTime
+
+
+class ProgrammeResponse(CamelBaseModel):
+    result: ProgrammeResult
+
+
+class PrepareSource(SatTypeOrbit, CamelBaseModel):
+    controlled_map: ControlledMap
+    fixed_axis: Vector3
+    q4: Vector4
+    controlled_map: ControlledMap
+    platform_map: PlatformMap
+    laser_map: LaserMap
+    dn_map: DnMap
+
+
+class PrepareTask(CamelBaseModel):
+    target_sats: list[TargetSatBase]
+    source: list[PlanningSource]
+
+
+class PrepareRequest(CamelBaseModel):
+    sat: SatOrbitJ2000
     sim_time: SimTime
