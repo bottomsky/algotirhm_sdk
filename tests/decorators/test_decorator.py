@@ -48,15 +48,15 @@ def test_class_registration() -> None:
     reg = AlgorithmRegistry()
     deco = DefaultAlgorithmDecorator(registry=reg)
 
-    deco(name="cls_algo",
-         version="v1",
-         execution={
-             "isolated_pool": True,
-             "stateful": True,
-             "execution_mode": ExecutionMode.PROCESS_POOL,
-         })(
-        _AlgoForRegistration
-    )
+    deco(
+        name="cls_algo",
+        version="v1",
+        execution={
+            "isolated_pool": True,
+            "stateful": True,
+            "execution_mode": ExecutionMode.PROCESS_POOL,
+        },
+    )(_AlgoForRegistration)
 
     spec = reg.get("cls_algo", "v1")
     assert inspect.isclass(spec.entrypoint)
