@@ -9,6 +9,7 @@ import signal
 import subprocess
 import time
 import traceback
+from datetime import datetime
 from dataclasses import dataclass, field
 from threading import BoundedSemaphore, Condition, Event, Lock, Thread
 from typing import (
@@ -27,7 +28,12 @@ from pydantic import ValidationError
 from ..protocol.models import AlgorithmContext
 from .base_model_impl import BaseModel
 from .lifecycle import AlgorithmLifecycleProtocol
-from ..runtime.context import reset_execution_context, set_execution_context
+from ..runtime.context import (
+    get_response_meta,
+    reset_execution_context,
+    ResponseMeta,
+    set_execution_context,
+)
 from .metadata import AlgorithmSpec, ExecutionMode
 
 TInput = TypeVar("TInput", bound=BaseModel)
@@ -60,6 +66,7 @@ class ExecutionRequest(Generic[TInput, TOutput]):
     spec: AlgorithmSpec[TInput, TOutput]
     payload: TInput | Mapping[str, Any]
     request_id: str
+    request_datetime: datetime | None = None
     trace_id: str | None = None
     context: AlgorithmContext | None = None
     timeout_s: int | None = None
@@ -87,6 +94,7 @@ class ExecutionResult(Generic[TOutput]):
     success: bool
     data: TOutput | None = None
     error: ExecutionError | None = None
+    response_meta: ResponseMeta | None = None
     started_at: float = field(default_factory=time.monotonic)
     ended_at: float | None = None
     worker_pid: int | None = None
@@ -157,6 +165,39 @@ def _resolve_trace_id(
     return None
 
 
+def _serialize_response_meta(
+    meta: ResponseMeta | None,
+) -> Mapping[str, Any] | None:
+    if meta is None:
+        return None
+    payload: dict[str, Any] = {}
+    if meta.code is not None:
+        payload["code"] = meta.code
+    if meta.message is not None:
+        payload["message"] = meta.message
+    if meta.context is not None:
+        payload["context"] = meta.context.model_dump()
+    return payload or None
+
+
+def _deserialize_response_meta(
+    payload: Mapping[str, Any] | None,
+) -> ResponseMeta | None:
+    if not payload:
+        return None
+    context_payload = payload.get("context")
+    context = (
+        AlgorithmContext.model_validate(context_payload)
+        if context_payload is not None
+        else None
+    )
+    return ResponseMeta(
+        code=payload.get("code"),
+        message=payload.get("message"),
+        context=context,
+    )
+
+
 def _compute_queue_wait_ms(
     submitted_at: float, started_at: float | None
 ) -> float | None:
@@ -214,6 +255,7 @@ class _WorkerPayload(Generic[TInput, TOutput]):
     spec: AlgorithmSpec[TInput, TOutput]
     payload: Mapping[str, Any]
     request_id: str
+    request_datetime: datetime | None
     trace_id: str | None
     context: Mapping[str, Any] | None
 
@@ -223,6 +265,7 @@ class _WorkerResponse(Generic[TOutput]):
     success: bool
     data: Mapping[str, Any] | None
     error: ExecutionError | None
+    response_meta: Mapping[str, Any] | None
     worker_pid: int
     started_at: float
     ended_at: float
@@ -288,13 +331,19 @@ def _worker_execute(payload: _WorkerPayload[Any, Any]) -> _WorkerResponse[Any]:
                     message=str(exc),
                     details=_extract_validation_details(exc),
                 ),
+                response_meta=None,
                 worker_pid=os.getpid(),
                 started_at=started_at,
                 ended_at=time.monotonic(),
             )
 
         trace_id = _resolve_trace_id(payload.trace_id, context)
-        tokens = set_execution_context(payload.request_id, trace_id, context)
+        tokens = set_execution_context(
+            payload.request_id,
+            trace_id,
+            payload.request_datetime,
+            context,
+        )
 
         try:
             request_model = _coerce_input_model(spec, payload.payload)
@@ -307,6 +356,7 @@ def _worker_execute(payload: _WorkerPayload[Any, Any]) -> _WorkerResponse[Any]:
                     message=str(exc),
                     details=_extract_validation_details(exc),
                 ),
+                response_meta=_serialize_response_meta(get_response_meta()),
                 worker_pid=os.getpid(),
                 started_at=started_at,
                 ended_at=time.monotonic(),
@@ -353,6 +403,7 @@ def _worker_execute(payload: _WorkerPayload[Any, Any]) -> _WorkerResponse[Any]:
                     message=str(exc),
                     traceback=traceback.format_exc(),
                 ),
+                response_meta=_serialize_response_meta(get_response_meta()),
                 worker_pid=os.getpid(),
                 started_at=started_at,
                 ended_at=time.monotonic(),
@@ -369,6 +420,7 @@ def _worker_execute(payload: _WorkerPayload[Any, Any]) -> _WorkerResponse[Any]:
                     message=str(exc),
                     details=_extract_validation_details(exc),
                 ),
+                response_meta=_serialize_response_meta(get_response_meta()),
                 worker_pid=os.getpid(),
                 started_at=started_at,
                 ended_at=time.monotonic(),
@@ -378,6 +430,7 @@ def _worker_execute(payload: _WorkerPayload[Any, Any]) -> _WorkerResponse[Any]:
             success=True,
             data=output_model.model_dump(by_alias=True),
             error=None,
+            response_meta=_serialize_response_meta(get_response_meta()),
             worker_pid=os.getpid(),
             started_at=started_at,
             ended_at=time.monotonic(),
@@ -497,7 +550,12 @@ class InProcessExecutor(ExecutorProtocol):
 
         context = request.context
         trace_id = _resolve_trace_id(request.trace_id, context)
-        tokens = set_execution_context(request.request_id, trace_id, context)
+        tokens = set_execution_context(
+            request.request_id,
+            trace_id,
+            request.request_datetime,
+            context,
+        )
         try:
             try:
                 payload_model = _coerce_input_model(
@@ -545,6 +603,7 @@ class InProcessExecutor(ExecutorProtocol):
             return result
         finally:
             result.ended_at = time.monotonic()
+            result.response_meta = get_response_meta()
             reset_execution_context(tokens)
             _log_execution_result(request, result)
 
@@ -734,6 +793,7 @@ class ProcessPoolExecutor(ExecutorProtocol):
                 spec=request.spec,
                 payload=payload_data,
                 request_id=request.request_id,
+                request_datetime=request.request_datetime,
                 trace_id=request.trace_id,
                 context=context_data,
             )
@@ -760,6 +820,9 @@ class ProcessPoolExecutor(ExecutorProtocol):
             result.queue_wait_ms = _compute_queue_wait_ms(
                 submitted_at,
                 worker_response.started_at,
+            )
+            result.response_meta = _deserialize_response_meta(
+                worker_response.response_meta
             )
             if worker_response.success:
                 result.data = _coerce_output_model(
@@ -969,6 +1032,7 @@ class ProcessPoolExecutor(ExecutorProtocol):
                         kind="system",
                         message="worker process crashed",
                     ),
+                    response_meta=None,
                     worker_pid=process.pid or -1,
                     started_at=pending.submitted_at,
                     ended_at=time.monotonic(),

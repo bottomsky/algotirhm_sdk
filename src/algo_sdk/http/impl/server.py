@@ -238,7 +238,6 @@ def create_app(registry: Optional[AlgorithmRegistry] = None) -> FastAPI:
                 code=status_code,
                 message=f"service not accepting requests: {state.value}",
                 request_id=request.requestId,
-                context=request.context,
             )
             return JSONResponse(
                 status_code=status_code,
