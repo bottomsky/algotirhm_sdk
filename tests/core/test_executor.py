@@ -1,5 +1,6 @@
 import os
 import time
+from datetime import datetime, timezone
 
 from algo_sdk.core import (
     AlgorithmSpec,
@@ -17,8 +18,12 @@ from algo_sdk.protocol.models import AlgorithmContext
 
 from algo_sdk.runtime import (
     get_current_context,
+    get_current_request_datetime,
     get_current_request_id,
     get_current_trace_id,
+    set_response_code,
+    set_response_context,
+    set_response_message,
 )
 
 
@@ -69,6 +74,22 @@ class _EchoContextAlgo(BaseAlgorithm[_CtxReq, _CtxResp]):
         )
 
 
+class _MetaReq(BaseModel):
+    value: int
+
+
+class _MetaResp(BaseModel):
+    seen_datetime: datetime | None
+
+
+class _MetaAlgo(BaseAlgorithm[_MetaReq, _MetaResp]):
+    def run(self, _: _MetaReq) -> _MetaResp:  # type: ignore[override]
+        set_response_code(202)
+        set_response_message("accepted")
+        set_response_context({"traceId": "resp-trace"})
+        return _MetaResp(seen_datetime=get_current_request_datetime())
+
+
 def _build_double_spec(
     *,
     execution: ExecutionConfig | None = None,
@@ -110,6 +131,19 @@ def _build_ctx_spec() -> AlgorithmSpec:
         output_model=_CtxResp,
         execution=ExecutionConfig(),
         entrypoint=_EchoContextAlgo,
+        is_class=True,
+    )
+
+
+def _build_meta_spec() -> AlgorithmSpec:
+    return AlgorithmSpec(
+        name="meta",
+        version="v1",
+        description=None,
+        input_model=_MetaReq,
+        output_model=_MetaResp,
+        execution=ExecutionConfig(),
+        entrypoint=_MetaAlgo,
         is_class=True,
     )
 
@@ -286,6 +320,54 @@ def test_process_pool_propagates_context() -> None:
         assert result.data.trace_id == "trace-pool"
         assert result.data.request_id == "req-ctx-pool"
         assert result.data.tenant_id == "tenant-2"
+    finally:
+        executor.shutdown()
+
+
+def test_in_process_captures_response_meta() -> None:
+    spec = _build_meta_spec()
+    executor = InProcessExecutor()
+    try:
+        request_datetime = datetime.now(timezone.utc)
+        req = ExecutionRequest(
+            spec=spec,
+            payload=_MetaReq(value=1),
+            request_id="req-meta",
+            request_datetime=request_datetime,
+        )
+        result = executor.submit(req)
+        assert result.success is True
+        assert result.response_meta is not None
+        assert result.response_meta.code == 202
+        assert result.response_meta.message == "accepted"
+        assert result.response_meta.context is not None
+        assert result.response_meta.context.traceId == "resp-trace"
+        assert result.data is not None
+        assert result.data.seen_datetime == request_datetime
+    finally:
+        executor.shutdown()
+
+
+def test_process_pool_captures_response_meta() -> None:
+    spec = _build_meta_spec()
+    executor = ProcessPoolExecutor(max_workers=1, queue_size=1)
+    try:
+        request_datetime = datetime.now(timezone.utc)
+        req = ExecutionRequest(
+            spec=spec,
+            payload=_MetaReq(value=1),
+            request_id="req-meta-pool",
+            request_datetime=request_datetime,
+        )
+        result = executor.submit(req)
+        assert result.success is True
+        assert result.response_meta is not None
+        assert result.response_meta.code == 202
+        assert result.response_meta.message == "accepted"
+        assert result.response_meta.context is not None
+        assert result.response_meta.context.traceId == "resp-trace"
+        assert result.data is not None
+        assert result.data.seen_datetime == request_datetime
     finally:
         executor.shutdown()
 
