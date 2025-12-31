@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from pydantic import BaseModel, ConfigDict, Field
-from pydantic.alias_generators import to_camel
+from pydantic import Field
 
 from algo_dto.base import (
+    CamelBaseModel,
     TimeRange,
     Timestamp,
     Vector4,
@@ -11,18 +11,6 @@ from algo_dto.base import (
     SimTime,
     Vector3,
 )
-
-
-class CamelBaseModel(BaseModel):
-    """
-    Base model that automatically converts snake_case fields to camelCase
-    JSON.
-    """
-
-    model_config = ConfigDict(
-        alias_generator=to_camel,
-        populate_by_name=True,
-    )
 
 
 class SatBase(CamelBaseModel):
