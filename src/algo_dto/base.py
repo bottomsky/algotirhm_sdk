@@ -1,3 +1,9 @@
+"""Business-domain models used as algorithm inputs/outputs.
+
+These models are transported via algo_sdk.protocol AlgorithmRequest/
+AlgorithmResponse `data` fields.
+"""
+
 from __future__ import annotations
 
 from typing import ClassVar, Self, TypeVar, Generic

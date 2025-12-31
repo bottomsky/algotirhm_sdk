@@ -12,6 +12,7 @@ T = TypeVar("T")
 
 class AlgorithmContext(_PydanticBaseModel):
     """Shared context carried with every algorithm invocation."""
+
     traceId: Optional[str] = None
     tenantId: Optional[str] = None
     userId: Optional[str] = None
@@ -20,7 +21,11 @@ class AlgorithmContext(_PydanticBaseModel):
 
 
 class AlgorithmRequest(_PydanticBaseModel, Generic[T]):
-    """Standardized algorithm request envelope."""
+    """Standardized algorithm request envelope.
+
+    The `data` field carries business-domain models (from algo_dto) used as
+    the algorithm input.
+    """
 
     requestId: str = Field(min_length=1)
     datetime: DateTime
@@ -37,7 +42,11 @@ class AlgorithmRequest(_PydanticBaseModel, Generic[T]):
 
 
 class AlgorithmResponse(_PydanticBaseModel, Generic[T]):
-    """Standardized algorithm response envelope."""
+    """Standardized algorithm response envelope.
+
+    The `data` field carries business-domain models (from algo_dto) returned
+    by the algorithm.
+    """
 
     code: int
     message: str
