@@ -80,6 +80,7 @@ class AlgorithmHttpService:
             spec=spec,
             payload=request.data,
             request_id=request.requestId,
+            request_datetime=request.datetime,
             trace_id=request.context.traceId if request.context else None,
             context=request.context,
             timeout_s=None,
@@ -90,22 +91,38 @@ class AlgorithmHttpService:
         if result.ended_at is None:
             result.ended_at = self._now().timestamp()
 
+        response_meta = result.response_meta
+        response_context = (
+            response_meta.context
+            if response_meta is not None and response_meta.context is not None
+            else None
+        )
+
         if result.success:
             self._emit_complete(exec_request, result)
+            code = response_meta.code if response_meta else None
+            message = response_meta.message if response_meta else None
             return api_success(
                 data=result.data,
                 request_id=request.requestId,
-                context=request.context,
+                context=response_context,
+                code=code if code is not None else 0,
+                message=message if message is not None else "success",
             )
 
         self._emit_error(exec_request, result)
         error = result.error
         code, message = self._map_error(error)
+        if response_meta is not None:
+            if response_meta.code is not None:
+                code = response_meta.code
+            if response_meta.message is not None:
+                message = response_meta.message
         return api_error(
             code=code,
             message=message,
             request_id=request.requestId,
-            context=request.context,
+            context=response_context,
         )
 
     def _emit_start(self, exec_request: ExecutionRequest[Any, Any]) -> None:
