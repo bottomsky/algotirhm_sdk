@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 
-from algo_sdk.protocol.models import AlgorithmContext
-from algo_sdk.runtime import (
+from algo_sdk import (
+    AlgorithmContext,
     execution_context,
     get_current_context,
     get_current_request_datetime,

@@ -2,15 +2,15 @@ import inspect
 
 import pytest
 
-from algo_sdk.core import (
+from algo_sdk import (
     AlgorithmRegistry,
     AlgorithmValidationError,
+    AlgorithmLifecycleProtocol,
     BaseAlgorithm,
     BaseModel,
+    DefaultAlgorithmDecorator,
     ExecutionMode,
 )
-from algo_sdk.core.lifecycle import AlgorithmLifecycleProtocol
-from algo_sdk.decorators import DefaultAlgorithmDecorator
 
 
 class _Req(BaseModel):

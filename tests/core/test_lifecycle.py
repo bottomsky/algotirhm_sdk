@@ -2,14 +2,14 @@ from __future__ import annotations
 
 import time
 
-from algo_sdk.core import (
+from algo_sdk import (
     AlgorithmSpec,
     BaseAlgorithm,
     BaseModel,
+    DispatchingExecutor,
     ExecutionConfig,
     ExecutionMode,
     ExecutionRequest,
-    DispatchingExecutor,
     InProcessExecutor,
     IsolatedProcessPoolExecutor,
     ProcessPoolExecutor,

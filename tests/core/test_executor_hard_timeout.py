@@ -3,7 +3,7 @@ import threading
 import time
 import uuid
 
-from algo_sdk.core import (
+from algo_sdk import (
     AlgorithmSpec,
     BaseAlgorithm,
     BaseModel,

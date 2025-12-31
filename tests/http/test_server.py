@@ -3,11 +3,15 @@ from datetime import datetime, timezone
 import pytest
 from fastapi.testclient import TestClient
 
-from algo_sdk.core.base_model_impl import BaseModel
-from algo_sdk.core.metadata import AlgorithmSpec, AlgorithmType, ExecutionConfig
-from algo_sdk.core.registry import AlgorithmRegistry
-from algo_sdk.http import create_app
-from algo_sdk.http.impl import server as server_module
+from algo_sdk import (
+    AlgorithmRegistry,
+    AlgorithmSpec,
+    AlgorithmType,
+    BaseModel,
+    ExecutionConfig,
+    create_app,
+    http_server,
+)
 
 
 class Req(BaseModel):
@@ -110,7 +114,7 @@ def test_list_registry_algorithms(monkeypatch):
         )
 
     monkeypatch.setattr(
-        server_module,
+        http_server,
         "fetch_registry_algorithm_catalogs",
         _fake_fetch_registry_algorithm_catalogs,
     )

@@ -2,14 +2,14 @@ import asyncio
 
 import pytest
 
-from algo_sdk.core import (
+from algo_sdk import (
     AlreadyInStateError,
     InvalidTransitionError,
     ServiceLifecycleContext,
     ServiceLifecyclePhase,
+    ServiceRuntime,
     ServiceState,
 )
-from algo_sdk.runtime.impl.service_runtime import ServiceRuntime
 
 
 class _Hook:

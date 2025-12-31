@@ -1,6 +1,6 @@
 import pytest
 
-from algo_sdk.core import (
+from algo_sdk import (
     AlgorithmRegistry,
     AlgorithmSpec,
     BaseAlgorithm,

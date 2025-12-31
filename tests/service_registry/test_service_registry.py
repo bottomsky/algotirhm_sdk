@@ -6,7 +6,7 @@ import os
 from unittest.mock import MagicMock, patch
 
 
-from algo_sdk.service_registry import (
+from algo_sdk import (
     ConsulRegistry,
     HealthCheck,
     MemoryRegistry,

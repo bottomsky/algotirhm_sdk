@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from algo_sdk.core import AlgorithmRegistry
-from algo_sdk.http import AlgorithmHttpService
-from algo_sdk.observability import (
+from algo_sdk import (
+    AlgorithmRegistry,
+    AlgorithmHttpService,
     InMemoryMetrics,
     InMemoryTracer,
     create_observation_hooks,
