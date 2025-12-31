@@ -20,9 +20,7 @@ class _VectorBase(RootModel[list[TVal]], Generic[TVal]):
     @classmethod
     def _validate_length(cls, value: list[TVal]) -> list[TVal]:
         if len(value) != cls.size:
-            raise ValueError(
-                f"expected {cls.size} elements, got {len(value)}"
-            )
+            raise ValueError(f"expected {cls.size} elements, got {len(value)}")
         return value
 
     @classmethod
@@ -218,5 +216,14 @@ __all__ = [
     "Vector6i",
     "VVLHRv",
     "SimTime",
-    "MessageResponse"
+    "MessageResponse",
 ]
+
+
+class TimeRange:
+    start_time: SimTime
+    end_time: SimTime
+
+
+class Timestamp:
+    sim_time: SimTime
