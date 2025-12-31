@@ -142,7 +142,9 @@ def create_app(registry: Optional[AlgorithmRegistry] = None) -> FastAPI:
             app.state, "runtime", None
         )
         if service_runtime is None or not service_runtime.accepting_requests:
-            state = service_runtime.state.value if service_runtime else "Unknown"
+            state = (
+                service_runtime.state.value if service_runtime else "Unknown"
+            )
             return JSONResponse(
                 status_code=503,
                 content={"status": "not_ready", "state": state},
@@ -224,7 +226,10 @@ def create_app(registry: Optional[AlgorithmRegistry] = None) -> FastAPI:
         service_runtime: ServiceLifecycleProtocol | None = getattr(
             app.state, "runtime", None
         )
-        if service_runtime is not None and not service_runtime.accepting_requests:
+        if (
+            service_runtime is not None
+            and not service_runtime.accepting_requests
+        ):
             state = service_runtime.state
             status_code = 503
             if state is ServiceState.DRAINING:
@@ -236,7 +241,8 @@ def create_app(registry: Optional[AlgorithmRegistry] = None) -> FastAPI:
                 context=request.context,
             )
             return JSONResponse(
-                status_code=status_code, content=envelope.model_dump()
+                status_code=status_code,
+                content=envelope.model_dump(by_alias=True),
             )
         try:
             response = service.invoke(name, version, request)

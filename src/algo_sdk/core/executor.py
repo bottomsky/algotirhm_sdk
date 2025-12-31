@@ -370,7 +370,7 @@ def _worker_execute(payload: _WorkerPayload[Any, Any]) -> _WorkerResponse[Any]:
 
         return _WorkerResponse(
             success=True,
-            data=output_model.model_dump(),
+            data=output_model.model_dump(by_alias=True),
             error=None,
             worker_pid=os.getpid(),
             started_at=started_at,
