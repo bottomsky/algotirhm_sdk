@@ -98,7 +98,9 @@ def _warm_up(executor: ProcessPoolExecutor) -> None:
         output_model=_DoubleResp,
         is_class=True,
     )
-    req = ExecutionRequest(spec=spec, payload=_DoubleReq(value=1), request_id="warmup")
+    req = ExecutionRequest(
+        spec=spec, payload=_DoubleReq(value=1), request_id="warmup"
+    )
     result = executor.submit(req)
     assert result.success is True
 
@@ -120,7 +122,9 @@ def test_hard_timeout_kills_and_restarts_worker_pid_changes() -> None:
         is_class=True,
     )
 
-    executor = ProcessPoolExecutor(max_workers=1, queue_size=2, poll_interval_s=0.02)
+    executor = ProcessPoolExecutor(
+        max_workers=1, queue_size=2, poll_interval_s=0.02
+    )
     try:
         executor.start()
         _warm_up(executor)
@@ -165,7 +169,9 @@ def test_timeout_before_execution_started_does_not_kill_busy_worker() -> None:
         is_class=True,
     )
 
-    executor = ProcessPoolExecutor(max_workers=1, queue_size=2, poll_interval_s=0.02)
+    executor = ProcessPoolExecutor(
+        max_workers=1, queue_size=2, poll_interval_s=0.02
+    )
     try:
         executor.start()
         _warm_up(executor)
@@ -222,7 +228,9 @@ def test_worker_crash_is_reported_and_pool_recovers() -> None:
         is_class=True,
     )
 
-    executor = ProcessPoolExecutor(max_workers=1, queue_size=2, poll_interval_s=0.02)
+    executor = ProcessPoolExecutor(
+        max_workers=1, queue_size=2, poll_interval_s=0.02
+    )
     try:
         executor.start()
         _warm_up(executor)
@@ -264,7 +272,9 @@ def test_queue_full_is_rejected_under_concurrency() -> None:
         is_class=True,
     )
 
-    executor = ProcessPoolExecutor(max_workers=1, queue_size=1, poll_interval_s=0.02)
+    executor = ProcessPoolExecutor(
+        max_workers=1, queue_size=1, poll_interval_s=0.02
+    )
     try:
         executor.start()
         _warm_up(executor)
@@ -295,7 +305,11 @@ def test_queue_full_is_rejected_under_concurrency() -> None:
 
         assert len(results) == 2
         kinds = [
-            r.error.kind if (not r.success and r.error is not None) else "success"
+            (
+                r.error.kind
+                if (not r.success and r.error is not None)
+                else "success"
+            )
             for r in results
         ]
         assert "rejected" in kinds
@@ -321,7 +335,9 @@ def test_stateful_algo_persists_until_worker_killed_then_resets() -> None:
         is_class=True,
     )
 
-    executor = ProcessPoolExecutor(max_workers=1, queue_size=2, poll_interval_s=0.02)
+    executor = ProcessPoolExecutor(
+        max_workers=1, queue_size=2, poll_interval_s=0.02
+    )
     try:
         executor.start()
         _warm_up(executor)

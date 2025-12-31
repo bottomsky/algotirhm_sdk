@@ -1,6 +1,12 @@
 import pytest
 
-from algo_sdk.core import AlgorithmRegistry, AlgorithmSpec, BaseAlgorithm, BaseModel, ExecutionConfig
+from algo_sdk.core import (
+    AlgorithmRegistry,
+    AlgorithmSpec,
+    BaseAlgorithm,
+    BaseModel,
+    ExecutionConfig,
+)
 
 
 class _Req(BaseModel):

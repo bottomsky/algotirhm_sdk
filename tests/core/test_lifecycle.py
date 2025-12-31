@@ -102,7 +102,9 @@ class _FailingLifecycleAlgo(BaseAlgorithm[_Req, _LifecycleResp]):
         _FAILURE_SHUTDOWN_TOTAL += 1
 
 
-def _build_spec(*, stateful: bool, entrypoint: object, name: str) -> AlgorithmSpec:
+def _build_spec(
+    *, stateful: bool, entrypoint: object, name: str
+) -> AlgorithmSpec:
     return AlgorithmSpec(
         name=name,
         version="v1",
@@ -119,7 +121,9 @@ def test_inprocess_stateless_calls_initialize_after_run_shutdown() -> None:
     spec = _build_spec(stateful=False, entrypoint=_LifecycleAlgo, name="life")
     executor = InProcessExecutor()
     try:
-        req = ExecutionRequest(spec=spec, payload=_Req(value=1), request_id="r1")
+        req = ExecutionRequest(
+            spec=spec, payload=_Req(value=1), request_id="r1"
+        )
         result = executor.submit(req)
         assert result.success is True
         assert result.data is not None
@@ -133,12 +137,18 @@ def test_inprocess_stateless_calls_initialize_after_run_shutdown() -> None:
         executor.shutdown()
 
 
-def test_inprocess_stateful_calls_initialize_once_and_after_run_each_time() -> None:
+def test_inprocess_stateful_calls_initialize_once_and_after_run_each_time() -> (
+    None
+):
     spec = _build_spec(stateful=True, entrypoint=_LifecycleAlgo, name="life-s")
     executor = InProcessExecutor()
     try:
-        req1 = ExecutionRequest(spec=spec, payload=_Req(value=1), request_id="r1")
-        req2 = ExecutionRequest(spec=spec, payload=_Req(value=2), request_id="r2")
+        req1 = ExecutionRequest(
+            spec=spec, payload=_Req(value=1), request_id="r1"
+        )
+        req2 = ExecutionRequest(
+            spec=spec, payload=_Req(value=2), request_id="r2"
+        )
         res1 = executor.submit(req1)
         res2 = executor.submit(req2)
         assert res1.success is True
@@ -165,10 +175,14 @@ def test_inprocess_stateful_calls_initialize_once_and_after_run_each_time() -> N
 
 
 def test_process_pool_stateless_calls_initialize_after_run_shutdown() -> None:
-    spec = _build_spec(stateful=False, entrypoint=_LifecycleAlgo, name="pool-life")
+    spec = _build_spec(
+        stateful=False, entrypoint=_LifecycleAlgo, name="pool-life"
+    )
     executor = ProcessPoolExecutor(max_workers=1, queue_size=2)
     try:
-        req = ExecutionRequest(spec=spec, payload=_Req(value=1), request_id="p1")
+        req = ExecutionRequest(
+            spec=spec, payload=_Req(value=1), request_id="p1"
+        )
         result = executor.submit(req)
         assert result.success is True
         assert result.data is not None
@@ -182,12 +196,20 @@ def test_process_pool_stateless_calls_initialize_after_run_shutdown() -> None:
         executor.shutdown()
 
 
-def test_process_pool_stateful_calls_initialize_once_and_after_run_each_time() -> None:
-    spec = _build_spec(stateful=True, entrypoint=_LifecycleAlgo, name="pool-life-s")
+def test_process_pool_stateful_calls_initialize_once_and_after_run_each_time() -> (
+    None
+):
+    spec = _build_spec(
+        stateful=True, entrypoint=_LifecycleAlgo, name="pool-life-s"
+    )
     executor = ProcessPoolExecutor(max_workers=1, queue_size=2)
     try:
-        req1 = ExecutionRequest(spec=spec, payload=_Req(value=1), request_id="p1")
-        req2 = ExecutionRequest(spec=spec, payload=_Req(value=2), request_id="p2")
+        req1 = ExecutionRequest(
+            spec=spec, payload=_Req(value=1), request_id="p1"
+        )
+        req2 = ExecutionRequest(
+            spec=spec, payload=_Req(value=2), request_id="p2"
+        )
         res1 = executor.submit(req1)
         res2 = executor.submit(req2)
         assert res1.success is True
@@ -211,16 +233,22 @@ def test_process_pool_stateful_calls_initialize_once_and_after_run_each_time() -
         executor.shutdown()
 
 
-def test_inprocess_failure_skips_after_run_but_calls_shutdown_for_stateless() -> None:
+def test_inprocess_failure_skips_after_run_but_calls_shutdown_for_stateless() -> (
+    None
+):
     global _FAILURE_AFTER_RUN_TOTAL
     global _FAILURE_SHUTDOWN_TOTAL
     _FAILURE_AFTER_RUN_TOTAL = 0
     _FAILURE_SHUTDOWN_TOTAL = 0
 
-    spec = _build_spec(stateful=False, entrypoint=_FailingLifecycleAlgo, name="fail")
+    spec = _build_spec(
+        stateful=False, entrypoint=_FailingLifecycleAlgo, name="fail"
+    )
     executor = InProcessExecutor()
     try:
-        req = ExecutionRequest(spec=spec, payload=_Req(value=1), request_id="f1")
+        req = ExecutionRequest(
+            spec=spec, payload=_Req(value=1), request_id="f1"
+        )
         result = executor.submit(req)
         assert result.success is False
         assert result.error is not None
@@ -231,16 +259,22 @@ def test_inprocess_failure_skips_after_run_but_calls_shutdown_for_stateless() ->
         executor.shutdown()
 
 
-def test_inprocess_failure_skips_after_run_and_shutdown_until_executor_shutdown_for_stateful() -> None:
+def test_inprocess_failure_skips_after_run_and_shutdown_until_executor_shutdown_for_stateful() -> (
+    None
+):
     global _FAILURE_AFTER_RUN_TOTAL
     global _FAILURE_SHUTDOWN_TOTAL
     _FAILURE_AFTER_RUN_TOTAL = 0
     _FAILURE_SHUTDOWN_TOTAL = 0
 
-    spec = _build_spec(stateful=True, entrypoint=_FailingLifecycleAlgo, name="fail-s")
+    spec = _build_spec(
+        stateful=True, entrypoint=_FailingLifecycleAlgo, name="fail-s"
+    )
     executor = InProcessExecutor()
     try:
-        req = ExecutionRequest(spec=spec, payload=_Req(value=1), request_id="f2")
+        req = ExecutionRequest(
+            spec=spec, payload=_Req(value=1), request_id="f2"
+        )
         result = executor.submit(req)
         assert result.success is False
         assert result.error is not None
@@ -291,7 +325,9 @@ def test_process_pool_stateful_calls_shutdown_on_worker_exit(tmp_path) -> None:
         is_class=True,
     )
 
-    executor = ProcessPoolExecutor(max_workers=1, queue_size=1, kill_grace_s=1.0)
+    executor = ProcessPoolExecutor(
+        max_workers=1, queue_size=1, kill_grace_s=1.0
+    )
     try:
         req = ExecutionRequest(
             spec=spec,
@@ -315,7 +351,9 @@ def test_process_pool_stateful_calls_shutdown_on_worker_exit(tmp_path) -> None:
     assert "shutdown" in content
 
 
-def test_isolated_process_pool_stateful_calls_shutdown_on_worker_exit(tmp_path) -> None:
+def test_isolated_process_pool_stateful_calls_shutdown_on_worker_exit(
+    tmp_path,
+) -> None:
     marker = tmp_path / "shutdown-isolated.txt"
     spec = AlgorithmSpec(
         name="shutdown-probe-iso",
@@ -356,7 +394,9 @@ def test_isolated_process_pool_stateful_calls_shutdown_on_worker_exit(tmp_path) 
     assert "shutdown" in content
 
 
-def test_dispatching_executor_shared_pool_stateful_calls_shutdown_on_worker_exit(tmp_path) -> None:
+def test_dispatching_executor_shared_pool_stateful_calls_shutdown_on_worker_exit(
+    tmp_path,
+) -> None:
     marker = tmp_path / "shutdown-dispatch-shared.txt"
     spec = AlgorithmSpec(
         name="shutdown-probe-dispatch-shared",
@@ -403,7 +443,9 @@ def test_dispatching_executor_shared_pool_stateful_calls_shutdown_on_worker_exit
     assert "shutdown" in content
 
 
-def test_dispatching_executor_isolated_pool_stateful_calls_shutdown_on_worker_exit(tmp_path) -> None:
+def test_dispatching_executor_isolated_pool_stateful_calls_shutdown_on_worker_exit(
+    tmp_path,
+) -> None:
     marker = tmp_path / "shutdown-dispatch-isolated.txt"
     spec = AlgorithmSpec(
         name="shutdown-probe-dispatch-iso",

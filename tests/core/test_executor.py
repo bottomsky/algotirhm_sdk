@@ -12,7 +12,9 @@ from algo_sdk.core import (
     InProcessExecutor,
     ProcessPoolExecutor,
 )
+
 from algo_sdk.protocol.models import AlgorithmContext
+
 from algo_sdk.runtime import (
     get_current_context,
     get_current_request_id,
@@ -146,9 +148,9 @@ def test_process_pool_executes_function() -> None:
     spec = _build_double_spec()
     executor = ProcessPoolExecutor(max_workers=1, queue_size=2)
     try:
-        req = ExecutionRequest(spec=spec,
-                               payload=_Req(value=3),
-                               request_id="req-1")
+        req = ExecutionRequest(
+            spec=spec, payload=_Req(value=3), request_id="req-1"
+        )
         result = executor.submit(req)
         assert result.success is True
         assert result.data is not None
@@ -162,10 +164,12 @@ def test_process_pool_respects_timeout() -> None:
     spec = _build_sleep_spec(execution=ExecutionConfig(timeout_s=1))
     executor = ProcessPoolExecutor(max_workers=1, queue_size=1)
     try:
-        req = ExecutionRequest(spec=spec,
-                               payload=_SleepReq(delay=0.2),
-                               request_id="req-timeout",
-                               timeout_s=0.05)
+        req = ExecutionRequest(
+            spec=spec,
+            payload=_SleepReq(delay=0.2),
+            request_id="req-timeout",
+            timeout_s=0.05,
+        )
         result = executor.submit(req)
         assert result.success is False
         assert result.error is not None
@@ -178,9 +182,11 @@ def test_process_pool_uses_spec_timeout_by_default() -> None:
     spec = _build_sleep_spec(execution=ExecutionConfig(timeout_s=1))
     executor = ProcessPoolExecutor(max_workers=1, queue_size=1)
     try:
-        req = ExecutionRequest(spec=spec,
-                               payload=_SleepReq(delay=1.5),
-                               request_id="req-timeout-spec")
+        req = ExecutionRequest(
+            spec=spec,
+            payload=_SleepReq(delay=1.5),
+            request_id="req-timeout-spec",
+        )
         result = executor.submit(req)
         assert result.success is False
         assert result.error is not None
@@ -194,18 +200,22 @@ def test_process_pool_recovers_after_timeout() -> None:
     fast_spec = _build_double_spec()
     executor = ProcessPoolExecutor(max_workers=1, queue_size=2)
     try:
-        slow_req = ExecutionRequest(spec=slow_spec,
-                                    payload=_SleepReq(delay=0.2),
-                                    request_id="req-timeout-recover",
-                                    timeout_s=0.05)
+        slow_req = ExecutionRequest(
+            spec=slow_spec,
+            payload=_SleepReq(delay=0.2),
+            request_id="req-timeout-recover",
+            timeout_s=0.05,
+        )
         slow_result = executor.submit(slow_req)
         assert slow_result.success is False
         assert slow_result.error is not None
         assert slow_result.error.kind == "timeout"
 
-        fast_req = ExecutionRequest(spec=fast_spec,
-                                    payload=_Req(value=4),
-                                    request_id="req-after-timeout")
+        fast_req = ExecutionRequest(
+            spec=fast_spec,
+            payload=_Req(value=4),
+            request_id="req-after-timeout",
+        )
         fast_result = executor.submit(fast_req)
         assert fast_result.success is True
         assert fast_result.data is not None
@@ -220,9 +230,9 @@ def test_dispatching_executor_routes_in_process() -> None:
     )
     executor = DispatchingExecutor(global_max_workers=1, global_queue_size=1)
     try:
-        req = ExecutionRequest(spec=spec,
-                               payload=_Req(value=5),
-                               request_id="req-inproc-dispatch")
+        req = ExecutionRequest(
+            spec=spec, payload=_Req(value=5), request_id="req-inproc-dispatch"
+        )
         result = executor.submit(req)
         assert result.success is True
         assert result.data is not None
@@ -284,12 +294,12 @@ def test_inprocess_stateless_creates_instance_per_request() -> None:
     spec = _build_counter_spec(stateful=False)
     executor = InProcessExecutor()
     try:
-        req1 = ExecutionRequest(spec=spec,
-                                payload=_CounterReq(value=1),
-                                request_id="counter-1")
-        req2 = ExecutionRequest(spec=spec,
-                                payload=_CounterReq(value=1),
-                                request_id="counter-2")
+        req1 = ExecutionRequest(
+            spec=spec, payload=_CounterReq(value=1), request_id="counter-1"
+        )
+        req2 = ExecutionRequest(
+            spec=spec, payload=_CounterReq(value=1), request_id="counter-2"
+        )
         res1 = executor.submit(req1)
         res2 = executor.submit(req2)
         assert res1.success is True
@@ -306,12 +316,12 @@ def test_inprocess_stateful_reuses_instance() -> None:
     spec = _build_counter_spec(stateful=True)
     executor = InProcessExecutor()
     try:
-        req1 = ExecutionRequest(spec=spec,
-                                payload=_CounterReq(value=1),
-                                request_id="counter-s-1")
-        req2 = ExecutionRequest(spec=spec,
-                                payload=_CounterReq(value=1),
-                                request_id="counter-s-2")
+        req1 = ExecutionRequest(
+            spec=spec, payload=_CounterReq(value=1), request_id="counter-s-1"
+        )
+        req2 = ExecutionRequest(
+            spec=spec, payload=_CounterReq(value=1), request_id="counter-s-2"
+        )
         res1 = executor.submit(req1)
         res2 = executor.submit(req2)
         assert res1.success is True
@@ -328,12 +338,16 @@ def test_process_pool_stateless_creates_instance_per_request() -> None:
     spec = _build_counter_spec(stateful=False)
     executor = ProcessPoolExecutor(max_workers=1, queue_size=2)
     try:
-        req1 = ExecutionRequest(spec=spec,
-                                payload=_CounterReq(value=1),
-                                request_id="pool-counter-1")
-        req2 = ExecutionRequest(spec=spec,
-                                payload=_CounterReq(value=1),
-                                request_id="pool-counter-2")
+        req1 = ExecutionRequest(
+            spec=spec,
+            payload=_CounterReq(value=1),
+            request_id="pool-counter-1",
+        )
+        req2 = ExecutionRequest(
+            spec=spec,
+            payload=_CounterReq(value=1),
+            request_id="pool-counter-2",
+        )
         res1 = executor.submit(req1)
         res2 = executor.submit(req2)
         assert res1.success is True
@@ -350,12 +364,16 @@ def test_process_pool_stateful_reuses_instance() -> None:
     spec = _build_counter_spec(stateful=True)
     executor = ProcessPoolExecutor(max_workers=1, queue_size=2)
     try:
-        req1 = ExecutionRequest(spec=spec,
-                                payload=_CounterReq(value=1),
-                                request_id="pool-counter-s-1")
-        req2 = ExecutionRequest(spec=spec,
-                                payload=_CounterReq(value=1),
-                                request_id="pool-counter-s-2")
+        req1 = ExecutionRequest(
+            spec=spec,
+            payload=_CounterReq(value=1),
+            request_id="pool-counter-s-1",
+        )
+        req2 = ExecutionRequest(
+            spec=spec,
+            payload=_CounterReq(value=1),
+            request_id="pool-counter-s-2",
+        )
         res1 = executor.submit(req1)
         res2 = executor.submit(req2)
         assert res1.success is True
