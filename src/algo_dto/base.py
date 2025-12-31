@@ -3,8 +3,18 @@ from __future__ import annotations
 from typing import ClassVar, Self, TypeVar, Generic
 
 from pydantic import BaseModel, ConfigDict, RootModel, field_validator
+from pydantic.alias_generators import to_camel
 
 from datetime import datetime
+
+
+class CamelBaseModel(BaseModel):
+    """Base model that converts snake_case fields to camelCase JSON."""
+
+    model_config = ConfigDict(
+        alias_generator=to_camel,
+        populate_by_name=True,
+    )
 
 
 TVal = TypeVar("TVal", float, int)
@@ -178,7 +188,7 @@ class SimTime(RootModel[list[int]]):
 TData = TypeVar("TData")
 
 
-class MessageResponseBase(BaseModel):
+class MessageResponseBase(CamelBaseModel):
     code: int
     message: str
 
@@ -216,6 +226,7 @@ __all__ = [
     "Vector6i",
     "VVLHRv",
     "SimTime",
+    "CamelBaseModel",
     "MessageResponse",
 ]
 
