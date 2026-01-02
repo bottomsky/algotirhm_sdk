@@ -84,7 +84,7 @@ class DefaultAlgorithmDecorator:
                 )
             else:
                 raise AlgorithmValidationError(
-                    "decorator target must be a callable or class")
+                    "decorator target must be a class")
             self._registry.register(spec)
             return target
 

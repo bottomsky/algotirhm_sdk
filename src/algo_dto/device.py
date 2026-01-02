@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 
-from base import CamelBaseModel, Vector3
+from algo_dto.base import CamelBaseModel, Vector3
 
 
 class ControlledMap(CamelBaseModel):

@@ -1,11 +1,17 @@
 from __future__ import annotations
 
-import logging
+import hashlib
 import importlib
+import importlib.util
+import logging
 import os
+import re
+import sys
 from contextlib import asynccontextmanager
 from dataclasses import asdict
 from enum import Enum
+from pathlib import Path
+from types import ModuleType
 from typing import List, Optional
 
 import uvicorn
@@ -88,16 +94,77 @@ def _execution_to_dict(execution: object) -> dict[str, object]:
     return payload
 
 
+def _split_module_spec(module_spec: str) -> tuple[str, str | None]:
+    if ":" not in module_spec:
+        return module_spec, None
+    if (
+        len(module_spec) > 2
+        and module_spec[1] == ":"
+        and module_spec[2:3] in {"\\", "/"}
+    ):
+        last_colon = module_spec.rfind(":")
+        if last_colon == 1:
+            return module_spec, None
+        module_path = module_spec[:last_colon].strip()
+        attr = module_spec[last_colon + 1 :].strip()
+        return module_path, attr or None
+    module_path, attr = module_spec.rsplit(":", 1)
+    module_path = module_path.strip()
+    attr = attr.strip()
+    return module_path, attr or None
+
+
+def _is_filesystem_path(module_path: str) -> bool:
+    path = Path(module_path)
+    if path.is_absolute() or path.exists():
+        return True
+    if path.suffix == ".py":
+        return True
+    return "\\" in module_path or "/" in module_path
+
+
+def _make_module_name(path: Path) -> str:
+    stem = re.sub(r"\W+", "_", path.stem)
+    digest = hashlib.sha1(str(path).encode("utf-8")).hexdigest()[:8]
+    return f"algo_dynamic_{stem}_{digest}"
+
+
+def _load_module_from_path(path: Path) -> ModuleType:
+    spec = importlib.util.spec_from_file_location(
+        _make_module_name(path), path
+    )
+    if spec is None or spec.loader is None:
+        raise ImportError(f"Unable to load module from path: {path}")
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
 def load_algorithm_modules(modules: List[str]) -> None:
-    """Import modules to trigger algorithm registration."""
-    for module_path in modules:
-        if not module_path:
+    """Import modules or file paths to trigger algorithm registration."""
+    for module_spec in modules:
+        if not module_spec:
             continue
         try:
-            importlib.import_module(module_path)
-            _LOGGER.info("Loaded algorithm module: %s", module_path)
+            module_path, attr = _split_module_spec(module_spec)
+            module: ModuleType
+            if _is_filesystem_path(module_path):
+                path = Path(module_path)
+                if not path.is_absolute():
+                    path = (Path.cwd() / path).resolve()
+                if path.is_dir():
+                    path = path / "__init__.py"
+                if not path.exists():
+                    raise FileNotFoundError(f"No module at {path}")
+                module = _load_module_from_path(path)
+            else:
+                module = importlib.import_module(module_path)
+            if attr:
+                getattr(module, attr)
+            _LOGGER.info("Loaded algorithm module: %s", module_spec)
         except Exception:
-            _LOGGER.exception("Failed to load module %s", module_path)
+            _LOGGER.exception("Failed to load module %s", module_spec)
 
 
 def create_app(registry: Optional[AlgorithmRegistry] = None) -> FastAPI:
