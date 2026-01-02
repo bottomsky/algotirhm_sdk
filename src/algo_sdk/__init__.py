@@ -1,4 +1,7 @@
-"""Public API entry point for algo_sdk."""
+"""Public API entry point for algo_sdk.
+
+Use this module for supported imports. Subpackages are internal.
+"""
 
 from .algorithm_api.decorators import Algorithm, DefaultAlgorithmDecorator
 from .core import (
