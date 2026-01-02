@@ -1,0 +1,30 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Run Algo Core Service",
+      "type": "python",
+      "request": "launch",
+      "module": "uvicorn",
+      "args": [
+        "algo_core_service.main:app",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "8000"
+      ],
+      "env": {
+        "PYTHONPATH": "${env:PYTHONPATH};${workspaceFolder}\\src",
+        "ALGO_MODULES": "algo_core_service.algorithms",
+        "SERVICE_HOST": "host.docker.internal",
+        "SERVICE_PORT": "8000",
+        "SERVICE_REGISTRY_ENABLED": "true",
+        "SERVICE_REGISTRY_HOST": "http://127.0.0.1:8500",
+        "SERVICE_NAME": "algo-core-service"
+      },
+      "justMyCode": true,
+      "console": "integratedTerminal",
+      "python": "${workspaceFolder}\\.venv\\Scripts\\python.exe"
+    }
+  ]
+}
