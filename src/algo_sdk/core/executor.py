@@ -117,13 +117,30 @@ def _default_max_workers() -> int:
 def _coerce_input_model(
     spec: AlgorithmSpec[Any, Any], payload: Any
 ) -> BaseModel:
+    """
+    将输入的payload转换为算法规范中定义的输入模型类型
+
+    Args:
+        spec (AlgorithmSpec[Any, Any]): 算法规范，包含输入模型定义
+        payload (Any): 需要转换的输入数据
+
+    Returns:
+        BaseModel: 转换后的输入模型实例
+
+    Raises:
+        ValidationError: 当payload类型不支持时抛出异常
+    """
     input_model = spec.input_model
+    # 检查payload是否已经是正确的输入模型类型
     if isinstance(payload, input_model):
         return payload
+    # 如果payload是映射类型，则使用model_validate方法创建输入模型实例
     if isinstance(payload, Mapping):
         return input_model.model_validate(payload)
+    # 如果payload是BaseModel类型，则先将其转换为字典再创建目标模型实例
     if isinstance(payload, BaseModel):
         return input_model.model_validate(payload.model_dump())
+    # 如果payload类型不支持，则抛出验证错误
     raise ValidationError.from_exception_data(
         "ValidationError",
         [
