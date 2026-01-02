@@ -1,29 +1,20 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+import os
 
-from algo_sdk import (
-    AlgorithmRegistry,
-    AlgorithmHttpService,
-    InMemoryMetrics,
-    InMemoryTracer,
-    create_observation_hooks,
-)
+from algo_sdk import create_app, http_server
 
 
-@dataclass(slots=True)
-class ServiceRuntime:
-    service: AlgorithmHttpService
-    metrics: InMemoryMetrics
-    tracer: InMemoryTracer
+def _load_algorithms() -> None:
+    raw = os.getenv("ALGO_MODULES", "").strip()
+    if raw:
+        modules = [item.strip() for item in raw.split(",") if item.strip()]
+    else:
+        modules = ["algo_core_service.algorithms"]
+    http_server.load_algorithm_modules(modules)
 
 
-def create_service_runtime(registry: AlgorithmRegistry) -> ServiceRuntime:
-    metrics = InMemoryMetrics()
-    tracer = InMemoryTracer()
-    hooks = create_observation_hooks(metrics, tracer)
-    service = AlgorithmHttpService(registry, observation=hooks)
-    return ServiceRuntime(service=service, metrics=metrics, tracer=tracer)
+_load_algorithms()
+app = create_app()
 
-
-__all__ = ["ServiceRuntime", "create_service_runtime"]
+__all__ = ["app"]
