@@ -57,6 +57,15 @@ def build_algorithm_catalog(
     }
 
 
+def _build_catalog_kv_key(
+    config: ServiceRegistryConfig,
+    kv_key: str | None,
+) -> str:
+    if kv_key:
+        return kv_key
+    return f"algo_services/{config.service_name}/{config.instance_id}/algorithms"
+
+
 def publish_algorithm_catalog(
     *,
     registry: ServiceRegistryProtocol | None = None,
@@ -82,9 +91,7 @@ def publish_algorithm_catalog(
         registry = ConsulRegistry(cfg)
 
     payload = build_algorithm_catalog(cfg, algorithms)
-    key = kv_key or (
-        f"services/{cfg.service_name}/{cfg.instance_id}/algorithms"
-    )
+    key = _build_catalog_kv_key(cfg, kv_key)
     registry.set_kv(key, json.dumps(payload))
     logger.info("Published algorithm catalog to registry key=%s", key)
 
@@ -108,7 +115,7 @@ def fetch_registry_algorithm_catalogs(
     *,
     registry: ServiceRegistryProtocol | None = None,
     config: ServiceRegistryConfig | None = None,
-    kv_prefix: str = "services/",
+    kv_prefix: str = "algo_services/",
     healthy_only: bool = False,
 ) -> tuple[list[dict[str, object]], list[dict[str, str]]]:
     """Fetch algorithm catalogs from the registry KV prefix."""

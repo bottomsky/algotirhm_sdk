@@ -28,6 +28,7 @@ class TestServiceRegistryConfig:
             assert config.host == "http://127.0.0.1:8500"
             assert config.enabled is False
             assert config.service_name == "algo-core-service"
+            assert config.service_version == "unknown"
             assert config.service_port == 8000
 
     def test_from_environment(self) -> None:
@@ -36,6 +37,7 @@ class TestServiceRegistryConfig:
             "SERVICE_REGISTRY_HOST": "http://consul.example.com:8500",
             "SERVICE_REGISTRY_ENABLED": "true",
             "SERVICE_NAME": "test-service",
+            "SERVICE_VERSION": "2.1.0",
             "SERVICE_PORT": "9000",
         }
         with patch.dict(os.environ, env, clear=True):
@@ -43,6 +45,7 @@ class TestServiceRegistryConfig:
             assert config.host == "http://consul.example.com:8500"
             assert config.enabled is True
             assert config.service_name == "test-service"
+            assert config.service_version == "2.1.0"
             assert config.service_port == 9000
 
 

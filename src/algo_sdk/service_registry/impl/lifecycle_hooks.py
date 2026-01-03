@@ -9,7 +9,7 @@ from algo_sdk.runtime import (
     ServiceLifecyclePhase,
 )
 
-from ..catalog import publish_algorithm_catalog
+from ..catalog import _build_catalog_kv_key, publish_algorithm_catalog
 from ..config import ServiceRegistryConfig, load_config
 from ..impl.consul_registry import ConsulRegistry
 from ..protocol import (HealthCheck,
@@ -82,11 +82,17 @@ class ServiceRegistryHook(ServiceLifecycleHookProtocol):
                 interval_seconds=self._config.health_check_interval,
                 timeout_seconds=self._config.health_check_timeout,
             )
+        meta = {
+            "version": self._config.service_version,
+        }
+        if self._config.instance_id:
+            meta["instance_id"] = self._config.instance_id
         return ServiceRegistration(
             service_name=self._config.service_name,
             service_id=self._service_id,
             host=self._config.service_host,
             port=self._config.service_port,
+            meta=meta,
             health_check=health_check,
         )
 
@@ -103,6 +109,7 @@ class ServiceRegistryHook(ServiceLifecycleHookProtocol):
             return
         registry = self._get_registry()
         registry.deregister(self._service_id)
+        self._delete_catalog()
         self._registered = False
         _LOGGER.info("Deregistered service %s", self._service_id)
 
@@ -113,3 +120,10 @@ class ServiceRegistryHook(ServiceLifecycleHookProtocol):
             algorithm_registry=self._algorithm_registry,
             kv_key=self._kv_key,
         )
+
+    def _delete_catalog(self) -> None:
+        key = _build_catalog_kv_key(self._config, self._kv_key)
+        try:
+            self._get_registry().delete_kv(key)
+        except Exception:
+            _LOGGER.exception("Failed to delete registry catalog key %s", key)

@@ -109,11 +109,11 @@ def test_fetch_registry_catalogs_filters_unhealthy_instances() -> None:
         )
     )
     registry.set_kv(
-        "services/svc-a/svc-a-1/algorithms",
+        "algo_services/svc-a/svc-a-1/algorithms",
         json.dumps({"service": "svc-a", "algorithms": []}),
     )
     registry.set_kv(
-        "services/svc-b/svc-b-1/algorithms",
+        "algo_services/svc-b/svc-b-1/algorithms",
         json.dumps({"service": "svc-b", "algorithms": []}),
     )
 
