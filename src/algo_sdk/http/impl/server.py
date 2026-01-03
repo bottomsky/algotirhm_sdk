@@ -41,6 +41,38 @@ from ...service_registry.errors import ServiceRegistryError
 _LOGGER = logging.getLogger(__name__)
 
 
+class _AccessLogExcludePathsFilter(logging.Filter):
+    def __init__(self, excluded_paths: set[str]):
+        super().__init__()
+        self._excluded_paths = excluded_paths
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        request_line = getattr(record, "request_line", None)
+        if isinstance(request_line, str) and request_line:
+            parts = request_line.split()
+            if len(parts) >= 2:
+                path = parts[1]
+                if path in self._excluded_paths:
+                    return False
+
+        message = record.getMessage()
+        for path in self._excluded_paths:
+            if f" {path} " in message or f'"GET {path} ' in message:
+                return False
+        return True
+
+
+def _install_uvicorn_access_log_filter() -> None:
+    logger = logging.getLogger("uvicorn.access")
+
+    excluded = {"/healthz"}
+    marker = "_algo_sdk_access_filter_installed"
+    if getattr(logger, marker, False):
+        return
+    logger.addFilter(_AccessLogExcludePathsFilter(excluded))
+    setattr(logger, marker, True)
+
+
 def _get_env_int(name: str) -> int | None:
     raw = os.getenv(name)
     if raw is None or not raw.strip():
@@ -75,7 +107,6 @@ def _get_env_bool_default(name: str, default: bool) -> bool:
 def _is_vscode() -> bool:
     term_program = os.getenv("TERM_PROGRAM", "")
     return bool(os.getenv("VSCODE_PID") or term_program.lower() == "vscode")
-
 
 
 def _normalize_host(host: str) -> str:
@@ -239,6 +270,7 @@ def create_app(registry: Optional[AlgorithmRegistry] = None) -> FastAPI:
     async def lifespan(app: FastAPI):
         app.state.runtime = runtime
         try:
+            _install_uvicorn_access_log_filter()
             await runtime.provisioning(reason="startup")
             await runtime.ready(reason="startup")
             await runtime.running(reason="startup")
@@ -337,7 +369,7 @@ def create_app(registry: Optional[AlgorithmRegistry] = None) -> FastAPI:
             return api_error(code=404, message=str(e))
 
     @app.get("/registry/algorithms")
-    async def list_registry_algorithms(prefix: str = "services/"):
+    async def list_registry_algorithms(prefix: str = "algo_services/"):
         """List algorithms registered in the service registry."""
         try:
             catalogs, errors = fetch_registry_algorithm_catalogs(
