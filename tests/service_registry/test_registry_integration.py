@@ -64,21 +64,23 @@ def test_service_start_registers_and_publishes_catalog() -> None:
         await bundle.runtime.running()
 
     asyncio.run(main())
+    try:
+        instances = registry.get_service(config.service_name)
+        assert len(instances) == 1
+        assert instances[0].service_id == "algo-core-service-1"
+        assert instances[0].host == "127.0.0.1"
+        assert instances[0].port == 8000
 
-    instances = registry.get_service(config.service_name)
-    assert len(instances) == 1
-    assert instances[0].service_id == "algo-core-service-1"
-    assert instances[0].host == "127.0.0.1"
-    assert instances[0].port == 8000
-
-    catalogs, errors = fetch_registry_algorithm_catalogs(
-        registry=registry,
-        config=config,
-    )
-    assert errors == []
-    assert len(catalogs) == 1
-    assert catalogs[0]["service"] == "algo-core-service"
-    assert any(
-        algo["name"] == "test_algo"
-        for algo in catalogs[0]["algorithms"]
-    )
+        catalogs, errors = fetch_registry_algorithm_catalogs(
+            registry=registry,
+            config=config,
+        )
+        assert errors == []
+        assert len(catalogs) == 1
+        assert catalogs[0]["service"] == "algo-core-service"
+        assert any(
+            algo["name"] == "test_algo"
+            for algo in catalogs[0]["algorithms"]
+        )
+    finally:
+        asyncio.run(bundle.runtime.shutdown())
