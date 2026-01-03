@@ -88,11 +88,53 @@ def test_metrics(client):
     assert "requests_total" in response.text
 
 
+def test_service_info(monkeypatch):
+    monkeypatch.setenv("SERVICE_NAME", "algo-core-service")
+    monkeypatch.setenv("SERVICE_VERSION", "1.2.3")
+    monkeypatch.setenv("SERVICE_INSTANCE_ID", "algo-core-service-abc123")
+    monkeypatch.setenv("SERVICE_HOST", "127.0.0.1")
+    monkeypatch.setenv("SERVICE_PORT", "8000")
+
+    registry = AlgorithmRegistry()
+    spec = AlgorithmSpec(
+        name="test_algo",
+        version="v1",
+        algorithm_type=AlgorithmType.PLANNING,
+        description="test",
+        input_model=Req,
+        output_model=Resp,
+        execution=ExecutionConfig(),
+        entrypoint=mock_algo,
+        is_class=False,
+    )
+    registry.register(spec)
+
+    app = create_app(registry)
+    with TestClient(app) as client:
+        response = client.get("/service/info")
+        assert response.status_code == 200
+        payload = response.json()
+        assert payload["code"] == 0
+        data = payload["data"]
+        service = data["service"]
+        assert service["name"] == "algo-core-service"
+        assert service["version"] == "1.2.3"
+        assert service["instance_id"] == "algo-core-service-abc123"
+        assert service["host"] == "127.0.0.1"
+        assert service["port"] == 8000
+        assert any(
+            algo["name"] == "test_algo" and algo["version"] == "v1"
+            for algo in data["algorithms"]
+        )
+
+
 def test_list_registry_algorithms(monkeypatch):
     registry = AlgorithmRegistry()
 
-    def _fake_fetch_registry_algorithm_catalogs(*, kv_prefix: str):
-        _ = kv_prefix
+    def _fake_fetch_registry_algorithm_catalogs(
+        *, kv_prefix: str, healthy_only: bool = False
+    ):
+        _ = (kv_prefix, healthy_only)
         return (
             [
                 {
@@ -184,3 +226,30 @@ def test_swagger_open_skipped_when_disabled(monkeypatch):
         pass
 
     assert opened == []
+
+
+
+def test_swagger_open_defaults_to_vscode(monkeypatch):
+    monkeypatch.delenv("SERVICE_SWAGGER_OPEN_ON_STARTUP", raising=False)
+    monkeypatch.setenv("SERVICE_SWAGGER_ENABLED", "true")
+    monkeypatch.setenv("VSCODE_PID", "12345")
+    monkeypatch.setenv("SERVICE_HOST", "127.0.0.1")
+    monkeypatch.setenv("SERVICE_PORT", "8000")
+
+    opened = {}
+
+    def fake_open(url):
+        opened["url"] = url
+        return True
+
+    monkeypatch.setattr(
+        http_server,
+        "_open_swagger",
+        fake_open,
+    )
+
+    app = create_app(AlgorithmRegistry())
+    with TestClient(app):
+        pass
+
+    assert opened["url"] == "http://127.0.0.1:8000/docs"

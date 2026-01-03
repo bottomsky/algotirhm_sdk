@@ -1,4 +1,5 @@
 import asyncio
+import json
 
 from algo_sdk import (
     AlgorithmRegistry,
@@ -7,6 +8,7 @@ from algo_sdk import (
     BaseModel,
     ExecutionConfig,
     MemoryRegistry,
+    ServiceRegistration,
     ServiceRegistryConfig,
     build_service_runtime,
     fetch_registry_algorithm_catalogs,
@@ -84,3 +86,43 @@ def test_service_start_registers_and_publishes_catalog() -> None:
         )
     finally:
         asyncio.run(bundle.runtime.shutdown())
+
+
+def test_fetch_registry_catalogs_filters_unhealthy_instances() -> None:
+    registry = MemoryRegistry()
+    config = ServiceRegistryConfig(
+        host="http://localhost:8500",
+        enabled=True,
+        service_name="svc-a",
+        instance_id="svc-a-1",
+        service_host="127.0.0.1",
+        service_port=8000,
+        health_check_interval=10,
+        health_check_timeout=5,
+    )
+    registry.register(
+        ServiceRegistration(
+            service_name="svc-a",
+            service_id="svc-a-1",
+            host="127.0.0.1",
+            port=8000,
+        )
+    )
+    registry.set_kv(
+        "services/svc-a/svc-a-1/algorithms",
+        json.dumps({"service": "svc-a", "algorithms": []}),
+    )
+    registry.set_kv(
+        "services/svc-b/svc-b-1/algorithms",
+        json.dumps({"service": "svc-b", "algorithms": []}),
+    )
+
+    catalogs, errors = fetch_registry_algorithm_catalogs(
+        registry=registry,
+        config=config,
+        healthy_only=True,
+    )
+
+    assert errors == []
+    assert len(catalogs) == 1
+    assert catalogs[0]["service"] == "svc-a"
