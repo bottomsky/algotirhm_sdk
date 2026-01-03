@@ -4,7 +4,10 @@ from __future__ import annotations
 
 import inspect
 import pickle
-from typing import Callable
+import sys
+from typing import Callable, get_type_hints
+
+from pydantic import BaseModel as _PydanticBaseModel
 
 from algo_sdk.core import (
     AlgorithmSpec,
@@ -222,10 +225,22 @@ class DefaultAlgorithmDecorator:
         )
 
     def _assert_picklable(self, obj: object, *, label: str) -> None:
+        qualname = getattr(obj, "__qualname__", None)
+        module_name = getattr(obj, "__module__", None)
+        obj_name = getattr(obj, "__name__", None)
+        if (
+            module_name
+            and obj_name
+            and qualname
+            and qualname == obj_name
+            and "<locals>" not in qualname
+        ):
+            module = sys.modules.get(module_name)
+            if module is not None and not hasattr(module, obj_name):
+                setattr(module, obj_name, obj)
         try:
             pickle.dumps(obj)
         except Exception as exc:
-            qualname = getattr(obj, "__qualname__", None)
             module = getattr(obj, "__module__", None)
             hint = (
                 "Entrypoint and model types must be defined at module top "
@@ -262,22 +277,25 @@ class DefaultAlgorithmDecorator:
                 "run method must accept exactly one argument (besides self)")
 
         param = params[0]
-        annotation: object = param.annotation  # pyright: ignore[reportAny]
+        type_hints = get_type_hints(callable_obj, include_extras=False)
+        annotation: object = type_hints.get(
+            param.name, param.annotation  # pyright: ignore[reportAny]
+        )
         if annotation is inspect.Signature.empty:
             raise AlgorithmValidationError(
                 "input must be type-annotated with a BaseModel subclass")
         if not (inspect.isclass(annotation)
-                and issubclass(annotation, BaseModel)):
+                and issubclass(annotation, _PydanticBaseModel)):
             raise AlgorithmValidationError(
                 "algorithm input must be a BaseModel subclass")
 
         ret_anno = sig.return_annotation  # pyright: ignore[reportAny]
-        output_annotation: object = ret_anno
+        output_annotation: object = type_hints.get("return", ret_anno)
         if output_annotation is inspect.Signature.empty:
             raise AlgorithmValidationError(
                 "output must be type-annotated with a BaseModel subclass")
         if not (inspect.isclass(output_annotation)
-                and issubclass(output_annotation, BaseModel)):
+                and issubclass(output_annotation, _PydanticBaseModel)):
             raise AlgorithmValidationError(
                 "algorithm output must be a BaseModel subclass")
 
