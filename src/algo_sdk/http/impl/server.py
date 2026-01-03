@@ -31,7 +31,11 @@ from ...core.executor import DispatchingExecutor
 from ...core.registry import AlgorithmRegistry, get_registry
 from ...protocol.models import AlgorithmRequest, api_error, api_success
 from ...runtime.factory import build_service_runtime
-from ...service_registry.catalog import fetch_registry_algorithm_catalogs
+from ...service_registry.catalog import (
+    build_algorithm_catalog,
+    fetch_registry_algorithm_catalogs,
+)
+from ...service_registry.config import load_config as load_registry_config
 from ...service_registry.errors import ServiceRegistryError
 
 _LOGGER = logging.getLogger(__name__)
@@ -66,6 +70,12 @@ def _get_env_bool(name: str) -> bool | None:
 def _get_env_bool_default(name: str, default: bool) -> bool:
     value = _get_env_bool(name)
     return default if value is None else value
+
+
+def _is_vscode() -> bool:
+    term_program = os.getenv("TERM_PROGRAM", "")
+    return bool(os.getenv("VSCODE_PID") or term_program.lower() == "vscode")
+
 
 
 def _normalize_host(host: str) -> str:
@@ -209,7 +219,7 @@ def create_app(registry: Optional[AlgorithmRegistry] = None) -> FastAPI:
     swagger_enabled = _get_env_bool_default("SERVICE_SWAGGER_ENABLED", True)
     swagger_open_on_startup = _get_env_bool_default(
         "SERVICE_SWAGGER_OPEN_ON_STARTUP",
-        False,
+        _is_vscode(),
     )
     swagger_docs_path = _normalize_path(
         os.getenv("SERVICE_SWAGGER_PATH", "/docs"),
@@ -291,6 +301,26 @@ def create_app(registry: Optional[AlgorithmRegistry] = None) -> FastAPI:
         ]
         return api_success(data=data)
 
+    @app.get("/service/info")
+    async def service_info():
+        """Describe the current service instance and its algorithms."""
+        registry_config = load_registry_config()
+        catalog = build_algorithm_catalog(registry_config, reg.list())
+        return api_success(
+            data={
+                "service": {
+                    "name": registry_config.service_name,
+                    "instance_id": registry_config.instance_id,
+                    "version": registry_config.service_version,
+                    "host": registry_config.service_host,
+                    "port": registry_config.service_port,
+                },
+                "base_url": catalog.get("base_url"),
+                "list_url": catalog.get("list_url"),
+                "algorithms": catalog.get("algorithms", []),
+            }
+        )
+
     @app.get("/algorithms/{name}/{version}/schema")
     async def get_schema(name: str, version: str):
         """Get input/output schema for an algorithm."""
@@ -311,7 +341,8 @@ def create_app(registry: Optional[AlgorithmRegistry] = None) -> FastAPI:
         """List algorithms registered in the service registry."""
         try:
             catalogs, errors = fetch_registry_algorithm_catalogs(
-                kv_prefix=prefix
+                kv_prefix=prefix,
+                healthy_only=True,
             )
         except ServiceRegistryError as exc:
             return api_error(code=502, message=str(exc))

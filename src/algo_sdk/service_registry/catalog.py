@@ -47,6 +47,10 @@ def build_algorithm_catalog(
 
     return {
         "service": config.service_name,
+        "service_id": config.instance_id,
+        "service_version": config.service_version,
+        "host": config.service_host,
+        "port": config.service_port,
         "base_url": base_url,
         "list_url": f"{base_url}/algorithms",
         "algorithms": items,
@@ -78,9 +82,26 @@ def publish_algorithm_catalog(
         registry = ConsulRegistry(cfg)
 
     payload = build_algorithm_catalog(cfg, algorithms)
-    key = kv_key or f"services/{cfg.service_name}/algorithms"
+    key = kv_key or (
+        f"services/{cfg.service_name}/{cfg.instance_id}/algorithms"
+    )
     registry.set_kv(key, json.dumps(payload))
     logger.info("Published algorithm catalog to registry key=%s", key)
+
+
+def _parse_catalog_key(
+    key: str,
+    kv_prefix: str,
+) -> tuple[str, str | None] | None:
+    if not key.endswith("/algorithms"):
+        return None
+    trimmed = key[len(kv_prefix):] if key.startswith(kv_prefix) else key
+    parts = [part for part in trimmed.split("/") if part]
+    if len(parts) == 2 and parts[1] == "algorithms":
+        return parts[0], None
+    if len(parts) == 3 and parts[2] == "algorithms":
+        return parts[0], parts[1]
+    return None
 
 
 def fetch_registry_algorithm_catalogs(
@@ -88,6 +109,7 @@ def fetch_registry_algorithm_catalogs(
     registry: ServiceRegistryProtocol | None = None,
     config: ServiceRegistryConfig | None = None,
     kv_prefix: str = "services/",
+    healthy_only: bool = False,
 ) -> tuple[list[dict[str, object]], list[dict[str, str]]]:
     """Fetch algorithm catalogs from the registry KV prefix."""
     cfg = config or load_config()
@@ -101,11 +123,40 @@ def fetch_registry_algorithm_catalogs(
     except Exception as exc:
         raise ServiceRegistryError(str(exc)) from exc
 
-    catalogs: list[dict[str, object]] = []
-    errors: list[dict[str, str]] = []
+    parsed_entries: list[tuple[str, str, str, str | None]] = []
     for key, value in entries.items():
-        if not key.endswith("/algorithms"):
+        parsed = _parse_catalog_key(key, kv_prefix)
+        if parsed is None:
             continue
+        service_name, service_id = parsed
+        parsed_entries.append((key, value, service_name, service_id))
+
+    healthy_ids: dict[str, set[str]] = {}
+    errors: list[dict[str, str]] = []
+    if healthy_only:
+        for service_name in {entry[2] for entry in parsed_entries}:
+            try:
+                instances = registry.get_healthy_service(service_name)
+                healthy_ids[service_name] = {
+                    instance.service_id for instance in instances
+                }
+            except ServiceRegistryError as exc:
+                errors.append(
+                    {
+                        "service": service_name,
+                        "error": str(exc),
+                    }
+                )
+
+    catalogs: list[dict[str, object]] = []
+    for key, value, service_name, service_id in parsed_entries:
+        if healthy_only:
+            ids = healthy_ids.get(service_name, set())
+            if service_id is None:
+                if not ids:
+                    continue
+            elif service_id not in ids:
+                continue
         try:
             payload = json.loads(value)
         except json.JSONDecodeError as exc:
@@ -117,6 +168,8 @@ def fetch_registry_algorithm_catalogs(
                 )
             continue
         payload.setdefault("kv_key", key)
+        if service_id is not None:
+            payload.setdefault("service_id", service_id)
         catalogs.append(payload)
 
     return catalogs, errors

@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass, field
+import uuid
+from dataclasses import dataclass, field, replace
 
 
 def _get_env(key: str, default: str) -> str:
@@ -28,6 +29,18 @@ def _get_env_int(key: str, default: int) -> int:
         return default
 
 
+_INSTANCE_ID: str | None = os.getenv("SERVICE_INSTANCE_ID")
+
+
+def _build_instance_id(service_name: str) -> str:
+    global _INSTANCE_ID
+    if _INSTANCE_ID:
+        return _INSTANCE_ID
+    suffix = uuid.uuid4().hex[:8]
+    _INSTANCE_ID = f"{service_name}-{suffix}"
+    return _INSTANCE_ID
+
+
 @dataclass(frozen=True, slots=True)
 class ServiceRegistryConfig:
     """Configuration for service registry."""
@@ -49,6 +62,11 @@ class ServiceRegistryConfig:
     # Service name
     service_name: str = field(
         default_factory=lambda: _get_env("SERVICE_NAME", "algo-core-service")
+    )
+
+    # Service version
+    service_version: str = field(
+        default_factory=lambda: _get_env("SERVICE_VERSION", "unknown")
     )
 
     # Service instance ID (auto-generated if not provided)
@@ -79,4 +97,9 @@ class ServiceRegistryConfig:
 
 def load_config() -> ServiceRegistryConfig:
     """Load service registry configuration from environment."""
-    return ServiceRegistryConfig()
+    config = ServiceRegistryConfig()
+    instance_id = config.instance_id
+    if instance_id is None or not instance_id.strip():
+        instance_id = _build_instance_id(config.service_name)
+        return replace(config, instance_id=instance_id)
+    return config
