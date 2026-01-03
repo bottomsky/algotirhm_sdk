@@ -7,7 +7,7 @@ from algo_dto.dto import PrepareRequest, PrepareResult, PrepareResultItem
 
 @Algorithm(
     name="Prepare",
-    version="v1.0.0",
+    version="v1",
     description="Prepare algorithm sample implementation.",
 )
 class PrepareAlgorithm(BaseAlgorithm[PrepareRequest, PrepareResult]):
