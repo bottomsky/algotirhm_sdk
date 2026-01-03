@@ -7,6 +7,7 @@ import logging
 import os
 import re
 import sys
+import webbrowser
 from contextlib import asynccontextmanager
 from dataclasses import asdict
 from enum import Enum
@@ -60,6 +61,33 @@ def _get_env_bool(name: str) -> bool | None:
     if raw in {"0", "false", "no", "n", "off"}:
         return False
     raise ValueError(f"Invalid bool env var {name}={raw!r}")
+
+
+def _get_env_bool_default(name: str, default: bool) -> bool:
+    value = _get_env_bool(name)
+    return default if value is None else value
+
+
+def _normalize_host(host: str) -> str:
+    if host in {"0.0.0.0", "::"}:
+        return "127.0.0.1"
+    return host
+
+
+def _normalize_path(path: str | None, fallback: str) -> str:
+    if not path or not path.strip():
+        return fallback
+    path = path.strip()
+    if not path.startswith("/"):
+        path = f"/{path}"
+    return path
+
+
+def _open_swagger(url: str) -> None:
+    try:
+        webbrowser.open(url, new=2)
+    except Exception:
+        _LOGGER.exception("Failed to open Swagger UI")
 
 
 def _build_executor_from_env() -> DispatchingExecutor:
@@ -178,6 +206,24 @@ def create_app(registry: Optional[AlgorithmRegistry] = None) -> FastAPI:
     service = bundle.service
     runtime = bundle.runtime
     metrics_store = bundle.metrics
+    swagger_enabled = _get_env_bool_default("SERVICE_SWAGGER_ENABLED", True)
+    swagger_open_on_startup = _get_env_bool_default(
+        "SERVICE_SWAGGER_OPEN_ON_STARTUP",
+        False,
+    )
+    swagger_docs_path = _normalize_path(
+        os.getenv("SERVICE_SWAGGER_PATH", "/docs"),
+        "/docs",
+    )
+    docs_url = swagger_docs_path if swagger_enabled else None
+    openapi_url = "/openapi.json" if swagger_enabled else None
+    redoc_url = "/redoc" if swagger_enabled else None
+
+    swagger_url = None
+    if swagger_enabled and swagger_open_on_startup:
+        host = _normalize_host(os.getenv("SERVICE_HOST", "127.0.0.1"))
+        port = int(os.getenv("SERVICE_PORT", "8000"))
+        swagger_url = f"http://{host}:{port}{swagger_docs_path}"
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
@@ -186,6 +232,8 @@ def create_app(registry: Optional[AlgorithmRegistry] = None) -> FastAPI:
             await runtime.provisioning(reason="startup")
             await runtime.ready(reason="startup")
             await runtime.running(reason="startup")
+            if swagger_url is not None:
+                _open_swagger(swagger_url)
             yield
         finally:
             try:
@@ -193,7 +241,13 @@ def create_app(registry: Optional[AlgorithmRegistry] = None) -> FastAPI:
             except AlreadyInStateError:
                 pass
 
-    app = FastAPI(title="Algorithm Service", lifespan=lifespan)
+    app = FastAPI(
+        title="Algorithm Service",
+        lifespan=lifespan,
+        docs_url=docs_url,
+        openapi_url=openapi_url,
+        redoc_url=redoc_url,
+    )
 
     admin_enabled = _get_env_bool("SERVICE_ADMIN_ENABLED") or False
 

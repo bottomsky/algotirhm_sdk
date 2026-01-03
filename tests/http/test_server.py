@@ -129,3 +129,58 @@ def test_list_registry_algorithms(monkeypatch):
         assert len(data["catalogs"]) == 2
         assert len(data["algorithms"]) == 1
         assert data["algorithms"][0]["service"] == "svc-a"
+
+
+def test_swagger_docs_disabled(monkeypatch):
+    monkeypatch.setenv("SERVICE_SWAGGER_ENABLED", "false")
+    app = create_app(AlgorithmRegistry())
+    with TestClient(app) as client:
+        assert client.get("/docs").status_code == 404
+
+
+def test_swagger_open_on_startup(monkeypatch):
+    monkeypatch.setenv("SERVICE_SWAGGER_ENABLED", "true")
+    monkeypatch.setenv("SERVICE_SWAGGER_OPEN_ON_STARTUP", "true")
+    monkeypatch.setenv("SERVICE_HOST", "127.0.0.1")
+    monkeypatch.setenv("SERVICE_PORT", "8000")
+
+    opened = {}
+
+    def fake_open(url):
+        opened["url"] = url
+        return True
+
+    monkeypatch.setattr(
+        http_server,
+        "_open_swagger",
+        fake_open,
+    )
+
+    app = create_app(AlgorithmRegistry())
+    with TestClient(app):
+        pass
+
+    assert opened["url"] == "http://127.0.0.1:8000/docs"
+
+
+def test_swagger_open_skipped_when_disabled(monkeypatch):
+    monkeypatch.setenv("SERVICE_SWAGGER_ENABLED", "false")
+    monkeypatch.setenv("SERVICE_SWAGGER_OPEN_ON_STARTUP", "true")
+
+    opened = []
+
+    def fake_open(url):
+        opened.append(url)
+        return True
+
+    monkeypatch.setattr(
+        http_server,
+        "_open_swagger",
+        fake_open,
+    )
+
+    app = create_app(AlgorithmRegistry())
+    with TestClient(app):
+        pass
+
+    assert opened == []
