@@ -115,6 +115,7 @@ def _parse_catalog_key(
 ) -> tuple[str, str | None] | None:
     if not key.endswith("/algorithms"):
         return None
+
     trimmed = key[len(kv_prefix) :] if key.startswith(kv_prefix) else key
     parts = [part for part in trimmed.split("/") if part]
     if len(parts) == 2 and parts[1] == "algorithms":
