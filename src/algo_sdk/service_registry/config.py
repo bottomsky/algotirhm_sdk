@@ -79,6 +79,11 @@ class ServiceRegistryConfig:
         default_factory=lambda: _get_env("SERVICE_HOST", "127.0.0.1")
     )
 
+    # Service protocol for health checks
+    service_protocol: str = field(
+        default_factory=lambda: _get_env("SERVICE_PROTOCOL", "http")
+    )
+
     # Service port
     service_port: int = field(
         default_factory=lambda: _get_env_int("SERVICE_PORT", 8000)
@@ -93,6 +98,28 @@ class ServiceRegistryConfig:
     health_check_timeout: int = field(
         default_factory=lambda: _get_env_int("HEALTH_CHECK_TIMEOUT", 5)
     )
+
+    # Enable Consul session binding for KV entries
+    session_enabled: bool = field(
+        default_factory=lambda: _get_env_bool(
+            "SERVICE_REGISTRY_SESSION_ENABLED", True
+        )
+    )
+
+    # Consul session TTL in seconds
+    session_ttl_seconds: int = field(
+        default_factory=lambda: _get_env_int(
+            "SERVICE_REGISTRY_SESSION_TTL_S", 30
+        )
+    )
+
+    # Consul session renew interval in seconds
+    session_renew_seconds: int = field(
+        default_factory=lambda: _get_env_int(
+            "SERVICE_REGISTRY_SESSION_RENEW_S", 10
+        )
+    )
+
 
 
 def load_config() -> ServiceRegistryConfig:

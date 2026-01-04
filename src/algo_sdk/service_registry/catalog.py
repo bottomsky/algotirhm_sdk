@@ -79,6 +79,7 @@ def publish_algorithm_catalog(
     config: ServiceRegistryConfig | None = None,
     algorithm_registry: AlgorithmRegistry | None = None,
     kv_key: str | None = None,
+    session_id: str | None = None,
 ) -> None:
     """Publish registered algorithms to service registry KV.
 
@@ -101,7 +102,10 @@ def publish_algorithm_catalog(
 
     payload = build_algorithm_catalog(cfg, algorithms)
     key = _build_catalog_kv_key(cfg, kv_key)
-    registry.set_kv(key, json.dumps(payload))
+    if session_id:
+        registry.set_kv_with_session(key, json.dumps(payload), session_id)
+    else:
+        registry.set_kv(key, json.dumps(payload))
     _EVENT_LOGGER.info(
         "Published algorithm catalog to registry key=%s",
         key,

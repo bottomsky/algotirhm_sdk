@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import threading
+import uuid
 from collections import defaultdict
 from typing import override
 
@@ -96,6 +97,13 @@ class MemoryRegistry(BaseServiceRegistry):
             self._kv_store[key] = value
 
     @override
+    def set_kv_with_session(
+        self, key: str, value: str, session_id: str
+    ) -> None:
+        _ = session_id
+        self.set_kv(key, value)
+
+    @override
     def get_kv(self, key: str) -> str | None:
         """Get a value by key."""
         with self._lock:
@@ -123,6 +131,19 @@ class MemoryRegistry(BaseServiceRegistry):
     def is_healthy(self) -> bool:
         """Return the configured health status."""
         return self._healthy
+
+    @override
+    def create_session(self, name: str, ttl_seconds: int) -> str:
+        _ = (name, ttl_seconds)
+        return uuid.uuid4().hex
+
+    @override
+    def renew_session(self, session_id: str) -> None:
+        _ = session_id
+
+    @override
+    def destroy_session(self, session_id: str) -> None:
+        _ = session_id
 
     def set_health(self, healthy: bool) -> None:
         """Toggle registry health for testing."""

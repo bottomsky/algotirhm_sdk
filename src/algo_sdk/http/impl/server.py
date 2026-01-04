@@ -451,12 +451,15 @@ def create_app(registry: Optional[AlgorithmRegistry] = None) -> FastAPI:
             return api_error(code=404, message=str(e))
 
     @app.get("/registry/algorithms")
-    async def list_registry_algorithms(prefix: str = "algo_services/"):
+    async def list_registry_algorithms(
+        prefix: str = "algo_services/",
+        healthy_only: bool = True,
+    ):
         """List algorithms registered in the service registry."""
         try:
             catalogs, errors = fetch_registry_algorithm_catalogs(
                 kv_prefix=prefix,
-                healthy_only=True,
+                healthy_only=healthy_only,
             )
         except ServiceRegistryError as exc:
             return api_error(code=502, message=str(exc))

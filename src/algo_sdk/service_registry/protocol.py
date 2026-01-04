@@ -79,6 +79,11 @@ class ServiceRegistryProtocol(Protocol):
     def set_kv(self, key: str, value: str) -> None:
         """Set a key-value pair in the registry."""
 
+    def set_kv_with_session(
+        self, key: str, value: str, session_id: str
+    ) -> None:
+        """Set a key-value pair bound to a registry session."""
+
     def get_kv(self, key: str) -> str | None:
         """Get a value by key from the registry."""
 
@@ -90,6 +95,15 @@ class ServiceRegistryProtocol(Protocol):
 
     def is_healthy(self) -> bool:
         """Check if the registry connection is healthy."""
+
+    def create_session(self, name: str, ttl_seconds: int) -> str:
+        """Create a registry session and return its ID."""
+
+    def renew_session(self, session_id: str) -> None:
+        """Renew a registry session lease."""
+
+    def destroy_session(self, session_id: str) -> None:
+        """Destroy a registry session and release its locks."""
 
 
 class BaseServiceRegistry(ABC, ServiceRegistryProtocol):
@@ -172,6 +186,21 @@ class BaseServiceRegistry(ABC, ServiceRegistryProtocol):
         """
 
     @abstractmethod
+    def set_kv_with_session(
+        self, key: str, value: str, session_id: str
+    ) -> None:
+        """Set a key-value pair bound to a registry session.
+
+        Args:
+            key: The key
+            value: The value
+            session_id: Session ID that owns the key
+
+        Raises:
+            ServiceRegistryError: If operation fails
+        """
+
+    @abstractmethod
     def get_kv(self, key: str) -> str | None:
         """Get a value by key from the registry.
 
@@ -216,4 +245,32 @@ class BaseServiceRegistry(ABC, ServiceRegistryProtocol):
 
         Returns:
             True if connection is healthy, False otherwise
+        """
+
+    @abstractmethod
+    def create_session(self, name: str, ttl_seconds: int) -> str:
+        """Create a registry session.
+
+        Args:
+            name: Session name
+            ttl_seconds: Session TTL in seconds
+
+        Returns:
+            Session ID
+        """
+
+    @abstractmethod
+    def renew_session(self, session_id: str) -> None:
+        """Renew a registry session lease.
+
+        Args:
+            session_id: Session ID
+        """
+
+    @abstractmethod
+    def destroy_session(self, session_id: str) -> None:
+        """Destroy a registry session and release locks.
+
+        Args:
+            session_id: Session ID
         """

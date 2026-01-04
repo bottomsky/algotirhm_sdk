@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from threading import Event, Lock, Thread
 
 from algo_sdk.core.registry import AlgorithmRegistry, get_registry
 from algo_sdk.logging import get_event_logger
@@ -45,6 +46,10 @@ class ServiceRegistryHook(ServiceLifecycleHookProtocol):
         self._health_check_endpoint = health_check_endpoint
         self._service_id = self._build_service_id(self._config)
         self._registered = False
+        self._session_id: str | None = None
+        self._session_lock = Lock()
+        self._session_stop = Event()
+        self._session_thread: Thread | None = None
         if priority is not None:
             self.priority = priority
 
@@ -63,6 +68,7 @@ class ServiceRegistryHook(ServiceLifecycleHookProtocol):
             return
         if ctx.phase is ServiceLifecyclePhase.SHUTDOWN:
             self._deregister_if_needed()
+            self._stop_session()
 
     def after(self, ctx: ServiceLifecycleContext) -> None:
         return None
@@ -130,12 +136,101 @@ class ServiceRegistryHook(ServiceLifecycleHookProtocol):
         )
 
     def _publish_catalog(self) -> None:
+        self._cleanup_own_catalog()
+        self._ensure_session()
         publish_algorithm_catalog(
             registry=self._get_registry(),
             config=self._config,
             algorithm_registry=self._algorithm_registry,
             kv_key=self._kv_key,
+            session_id=self._session_id,
         )
+
+    def _cleanup_own_catalog(self) -> None:
+        key = _build_catalog_kv_key(self._config, self._kv_key)
+        try:
+            self._get_registry().delete_kv(key)
+            _EVENT_LOGGER.debug(
+                "Pruned registry catalog key %s",
+                key,
+                logger=_LOGGER,
+            )
+        except Exception:
+            _EVENT_LOGGER.warning(
+                "Failed to prune registry catalog key %s",
+                key,
+                logger=_LOGGER,
+                exc_info=True,
+            )
+
+    def _ensure_session(self) -> None:
+        if not self._config.session_enabled:
+            return
+        if self._session_id is not None:
+            return
+        with self._session_lock:
+            if self._session_id is not None:
+                return
+            session_name = f"{self._config.service_name}-{self._service_id}"
+            session_id = self._get_registry().create_session(
+                session_name,
+                self._config.session_ttl_seconds,
+            )
+            self._session_id = session_id
+            self._start_session_renewal()
+
+    def _start_session_renewal(self) -> None:
+        if self._session_thread is not None:
+            return
+        interval = self._config.session_renew_seconds
+        if interval <= 0:
+            _EVENT_LOGGER.warning(
+                "Registry session renew disabled; catalog may expire",
+                logger=_LOGGER,
+            )
+            return
+        self._session_stop.clear()
+        self._session_thread = Thread(
+            target=self._renew_session_loop,
+            args=(interval,),
+            name="algo-sdk-registry-session-renew",
+            daemon=True,
+        )
+        self._session_thread.start()
+
+    def _renew_session_loop(self, interval: int) -> None:
+        while not self._session_stop.wait(interval):
+            session_id = self._session_id
+            if not session_id:
+                return
+            try:
+                self._get_registry().renew_session(session_id)
+            except Exception:
+                _EVENT_LOGGER.warning(
+                    "Failed to renew registry session %s",
+                    session_id,
+                    logger=_LOGGER,
+                    exc_info=True,
+                )
+
+    def _stop_session(self) -> None:
+        if self._session_thread is not None:
+            self._session_stop.set()
+            self._session_thread.join(timeout=1.0)
+            self._session_thread = None
+        if self._session_id is None:
+            return
+        session_id = self._session_id
+        self._session_id = None
+        try:
+            self._get_registry().destroy_session(session_id)
+        except Exception:
+            _EVENT_LOGGER.warning(
+                "Failed to destroy registry session %s",
+                session_id,
+                logger=_LOGGER,
+                exc_info=True,
+            )
 
     def _delete_catalog(self) -> None:
         key = _build_catalog_kv_key(self._config, self._kv_key)

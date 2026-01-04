@@ -7,6 +7,7 @@ import json
 import logging
 import urllib.error
 import urllib.request
+import uuid
 from collections.abc import Iterable, Mapping
 from http.client import HTTPResponse
 from typing import ClassVar, cast, override
@@ -257,6 +258,26 @@ class ConsulRegistry(BaseServiceRegistry):
             raise KVOperationError(msg) from e
 
     @override
+    def set_kv_with_session(
+        self, key: str, value: str, session_id: str
+    ) -> None:
+        """Set a key-value pair owned by a Consul session."""
+        url = f"{self._base_url}/v1/kv/{key}?acquire={session_id}"
+        try:
+            response = self._http_put_text(
+                url,
+                value.encode("utf-8"),
+                is_raw=True,
+            )
+            if response.strip().lower() != "true":
+                raise KVOperationError(
+                    f"Failed to acquire KV lock for {key}")
+        except Exception as e:
+            msg = f"Failed to set KV with session: {key}"
+            _EVENT_LOGGER.exception(msg, logger=logger)
+            raise KVOperationError(msg) from e
+
+    @override
     def get_kv(self, key: str) -> str | None:
         """Get a value by key from Consul KV store.
 
@@ -364,6 +385,49 @@ class ConsulRegistry(BaseServiceRegistry):
         except Exception:
             _EVENT_LOGGER.warning("Consul health check failed", logger=logger)
             return False
+
+    @override
+    def create_session(self, name: str, ttl_seconds: int) -> str:
+        url = f"{self._base_url}/v1/session/create"
+        payload: dict[str, object] = {
+            "Name": name or f"algo-session-{uuid.uuid4().hex[:8]}",
+            "Behavior": "delete",
+        }
+        if ttl_seconds > 0:
+            payload["TTL"] = f"{ttl_seconds}s"
+        try:
+            response = self._http_put_json(url, payload)
+            session_id = None
+            if isinstance(response, dict):
+                session_id = response.get("ID")
+            if not isinstance(session_id, str) or not session_id:
+                raise ServiceRegistryConnectionError(
+                    "Consul session ID missing in response")
+            return session_id
+        except Exception as e:
+            msg = "Failed to create Consul session"
+            _EVENT_LOGGER.exception(msg, logger=logger)
+            raise ServiceRegistryConnectionError(msg) from e
+
+    @override
+    def renew_session(self, session_id: str) -> None:
+        url = f"{self._base_url}/v1/session/renew/{session_id}"
+        try:
+            _ = self._http_put_json(url, None)
+        except Exception as e:
+            msg = f"Failed to renew Consul session {session_id}"
+            _EVENT_LOGGER.exception(msg, logger=logger)
+            raise ServiceRegistryConnectionError(msg) from e
+
+    @override
+    def destroy_session(self, session_id: str) -> None:
+        url = f"{self._base_url}/v1/session/destroy/{session_id}"
+        try:
+            _ = self._http_put_json(url, None)
+        except Exception as e:
+            msg = f"Failed to destroy Consul session {session_id}"
+            _EVENT_LOGGER.exception(msg, logger=logger)
+            raise ServiceRegistryConnectionError(msg) from e
 
     def _build_registration_payload(
         self,
@@ -504,6 +568,60 @@ class ConsulRegistry(BaseServiceRegistry):
                     urllib.request.urlopen(request, timeout=self._timeout),
             ) as response:
                 _ = response.read()  # Consume response
+        except urllib.error.URLError as e:
+            raise ServiceRegistryConnectionError(
+                f"Failed to connect to Consul: {e}") from e
+
+    def _http_put_text(
+        self,
+        url: str,
+        data: dict[str, object] | bytes | None,
+        *,
+        is_raw: bool = False,
+    ) -> str:
+        if data is None:
+            body = None
+        elif is_raw and isinstance(data, bytes):
+            body = data
+        else:
+            body = json.dumps(data).encode("utf-8")
+
+        request = urllib.request.Request(url, data=body, method="PUT")
+        request.add_header("Content-Type", "application/json")
+
+        try:
+            with cast(
+                    HTTPResponse,
+                    urllib.request.urlopen(request, timeout=self._timeout),
+            ) as response:
+                content = response.read()
+                return content.decode("utf-8") if content else ""
+        except urllib.error.URLError as e:
+            raise ServiceRegistryConnectionError(
+                f"Failed to connect to Consul: {e}") from e
+
+    def _http_put_json(
+        self,
+        url: str,
+        data: dict[str, object] | None,
+    ) -> object:
+        if data is None:
+            body = None
+        else:
+            body = json.dumps(data).encode("utf-8")
+
+        request = urllib.request.Request(url, data=body, method="PUT")
+        request.add_header("Content-Type", "application/json")
+
+        try:
+            with cast(
+                    HTTPResponse,
+                    urllib.request.urlopen(request, timeout=self._timeout),
+            ) as response:
+                content = response.read()
+                if not content:
+                    return {}
+                return json.loads(content.decode("utf-8"))
         except urllib.error.URLError as e:
             raise ServiceRegistryConnectionError(
                 f"Failed to connect to Consul: {e}") from e
