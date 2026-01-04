@@ -34,6 +34,19 @@ class ExecutionConfig:
     gpu: str | None = None
 
 
+@dataclass(frozen=True, slots=True)
+class LoggingConfig:
+    """Logging configuration for algorithm payloads."""
+
+    enabled: bool = False
+    log_input: bool = False
+    log_output: bool = False
+    on_error_only: bool = False
+    sample_rate: float = 1.0
+    max_length: int = 2048
+    redact_fields: tuple[str, ...] = field(default_factory=tuple)
+
+
 @dataclass(slots=True)
 class AlgorithmSpec(Generic[TInput, TOutput]):
     """Metadata for an algorithm entry."""
@@ -48,6 +61,7 @@ class AlgorithmSpec(Generic[TInput, TOutput]):
                                                                     TOutput]]
     algorithm_type: AlgorithmType = AlgorithmType.PRECITION
     execution: ExecutionConfig = field(default_factory=ExecutionConfig)
+    logging: LoggingConfig = field(default_factory=LoggingConfig)
     is_class: bool = False
 
     def key(self) -> tuple[str, str]:

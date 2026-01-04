@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import atexit
+import json
 import logging
 import multiprocessing as mp
 import os
 import queue
+import random
 import signal
 import subprocess
 import time
@@ -28,13 +30,14 @@ from pydantic import ValidationError
 from ..protocol.models import AlgorithmContext
 from .base_model_impl import BaseModel
 from .lifecycle import AlgorithmLifecycleProtocol
+from ..logging import get_event_logger
 from ..runtime.context import (
     get_response_meta,
     reset_execution_context,
     ResponseMeta,
     set_execution_context,
 )
-from .metadata import AlgorithmSpec, ExecutionMode
+from .metadata import AlgorithmSpec, ExecutionMode, LoggingConfig
 
 TInput = TypeVar("TInput", bound=BaseModel)
 TOutput = TypeVar("TOutput", bound=BaseModel)
@@ -43,6 +46,7 @@ ExecutionErrorKind = Literal[
 ]
 
 _LOGGER = logging.getLogger(__name__)
+_EVENT_LOGGER = get_event_logger()
 
 
 @dataclass(slots=True)
@@ -249,7 +253,87 @@ def _build_log_extra(
     if result.error is not None:
         extra["error_kind"] = result.error.kind
         extra["error_message"] = result.error.message
+        if result.error.details is not None:
+            extra["error_details"] = result.error.details
+        if result.error.traceback is not None:
+            extra["error_traceback"] = result.error.traceback
 
+    return extra
+
+
+def _should_log_payload(config: LoggingConfig, success: bool) -> bool:
+    if not config.enabled:
+        return False
+    if config.on_error_only and success:
+        return False
+    if not (config.log_input or config.log_output):
+        return False
+    if config.sample_rate <= 0:
+        return False
+    if config.sample_rate < 1 and random.random() >= config.sample_rate:
+        return False
+    return True
+
+
+def _sanitize_payload(
+    value: object,
+    *,
+    redact_fields: set[str],
+) -> object:
+    if isinstance(value, BaseModel):
+        value = value.model_dump()
+    if isinstance(value, Mapping):
+        sanitized: dict[str, object] = {}
+        for key, item in value.items():
+            key_str = str(key)
+            if key_str in redact_fields:
+                sanitized[key_str] = "***"
+            else:
+                sanitized[key_str] = _sanitize_payload(
+                    item, redact_fields=redact_fields
+                )
+        return sanitized
+    if isinstance(value, (list, tuple)):
+        return [
+            _sanitize_payload(item, redact_fields=redact_fields)
+            for item in value
+        ]
+    return value
+
+
+def _truncate_text(text: str, max_length: int) -> str:
+    if max_length <= 0:
+        return ""
+    if len(text) <= max_length:
+        return text
+    suffix = "...(truncated)"
+    if max_length <= len(suffix):
+        return suffix[:max_length]
+    return text[: max_length - len(suffix)] + suffix
+
+
+def _serialize_preview(value: object, config: LoggingConfig) -> str:
+    redact_fields = {field for field in config.redact_fields}
+    sanitized = _sanitize_payload(value, redact_fields=redact_fields)
+    try:
+        text = json.dumps(sanitized, ensure_ascii=True, default=str)
+    except Exception:
+        text = str(sanitized)
+    return _truncate_text(text, config.max_length)
+
+
+def _build_payload_log_extra(
+    request: ExecutionRequest[Any, Any],
+    result: ExecutionResult[Any],
+) -> dict[str, object]:
+    config = request.spec.logging
+    if not _should_log_payload(config, result.success):
+        return {}
+    extra: dict[str, object] = {}
+    if config.log_input:
+        extra["input_preview"] = _serialize_preview(request.payload, config)
+    if config.log_output and result.data is not None:
+        extra["output_preview"] = _serialize_preview(result.data, config)
     return extra
 
 
@@ -257,14 +341,27 @@ def _log_execution_result(
     request: ExecutionRequest[Any, Any], result: ExecutionResult[Any]
 ) -> None:
     extra = _build_log_extra(request, result)
+    extra.update(_build_payload_log_extra(request, result))
     if result.success:
-        _LOGGER.info("algorithm execution completed", extra=extra)
+        _EVENT_LOGGER.info(
+            "algorithm execution completed",
+            logger=_LOGGER,
+            extra=extra,
+        )
         return
     kind = result.error.kind if result.error is not None else "unknown"
     if kind in {"runtime", "system"}:
-        _LOGGER.error("algorithm execution failed", extra=extra)
+        _EVENT_LOGGER.error(
+            "algorithm execution failed",
+            logger=_LOGGER,
+            extra=extra,
+        )
         return
-    _LOGGER.warning("algorithm execution failed", extra=extra)
+    _EVENT_LOGGER.warning(
+        "algorithm execution failed",
+        logger=_LOGGER,
+        extra=extra,
+    )
 
 
 @dataclass(slots=True)
