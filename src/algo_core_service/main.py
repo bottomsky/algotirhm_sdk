@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 
-ENV_FILE = Path(__file__).resolve().parent / ".env"
+ENV_FILE = Path(__file__).resolve().parents[2] / ".env.example"
 
 
 def run_server() -> None:

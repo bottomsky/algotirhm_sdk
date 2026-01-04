@@ -6,7 +6,7 @@
             "type": "python",
             "request": "launch",
             "module": "algo_core_service.main",
-            "envFile": "${workspaceFolder}\\src\\algo_core_service\\.env",
+            "envFile": "${workspaceFolder}\\.env.example",
             "justMyCode": true,
             "console": "integratedTerminal",
             "python": "${workspaceFolder}\\.venv\\Scripts\\python.exe"
