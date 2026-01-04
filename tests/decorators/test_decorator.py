@@ -10,6 +10,7 @@ from algo_sdk import (
     BaseModel,
     DefaultAlgorithmDecorator,
     ExecutionMode,
+    LoggingConfig,
 )
 
 
@@ -89,3 +90,28 @@ def test_execution_mode_rejects_string() -> None:
             version="v1",
             execution={"execution_mode": "in_process"},
         )(_AlgoForRegistration)
+
+
+def test_logging_config_is_recorded() -> None:
+    reg = AlgorithmRegistry()
+    deco = DefaultAlgorithmDecorator(registry=reg)
+
+    deco(
+        name="log-algo",
+        version="v1",
+        logging={
+            "enabled": True,
+            "log_input": True,
+            "log_output": True,
+            "max_length": 128,
+            "redact_fields": ["secret"],
+        },
+    )(_AlgoForRegistration)
+
+    spec = reg.get("log-algo", "v1")
+    assert isinstance(spec.logging, LoggingConfig)
+    assert spec.logging.enabled is True
+    assert spec.logging.log_input is True
+    assert spec.logging.log_output is True
+    assert spec.logging.max_length == 128
+    assert spec.logging.redact_fields == ("secret",)

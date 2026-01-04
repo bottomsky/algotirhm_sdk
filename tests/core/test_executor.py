@@ -1,3 +1,4 @@
+import logging
 import os
 import time
 from datetime import datetime, timezone
@@ -12,6 +13,7 @@ from algo_sdk import (
     ExecutionMode,
     ExecutionRequest,
     InProcessExecutor,
+    LoggingConfig,
     ProcessPoolExecutor,
     get_current_context,
     get_current_request_datetime,
@@ -523,5 +525,73 @@ def test_process_pool_algorithm_validation_error_is_runtime() -> None:
         assert result.error is not None
         assert result.error.kind == "runtime"
         assert result.error.traceback is not None
+    finally:
+        executor.shutdown()
+
+
+def test_logging_config_logs_input_output(caplog) -> None:
+    spec = AlgorithmSpec(
+        name="log-double",
+        version="v1",
+        description=None,
+        input_model=_Req,
+        output_model=_Resp,
+        execution=ExecutionConfig(),
+        entrypoint=_DoubleAlgo,
+        is_class=True,
+        logging=LoggingConfig(
+            enabled=True,
+            log_input=True,
+            log_output=True,
+            max_length=512,
+        ),
+    )
+    executor = InProcessExecutor()
+    try:
+        req = ExecutionRequest(
+            spec=spec, payload=_Req(value=3), request_id="log-1"
+        )
+        with caplog.at_level(logging.INFO):
+            result = executor.submit(req)
+        assert result.success is True
+        record = next(
+            r for r in caplog.records
+            if r.msg == "algorithm execution completed"
+        )
+        assert '"value": 3' in record.input_preview
+        assert '"doubled": 6' in record.output_preview
+    finally:
+        executor.shutdown()
+
+
+def test_logging_config_on_error_only_skips_success(caplog) -> None:
+    spec = AlgorithmSpec(
+        name="log-double-skip",
+        version="v1",
+        description=None,
+        input_model=_Req,
+        output_model=_Resp,
+        execution=ExecutionConfig(),
+        entrypoint=_DoubleAlgo,
+        is_class=True,
+        logging=LoggingConfig(
+            enabled=True,
+            log_input=True,
+            on_error_only=True,
+        ),
+    )
+    executor = InProcessExecutor()
+    try:
+        req = ExecutionRequest(
+            spec=spec, payload=_Req(value=2), request_id="log-2"
+        )
+        with caplog.at_level(logging.INFO):
+            result = executor.submit(req)
+        assert result.success is True
+        record = next(
+            r for r in caplog.records
+            if r.msg == "algorithm execution completed"
+        )
+        assert not hasattr(record, "input_preview")
     finally:
         executor.shutdown()
