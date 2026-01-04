@@ -13,7 +13,7 @@ from algo_sdk.core import AlgorithmType
     algorithm_type=AlgorithmType.PREPARE,
 )
 class PrepareAlgorithm(BaseAlgorithm[PrepareRequest, PrepareResult]):
-    def run(self, req: PrepareRequest) -> PrepareResult:  # type: ignore[override]
+    def run(self, req: PrepareRequest) -> PrepareResult:
         _ = req
         item = PrepareResultItem(
             sat_id=1,
