@@ -1215,7 +1215,8 @@ class InMemoryHealthService(IHealthService):
 - `SERVICE_REGISTRY_ENABLED=true/false`
 - `SERVICE_REGISTRY_HOST=http://127.0.0.1:8500`
 - `SERVICE_NAME=algo-core-service`
-- `SERVICE_INSTANCE_ID=<可选，默认自动生成>`
+- `SERVICE_INSTANCE_ID=<可选，默认使用 name+host+port+protocol>`
+- `多实例扩容时建议由启动脚本动态设置 SERVICE_INSTANCE_ID`
 - `SERVICE_PROTOCOL=http`
 - `SERVICE_REGISTRY_SESSION_ENABLED=true/false`
 - `SERVICE_REGISTRY_SESSION_TTL_S=30`
