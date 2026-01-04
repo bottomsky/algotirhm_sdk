@@ -136,11 +136,13 @@ def test_service_info(monkeypatch):
 
 def test_list_registry_algorithms(monkeypatch):
     registry = AlgorithmRegistry()
+    captured = {}
 
     def _fake_fetch_registry_algorithm_catalogs(
         *, kv_prefix: str, healthy_only: bool = False
     ):
-        _ = (kv_prefix, healthy_only)
+        captured["kv_prefix"] = kv_prefix
+        captured["healthy_only"] = healthy_only
         return (
             [
                 {
@@ -174,6 +176,7 @@ def test_list_registry_algorithms(monkeypatch):
         payload = response.json()
         assert payload["code"] == 0
         data = payload["data"]
+        assert captured["healthy_only"] is True
         assert len(data["catalogs"]) == 2
         assert len(data["algorithms"]) == 1
         assert data["algorithms"][0]["service"] == "svc-a"
