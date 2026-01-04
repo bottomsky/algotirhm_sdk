@@ -52,6 +52,12 @@ def test_healthz(client):
     assert response.json() == {"status": "ok"}
 
 
+def test_root_redirects_to_healthz(client):
+    response = client.get("/", follow_redirects=False)
+    assert response.status_code == 307
+    assert response.headers["location"] == "/healthz"
+
+
 def test_readyz(client):
     response = client.get("/readyz")
     assert response.status_code == 200
