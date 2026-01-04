@@ -584,7 +584,7 @@ def run(*, env_path: str | os.PathLike[str] | None = None) -> None:
     _load_env_file(env_path)
     configure_sdk_logging()
 
-    host = os.getenv("SERVICE_HOST", "127.0.0.1")
+    bind_host = os.getenv("SERVICE_BIND_HOST", "127.0.0.1")
     port = int(os.getenv("SERVICE_PORT", "8000"))
 
     # Load modules to register algorithms
@@ -593,7 +593,7 @@ def run(*, env_path: str | os.PathLike[str] | None = None) -> None:
         load_algorithm_modules([m.strip() for m in modules_str.split(",")])
 
     app = create_app()
-    uvicorn.run(app, host=host, port=port)
+    uvicorn.run(app, host=bind_host, port=port)
 
 
 if __name__ == "__main__":
