@@ -21,6 +21,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.responses import PlainTextResponse
+from fastapi.responses import RedirectResponse
 
 from ...runtime import (
     AlreadyInStateError,
@@ -367,6 +368,10 @@ def create_app(registry: Optional[AlgorithmRegistry] = None) -> FastAPI:
         )
 
     admin_enabled = _get_env_bool("SERVICE_ADMIN_ENABLED") or False
+
+    @app.get("/", include_in_schema=False)
+    async def root():
+        return RedirectResponse(url="/healthz", status_code=307)
 
     @app.get("/healthz")
     async def healthz():
