@@ -40,27 +40,6 @@ def _apply_pythonpath_from_env() -> None:
             sys.path.insert(0, path_str)
 
 
-def _load_algorithms() -> None:
-    from algo_sdk import http_server
-
-    raw = os.getenv("ALGO_MODULES", "").strip()
-    if raw:
-        modules = [item.strip() for item in raw.split(",") if item.strip()]
-    else:
-        modules = ["algo_core_service.algorithms"]
-    http_server.load_algorithm_modules(modules)
-
-
-def create_application():
-    _load_env()
-    _apply_pythonpath_from_env()
-    _load_algorithms()
-
-    from algo_sdk import create_app
-
-    return create_app()
-
-
 def run_server() -> None:
     _load_env()
     _apply_pythonpath_from_env()
@@ -68,11 +47,6 @@ def run_server() -> None:
     from algo_sdk import run as run_http
 
     run_http()
-
-
-if __name__ != "__main__":
-    app = create_application()
-    __all__ = ["app"]
 
 
 if __name__ == "__main__":
