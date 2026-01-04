@@ -137,6 +137,29 @@ def _open_swagger(url: str) -> None:
         )
 
 
+def _resolve_env_path(env_path: str | os.PathLike[str] | None) -> Path | None:
+    if env_path is not None:
+        env_text = str(env_path).strip()
+        if env_text:
+            return Path(env_text).expanduser()
+        return None
+    env_text = os.getenv("SERVICE_ENV_PATH", "").strip()
+    if env_text:
+        return Path(env_text).expanduser()
+    return Path.cwd() / ".env"
+
+
+def _load_env_file(env_path: str | os.PathLike[str] | None) -> None:
+    resolved = _resolve_env_path(env_path)
+    if resolved is None:
+        load_dotenv()
+        return
+    if resolved.exists():
+        load_dotenv(resolved)
+        return
+    load_dotenv()
+
+
 def _build_executor_from_env() -> DispatchingExecutor:
     global_max_workers = _get_env_int("EXECUTOR_GLOBAL_MAX_WORKERS")
     global_queue_size = _get_env_int("EXECUTOR_GLOBAL_QUEUE_SIZE")
@@ -519,9 +542,9 @@ class Server:
         run()
 
 
-def run():
+def run(*, env_path: str | os.PathLike[str] | None = None) -> None:
     """Start uvicorn server with configuration from environment."""
-    load_dotenv()
+    _load_env_file(env_path)
     configure_sdk_logging()
 
     host = os.getenv("SERVICE_HOST", "127.0.0.1")

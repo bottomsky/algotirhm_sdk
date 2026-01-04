@@ -228,7 +228,6 @@ def test_swagger_open_skipped_when_disabled(monkeypatch):
     assert opened == []
 
 
-
 def test_swagger_open_defaults_to_vscode(monkeypatch):
     monkeypatch.delenv("SERVICE_SWAGGER_OPEN_ON_STARTUP", raising=False)
     monkeypatch.setenv("SERVICE_SWAGGER_ENABLED", "true")
