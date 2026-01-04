@@ -18,6 +18,7 @@ from typing import List, Optional
 import uvicorn
 from dotenv import load_dotenv
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.responses import PlainTextResponse
 
@@ -105,6 +106,13 @@ def _get_env_bool(name: str) -> bool | None:
 def _get_env_bool_default(name: str, default: bool) -> bool:
     value = _get_env_bool(name)
     return default if value is None else value
+
+
+def _get_env_list(name: str) -> list[str]:
+    raw = os.getenv(name, "")
+    if not raw.strip():
+        return []
+    return [item.strip() for item in raw.split(",") if item.strip()]
 
 
 def _is_vscode() -> bool:
@@ -328,6 +336,35 @@ def create_app(registry: Optional[AlgorithmRegistry] = None) -> FastAPI:
         openapi_url=openapi_url,
         redoc_url=redoc_url,
     )
+
+    if _get_env_bool_default("CORS_ENABLED", False):
+        allow_origins = _get_env_list("CORS_ALLOW_ORIGINS")
+        allow_origin_regex = os.getenv(
+            "CORS_ALLOW_ORIGIN_REGEX", ""
+        ).strip() or None
+        allow_methods = _get_env_list("CORS_ALLOW_METHODS") or ["*"]
+        allow_headers = _get_env_list("CORS_ALLOW_HEADERS") or ["*"]
+        allow_credentials = _get_env_bool_default(
+            "CORS_ALLOW_CREDENTIALS", False
+        )
+
+        if not allow_origins and not allow_origin_regex:
+            allow_origins = ["*"]
+        if allow_credentials and "*" in allow_origins:
+            allow_credentials = False
+            _EVENT_LOGGER.warning(
+                "CORS_ALLOW_CREDENTIALS ignored with wildcard origins",
+                logger=_LOGGER,
+            )
+
+        app.add_middleware(
+            CORSMiddleware,
+            allow_origins=allow_origins,
+            allow_origin_regex=allow_origin_regex,
+            allow_credentials=allow_credentials,
+            allow_methods=allow_methods,
+            allow_headers=allow_headers,
+        )
 
     admin_enabled = _get_env_bool("SERVICE_ADMIN_ENABLED") or False
 
