@@ -181,7 +181,8 @@ def _split_module_spec(module_spec: str) -> tuple[str, str | None]:
         if last_colon == 1:
             return module_spec, None
         module_path = module_spec[:last_colon].strip()
-        attr = module_spec[last_colon + 1 :].strip()
+        index: int = last_colon + 1
+        attr = module_spec[index:].strip()
         return module_path, attr or None
     module_path, attr = module_spec.rsplit(":", 1)
     module_path = module_path.strip()
