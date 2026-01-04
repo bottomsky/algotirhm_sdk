@@ -26,8 +26,10 @@ from ..protocol import (
     BaseServiceRegistry,
     ServiceStatus,
 )
+from algo_sdk.logging import get_event_logger
 
 logger = logging.getLogger(__name__)
+_EVENT_LOGGER = get_event_logger()
 
 
 def _to_str(value: object) -> str:
@@ -152,14 +154,15 @@ class ConsulRegistry(BaseServiceRegistry):
 
         try:
             self._http_put(url, payload)
-            logger.info(
+            _EVENT_LOGGER.info(
                 "Registered service: %s (id=%s)",
                 registration.service_name,
                 registration.service_id,
+                logger=logger,
             )
         except Exception as e:
             msg = f"Failed to register service: {registration.service_id}"
-            logger.exception(msg)
+            _EVENT_LOGGER.exception(msg, logger=logger)
             raise ServiceRegistrationError(msg) from e
 
     @override
@@ -176,10 +179,14 @@ class ConsulRegistry(BaseServiceRegistry):
 
         try:
             self._http_put(url, None)
-            logger.info("Deregistered service: %s", service_id)
+            _EVENT_LOGGER.info(
+                "Deregistered service: %s",
+                service_id,
+                logger=logger,
+            )
         except Exception as e:
             msg = f"Failed to deregister service: {service_id}"
-            logger.exception(msg)
+            _EVENT_LOGGER.exception(msg, logger=logger)
             raise ServiceDeregistrationError(msg) from e
 
     @override
@@ -202,7 +209,7 @@ class ConsulRegistry(BaseServiceRegistry):
             return self._parse_service_instances(data)
         except Exception as e:
             msg = f"Failed to get service: {service_name}"
-            logger.exception(msg)
+            _EVENT_LOGGER.exception(msg, logger=logger)
             raise ServiceDiscoveryError(msg) from e
 
     @override
@@ -225,7 +232,7 @@ class ConsulRegistry(BaseServiceRegistry):
             return self._parse_health_service_instances(data)
         except Exception as e:
             msg = f"Failed to get healthy service: {service_name}"
-            logger.exception(msg)
+            _EVENT_LOGGER.exception(msg, logger=logger)
             raise ServiceDiscoveryError(msg) from e
 
     @override
@@ -243,10 +250,10 @@ class ConsulRegistry(BaseServiceRegistry):
 
         try:
             self._http_put(url, value.encode("utf-8"), is_raw=True)
-            logger.debug("Set KV: %s", key)
+            _EVENT_LOGGER.debug("Set KV: %s", key, logger=logger)
         except Exception as e:
             msg = f"Failed to set KV: {key}"
-            logger.exception(msg)
+            _EVENT_LOGGER.exception(msg, logger=logger)
             raise KVOperationError(msg) from e
 
     @override
@@ -281,11 +288,11 @@ class ConsulRegistry(BaseServiceRegistry):
             if e.code == 404:
                 return None
             msg = f"Failed to get KV: {key}"
-            logger.exception(msg)
+            _EVENT_LOGGER.exception(msg, logger=logger)
             raise KVOperationError(msg) from e
         except Exception as e:
             msg = f"Failed to get KV: {key}"
-            logger.exception(msg)
+            _EVENT_LOGGER.exception(msg, logger=logger)
             raise KVOperationError(msg) from e
 
     @override
@@ -315,11 +322,11 @@ class ConsulRegistry(BaseServiceRegistry):
             if e.code == 404:
                 return {}
             msg = f"Failed to list KV prefix: {prefix}"
-            logger.exception(msg)
+            _EVENT_LOGGER.exception(msg, logger=logger)
             raise KVOperationError(msg) from e
         except Exception as e:
             msg = f"Failed to list KV prefix: {prefix}"
-            logger.exception(msg)
+            _EVENT_LOGGER.exception(msg, logger=logger)
             raise KVOperationError(msg) from e
 
     @override
@@ -336,10 +343,10 @@ class ConsulRegistry(BaseServiceRegistry):
 
         try:
             self._http_delete(url)
-            logger.debug("Deleted KV: %s", key)
+            _EVENT_LOGGER.debug("Deleted KV: %s", key, logger=logger)
         except Exception as e:
             msg = f"Failed to delete KV: {key}"
-            logger.exception(msg)
+            _EVENT_LOGGER.exception(msg, logger=logger)
             raise KVOperationError(msg) from e
 
     @override
@@ -355,7 +362,7 @@ class ConsulRegistry(BaseServiceRegistry):
             leader = self._http_get(url)
             return bool(leader)
         except Exception:
-            logger.warning("Consul health check failed")
+            _EVENT_LOGGER.warning("Consul health check failed", logger=logger)
             return False
 
     def _build_registration_payload(

@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 
 from algo_sdk.core.registry import AlgorithmRegistry, get_registry
+from algo_sdk.logging import get_event_logger
 from algo_sdk.runtime import (
     ServiceLifecycleContext,
     ServiceLifecycleHookProtocol,
@@ -17,6 +18,7 @@ from ..protocol import (HealthCheck,
                         ServiceRegistryProtocol)
 
 _LOGGER = logging.getLogger(__name__)
+_EVENT_LOGGER = get_event_logger()
 
 
 class ServiceRegistryHook(ServiceLifecycleHookProtocol):
@@ -102,7 +104,11 @@ class ServiceRegistryHook(ServiceLifecycleHookProtocol):
         registry = self._get_registry()
         registry.register(self._build_registration())
         self._registered = True
-        _LOGGER.info("Registered service %s", self._service_id)
+        _EVENT_LOGGER.info(
+            "Registered service %s",
+            self._service_id,
+            logger=_LOGGER,
+        )
 
     def _deregister_if_needed(self) -> None:
         if not self._registered:
@@ -111,7 +117,11 @@ class ServiceRegistryHook(ServiceLifecycleHookProtocol):
         registry.deregister(self._service_id)
         self._delete_catalog()
         self._registered = False
-        _LOGGER.info("Deregistered service %s", self._service_id)
+        _EVENT_LOGGER.info(
+            "Deregistered service %s",
+            self._service_id,
+            logger=_LOGGER,
+        )
 
     def _publish_catalog(self) -> None:
         publish_algorithm_catalog(
@@ -126,4 +136,8 @@ class ServiceRegistryHook(ServiceLifecycleHookProtocol):
         try:
             self._get_registry().delete_kv(key)
         except Exception:
-            _LOGGER.exception("Failed to delete registry catalog key %s", key)
+            _EVENT_LOGGER.exception(
+                "Failed to delete registry catalog key %s",
+                key,
+                logger=_LOGGER,
+            )

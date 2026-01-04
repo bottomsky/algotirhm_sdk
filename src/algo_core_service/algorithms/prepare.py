@@ -21,4 +21,5 @@ class PrepareAlgorithm(BaseAlgorithm[PrepareRequest, PrepareResult]):
             sub_task_id="sub-001",
             task_mode=1,
         )
+
         return PrepareResult(root={"task-001": item})

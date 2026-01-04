@@ -8,6 +8,7 @@ from collections.abc import Iterable
 
 from algo_sdk.core import AlgorithmSpec, BaseModel, get_registry
 from algo_sdk.core.registry import AlgorithmRegistry
+from algo_sdk.logging import get_event_logger
 
 from .config import ServiceRegistryConfig, load_config
 from .impl.consul_registry import ConsulRegistry
@@ -15,6 +16,7 @@ from .errors import ServiceRegistryError
 from .protocol import ServiceRegistryProtocol
 
 logger = logging.getLogger(__name__)
+_EVENT_LOGGER = get_event_logger()
 
 
 def _build_base_url(config: ServiceRegistryConfig) -> str:
@@ -81,8 +83,10 @@ def publish_algorithm_catalog(
     """
     cfg = config or load_config()
     if not cfg.enabled:
-        logger.info(
-            "Service registry disabled; skip algorithm catalog publish", )
+        _EVENT_LOGGER.info(
+            "Service registry disabled; skip algorithm catalog publish",
+            logger=logger,
+        )
         return
 
     algo_registry = algorithm_registry or get_registry()
@@ -93,7 +97,11 @@ def publish_algorithm_catalog(
     payload = build_algorithm_catalog(cfg, algorithms)
     key = _build_catalog_kv_key(cfg, kv_key)
     registry.set_kv(key, json.dumps(payload))
-    logger.info("Published algorithm catalog to registry key=%s", key)
+    _EVENT_LOGGER.info(
+        "Published algorithm catalog to registry key=%s",
+        key,
+        logger=logger,
+    )
 
 
 def _parse_catalog_key(
