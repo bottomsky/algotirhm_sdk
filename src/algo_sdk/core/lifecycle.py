@@ -34,8 +34,19 @@ class AlgorithmLifecycleProtocol(Protocol[TInput, TOutput]):
 
         Implementations should be side-effect free with respect to external
         systems unless explicitly designed otherwise, and should rely on
-        :meth:`initialize` / :meth:`shutdown` for one-time setup/teardown and
-        :meth:`after_run` for post-processing or cleanup after each call.
+        :meth:`initialize` / :meth:`shutdown` for one-time setup/teardown,
+        :meth:`before_run` for pre-processing, and :meth:`after_run` for
+        post-processing or cleanup after each call.
+        """
+        ...
+
+    def before_run(self) -> None:
+        """
+        Perform pre-processing before a call to :meth:`run`.
+
+        This method is called before each invocation of :meth:`run`. Use it
+        for per-request setup, logging, or other preparation that should occur
+        immediately before the main computation.
         """
         ...
 
@@ -83,6 +94,11 @@ class BaseAlgorithm(ABC, AlgorithmLifecycleProtocol[TInput, TOutput]):
     def run(self, req: TInput) -> TOutput:
         """Core algorithm logic; subclasses must provide an implementation."""
         raise NotImplementedError
+
+    @override
+    def before_run(self) -> None:
+        """Optional per-call hook before run starts; override if needed."""
+        return None
 
     @override
     def after_run(self) -> None:

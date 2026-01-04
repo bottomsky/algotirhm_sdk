@@ -257,7 +257,7 @@ class DefaultAlgorithmDecorator:
 
         input_model, output_model = self._extract_io(run_method)
 
-        for hook_name in ("initialize", "after_run", "shutdown"):
+        for hook_name in ("initialize", "before_run", "after_run", "shutdown"):
             if not hasattr(target_cls, hook_name):
                 raise AlgorithmValidationError(
                     f"hook '{hook_name}' must be implemented"

@@ -480,6 +480,7 @@ def _worker_execute(payload: _WorkerPayload[Any, Any]) -> _WorkerResponse[Any]:
             if spec.is_class:
                 if spec.execution.stateful:
                     algo = _get_or_create_worker_instance(spec)
+                    algo.before_run()
                     raw_output = algo.run(request_model)
                     algo.after_run()
                 else:
@@ -497,6 +498,7 @@ def _worker_execute(payload: _WorkerPayload[Any, Any]) -> _WorkerResponse[Any]:
                         )
                     created.initialize()
                     try:
+                        created.before_run()
                         raw_output = created.run(request_model)
                         created.after_run()
                     finally:
@@ -739,6 +741,7 @@ class InProcessExecutor(ExecutorProtocol):
         if spec.is_class:
             if spec.execution.stateful:
                 instance = self._get_instance(spec)
+                instance.before_run()
                 result = instance.run(payload_model)
                 instance.after_run()
                 return result
@@ -757,6 +760,7 @@ class InProcessExecutor(ExecutorProtocol):
                 )
             created.initialize()
             try:
+                created.before_run()
                 result = created.run(payload_model)
                 created.after_run()
                 return result

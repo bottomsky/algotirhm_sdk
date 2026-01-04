@@ -16,6 +16,11 @@ from algo_sdk.runtime import (
     version="v1",
     description="Prepare algorithm sample implementation.",
     algorithm_type=AlgorithmType.PREPARE,
+    logging={
+        "enabled": True,
+        "log_input": True,
+        "log_output": True,
+    },
 )
 class PrepareAlgorithm(BaseAlgorithm[PrepareRequest, PrepareResult]):
     def run(self, req: PrepareRequest) -> PrepareResult:
