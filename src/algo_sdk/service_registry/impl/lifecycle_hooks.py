@@ -13,9 +13,11 @@ from algo_sdk.runtime import (
 from ..catalog import _build_catalog_kv_key, publish_algorithm_catalog
 from ..config import ServiceRegistryConfig, load_config
 from ..impl.consul_registry import ConsulRegistry
-from ..protocol import (HealthCheck,
-                        ServiceRegistration,
-                        ServiceRegistryProtocol)
+from ..protocol import (
+    HealthCheck,
+    ServiceRegistration,
+    ServiceRegistryProtocol,
+)
 
 _LOGGER = logging.getLogger(__name__)
 _EVENT_LOGGER = get_event_logger()
