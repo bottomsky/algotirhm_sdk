@@ -2,23 +2,11 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Mapping
-from types import TracebackType
-from typing import Protocol
 
-ExcInfoType = tuple[type[BaseException], BaseException, TracebackType | None]
-ExcInfo = ExcInfoType | BaseException | bool | None
+from ..protocol import ExcInfo, LoggingEventLoggerProtocol
 
 
-class LoggingConfiguratorProtocol(Protocol):
-    """Protocol for logging configurators."""
-
-    def configure(self) -> None:
-        """Apply logging configuration."""
-
-
-class LoggingEventLoggerProtocol(Protocol):
-    """Protocol for structured event logging helpers."""
-
+class StandardLoggingEventLogger(LoggingEventLoggerProtocol):
     def log(
         self,
         level: int,
@@ -29,7 +17,9 @@ class LoggingEventLoggerProtocol(Protocol):
         exc_info: ExcInfo = None,
         stacklevel: int = 3,
     ) -> None:
-        """Log with an explicit level using the provided logger."""
+        target = logger or logging.getLogger()
+        kwargs = self._build_kwargs(extra, exc_info, stacklevel)
+        target.log(level, message, *args, **kwargs)
 
     def debug(
         self,
@@ -40,7 +30,9 @@ class LoggingEventLoggerProtocol(Protocol):
         exc_info: ExcInfo = None,
         stacklevel: int = 3,
     ) -> None:
-        """Log at debug level."""
+        target = logger or logging.getLogger()
+        kwargs = self._build_kwargs(extra, exc_info, stacklevel)
+        target.debug(message, *args, **kwargs)
 
     def info(
         self,
@@ -51,7 +43,9 @@ class LoggingEventLoggerProtocol(Protocol):
         exc_info: ExcInfo = None,
         stacklevel: int = 3,
     ) -> None:
-        """Log at info level."""
+        target = logger or logging.getLogger()
+        kwargs = self._build_kwargs(extra, exc_info, stacklevel)
+        target.info(message, *args, **kwargs)
 
     def warning(
         self,
@@ -62,7 +56,9 @@ class LoggingEventLoggerProtocol(Protocol):
         exc_info: ExcInfo = None,
         stacklevel: int = 3,
     ) -> None:
-        """Log at warning level."""
+        target = logger or logging.getLogger()
+        kwargs = self._build_kwargs(extra, exc_info, stacklevel)
+        target.warning(message, *args, **kwargs)
 
     def error(
         self,
@@ -73,7 +69,9 @@ class LoggingEventLoggerProtocol(Protocol):
         exc_info: ExcInfo = None,
         stacklevel: int = 3,
     ) -> None:
-        """Log at error level."""
+        target = logger or logging.getLogger()
+        kwargs = self._build_kwargs(extra, exc_info, stacklevel)
+        target.error(message, *args, **kwargs)
 
     def exception(
         self,
@@ -84,4 +82,19 @@ class LoggingEventLoggerProtocol(Protocol):
         exc_info: ExcInfo = None,
         stacklevel: int = 3,
     ) -> None:
-        """Log at error level with exception info."""
+        target = logger or logging.getLogger()
+        kwargs = self._build_kwargs(extra, exc_info, stacklevel)
+        target.exception(message, *args, **kwargs)
+
+    @staticmethod
+    def _build_kwargs(
+        extra: Mapping[str, object] | None,
+        exc_info: ExcInfo,
+        stacklevel: int,
+    ) -> dict[str, object]:
+        kwargs: dict[str, object] = {"stacklevel": stacklevel}
+        if extra is not None:
+            kwargs["extra"] = extra
+        if exc_info is not None:
+            kwargs["exc_info"] = exc_info
+        return kwargs

@@ -37,8 +37,11 @@ from ...service_registry.catalog import (
 )
 from ...service_registry.config import load_config as load_registry_config
 from ...service_registry.errors import ServiceRegistryError
+from ...logging import configure_logging as configure_sdk_logging
+from ...logging import get_event_logger
 
 _LOGGER = logging.getLogger(__name__)
+_EVENT_LOGGER = get_event_logger()
 
 
 class _AccessLogExcludePathsFilter(logging.Filter):
@@ -128,7 +131,10 @@ def _open_swagger(url: str) -> None:
     try:
         webbrowser.open(url, new=2)
     except Exception:
-        _LOGGER.exception("Failed to open Swagger UI")
+        _EVENT_LOGGER.exception(
+            "Failed to open Swagger UI",
+            logger=_LOGGER,
+        )
 
 
 def _build_executor_from_env() -> DispatchingExecutor:
@@ -231,9 +237,17 @@ def load_algorithm_modules(modules: List[str]) -> None:
                 module = importlib.import_module(module_path)
             if attr:
                 getattr(module, attr)
-            _LOGGER.info("Loaded algorithm module: %s", module_spec)
+            _EVENT_LOGGER.info(
+                "Loaded algorithm module: %s",
+                module_spec,
+                logger=_LOGGER,
+            )
         except Exception:
-            _LOGGER.exception("Failed to load module %s", module_spec)
+            _EVENT_LOGGER.exception(
+                "Failed to load module %s",
+                module_spec,
+                logger=_LOGGER,
+            )
 
 
 def create_app(registry: Optional[AlgorithmRegistry] = None) -> FastAPI:
@@ -505,6 +519,7 @@ class Server:
 def run():
     """Start uvicorn server with configuration from environment."""
     load_dotenv()
+    configure_sdk_logging()
 
     host = os.getenv("SERVICE_HOST", "127.0.0.1")
     port = int(os.getenv("SERVICE_PORT", "8000"))

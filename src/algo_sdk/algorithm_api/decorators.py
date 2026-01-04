@@ -15,6 +15,7 @@ from algo_sdk.core import (
     BaseModel,
     ExecutionConfig,
     ExecutionMode,
+    LoggingConfig,
     get_registry,
     AlgorithmLifecycleProtocol,
     AlgorithmType,
@@ -38,6 +39,7 @@ class DefaultAlgorithmDecorator:
         algorithm_type: AlgorithmType | str = AlgorithmType.PRECITION,
         description: str | None = None,
         execution: dict[str, object] | None = None,
+        logging: dict[str, object] | None = None,
     ) -> Callable[
         [
             type[AlgorithmLifecycleProtocol[BaseModel, BaseModel]]
@@ -72,6 +74,7 @@ class DefaultAlgorithmDecorator:
                     f"Must be one of {[t.value for t in AlgorithmType]}")
 
         exec_config = self._build_execution_config(execution)
+        log_config = self._build_logging_config(logging)
 
         def _decorator(
             target: type[AlgorithmLifecycleProtocol[BaseModel, BaseModel]],
@@ -84,6 +87,7 @@ class DefaultAlgorithmDecorator:
                     algorithm_type=algorithm_type,
                     description=description,
                     exec_config=exec_config,
+                    log_config=log_config,
                 )
             else:
                 raise AlgorithmValidationError(
@@ -146,6 +150,71 @@ class DefaultAlgorithmDecorator:
             gpu=gpu,
         )
 
+    def _build_logging_config(
+            self, logging: dict[str, object] | None) -> LoggingConfig:
+        if not logging:
+            return LoggingConfig()
+
+        allowed_keys = {
+            "enabled",
+            "log_input",
+            "log_output",
+            "on_error_only",
+            "sample_rate",
+            "max_length",
+            "redact_fields",
+        }
+        unknown = set(logging.keys()) - allowed_keys
+        if unknown:
+            raise AlgorithmValidationError(
+                f"unknown logging keys: {', '.join(sorted(unknown))}")
+
+        enabled = logging.get("enabled", True)
+        if not isinstance(enabled, bool):
+            raise AlgorithmValidationError("enabled must be a bool")
+
+        log_input = logging.get("log_input", False)
+        if not isinstance(log_input, bool):
+            raise AlgorithmValidationError("log_input must be a bool")
+
+        log_output = logging.get("log_output", False)
+        if not isinstance(log_output, bool):
+            raise AlgorithmValidationError("log_output must be a bool")
+
+        on_error_only = logging.get("on_error_only", False)
+        if not isinstance(on_error_only, bool):
+            raise AlgorithmValidationError("on_error_only must be a bool")
+
+        sample_rate = logging.get("sample_rate", 1.0)
+        if not isinstance(sample_rate, (int, float)):
+            raise AlgorithmValidationError("sample_rate must be a number")
+        sample_rate = float(sample_rate)
+        if sample_rate < 0 or sample_rate > 1:
+            raise AlgorithmValidationError("sample_rate must be between 0 and 1")
+
+        max_length = logging.get("max_length", 2048)
+        if not isinstance(max_length, int):
+            raise AlgorithmValidationError("max_length must be an int")
+        if max_length < 0:
+            raise AlgorithmValidationError("max_length must be non-negative")
+
+        redact_fields = logging.get("redact_fields", ())
+        if isinstance(redact_fields, str):
+            raise AlgorithmValidationError("redact_fields must be a list of str")
+        if not isinstance(redact_fields, (list, tuple, set)):
+            raise AlgorithmValidationError("redact_fields must be a list of str")
+        redact_tuple: tuple[str, ...] = tuple(str(f) for f in redact_fields)
+
+        return LoggingConfig(
+            enabled=enabled,
+            log_input=log_input,
+            log_output=log_output,
+            on_error_only=on_error_only,
+            sample_rate=sample_rate,
+            max_length=max_length,
+            redact_fields=redact_tuple,
+        )
+
     def _build_class_spec(
         self,
         target_cls: type[AlgorithmLifecycleProtocol[BaseModel, BaseModel]],
@@ -155,6 +224,7 @@ class DefaultAlgorithmDecorator:
         algorithm_type: AlgorithmType,
         description: str | None,
         exec_config: ExecutionConfig,
+        log_config: LoggingConfig,
     ) -> AlgorithmSpec[BaseModel, BaseModel]:
         run_method: object = getattr(target_cls, "run", None)
         if run_method is None or not callable(run_method):
@@ -191,6 +261,7 @@ class DefaultAlgorithmDecorator:
             input_model=input_model,
             output_model=output_model,
             execution=exec_config,
+            logging=log_config,
             entrypoint=target_cls,
             is_class=True,
         )
@@ -204,6 +275,7 @@ class DefaultAlgorithmDecorator:
         algorithm_type: AlgorithmType,
         description: str | None,
         exec_config: ExecutionConfig,
+        log_config: LoggingConfig,
     ) -> AlgorithmSpec[BaseModel, BaseModel]:
         if not callable(func):
             raise AlgorithmValidationError("algorithm must be callable")
@@ -220,6 +292,7 @@ class DefaultAlgorithmDecorator:
             input_model=input_model,
             output_model=output_model,
             execution=exec_config,
+            logging=log_config,
             entrypoint=func,
             is_class=False,
         )
