@@ -3,12 +3,14 @@ from __future__ import annotations
 from algo_sdk import Algorithm, BaseAlgorithm
 from algo_dto.base import SimTime
 from algo_dto.dto import PrepareRequest, PrepareResult, PrepareResultItem
+from algo_sdk.core import AlgorithmType
 
 
 @Algorithm(
     name="Prepare",
     version="v1",
     description="Prepare algorithm sample implementation.",
+    algorithm_type=AlgorithmType.PREPARE,
 )
 class PrepareAlgorithm(BaseAlgorithm[PrepareRequest, PrepareResult]):
     def run(self, req: PrepareRequest) -> PrepareResult:  # type: ignore[override]

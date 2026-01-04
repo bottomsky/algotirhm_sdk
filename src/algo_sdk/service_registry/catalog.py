@@ -39,6 +39,7 @@ def build_algorithm_catalog(
             "name": spec.name,
             "version": spec.version,
             "description": spec.description,
+            "algorithm_type": spec.algorithm_type.value,
             "route": route,
             "schema_url": schema_route,
             "absolute_route": f"{base_url}{route}",

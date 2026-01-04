@@ -19,7 +19,7 @@ class ExecutionMode(Enum):
 class AlgorithmType(str, Enum):
     PLANNING = "Planning"
     PREPARE = "Prepare"
-    PRECITION = "Precition"
+    PREDICTION = "Prediction"
 
 
 @dataclass(frozen=True, slots=True)
@@ -59,7 +59,7 @@ class AlgorithmSpec(Generic[TInput, TOutput]):
     entrypoint: Callable[[TInput],
                          TOutput] | type[AlgorithmLifecycleProtocol[TInput,
                                                                     TOutput]]
-    algorithm_type: AlgorithmType = AlgorithmType.PRECITION
+    algorithm_type: AlgorithmType
     execution: ExecutionConfig = field(default_factory=ExecutionConfig)
     logging: LoggingConfig = field(default_factory=LoggingConfig)
     is_class: bool = False

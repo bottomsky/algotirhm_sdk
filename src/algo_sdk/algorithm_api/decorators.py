@@ -36,7 +36,7 @@ class DefaultAlgorithmDecorator:
         *,
         name: str,
         version: str,
-        algorithm_type: AlgorithmType | str = AlgorithmType.PRECITION,
+        algorithm_type: AlgorithmType | str,
         description: str | None = None,
         execution: dict[str, object] | None = None,
         logging: dict[str, object] | None = None,
@@ -53,8 +53,8 @@ class DefaultAlgorithmDecorator:
         Args:
             name: Algorithm name
             version: Algorithm version
-            algorithm_type: Optional algorithm type (Planning, Prepare, 
-            Precition)
+            algorithm_type: Required algorithm type (Planning, Prepare,
+                Prediction)
             description: Optional description
             execution: Optional execution config dict
 
@@ -72,6 +72,9 @@ class DefaultAlgorithmDecorator:
                 raise AlgorithmValidationError(
                     f"Invalid algorithm_type: {algorithm_type}. "
                     f"Must be one of {[t.value for t in AlgorithmType]}")
+        if not isinstance(algorithm_type, AlgorithmType):
+            raise AlgorithmValidationError(
+                "algorithm_type must be an AlgorithmType enum value")
 
         exec_config = self._build_execution_config(execution)
         log_config = self._build_logging_config(logging)
