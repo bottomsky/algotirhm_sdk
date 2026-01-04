@@ -4,6 +4,11 @@ from algo_sdk import Algorithm, BaseAlgorithm
 from algo_dto.base import SimTime
 from algo_dto.dto import PrepareRequest, PrepareResult, PrepareResultItem
 from algo_sdk.core import AlgorithmType
+from algo_sdk.runtime import (
+    set_response_code,
+    set_response_context,
+    set_response_message,
+)
 
 
 @Algorithm(
@@ -14,6 +19,17 @@ from algo_sdk.core import AlgorithmType
 )
 class PrepareAlgorithm(BaseAlgorithm[PrepareRequest, PrepareResult]):
     def run(self, req: PrepareRequest) -> PrepareResult:
+        set_response_code(2001)
+        set_response_message("prepare ok")
+        set_response_context(
+            {
+                "traceId": "trace-prepare",
+                "extra": {
+                    "source": "prepare",
+                    "mode": "test",
+                },
+            }
+        )
         _ = req
         item = PrepareResultItem(
             sat_id=1,
