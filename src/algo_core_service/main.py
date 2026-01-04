@@ -8,8 +8,13 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 
+def _env_file_path() -> Path:
+    # .env.example is located at project root (same level as pyproject.toml)
+    return Path(__file__).resolve().parents[2] / ".env.example"
+
+
 def _load_env() -> None:
-    env_path = Path(__file__).resolve().parent / ".env"
+    env_path = _env_file_path()
     load_dotenv(env_path)
 
 
@@ -46,8 +51,7 @@ def run_server() -> None:
 
     from algo_sdk import run as run_http
 
-    env_path = Path(__file__).resolve().parent / ".env"
-    run_http(env_path=env_path)
+    run_http(env_path=_env_file_path())
 
 
 if __name__ == "__main__":
