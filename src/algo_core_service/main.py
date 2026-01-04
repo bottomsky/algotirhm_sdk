@@ -2,6 +2,10 @@ from __future__ import annotations
 
 import os
 
+from pathlib import Path
+
+from dotenv import load_dotenv
+
 from algo_sdk import create_app, http_server
 
 
@@ -14,6 +18,12 @@ def _load_algorithms() -> None:
     http_server.load_algorithm_modules(modules)
 
 
+def _load_env() -> None:
+    env_path = Path(__file__).resolve().parent / ".env"
+    load_dotenv(env_path)
+
+
+_load_env()
 _load_algorithms()
 app = create_app()
 
