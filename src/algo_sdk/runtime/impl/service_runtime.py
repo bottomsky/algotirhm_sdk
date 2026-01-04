@@ -6,6 +6,7 @@ import time
 from collections.abc import Iterable
 from typing import Awaitable
 
+from ...logging import get_event_logger
 from ..protocol import (
     AlreadyInStateError,
     InvalidTransitionError,
@@ -17,6 +18,8 @@ from ..protocol import (
 )
 
 _LOGGER = logging.getLogger(__name__)
+_EVENT_LOGGER = get_event_logger()
+
 
 async def _maybe_await(result: Awaitable[None] | None) -> None:
     if result is None:
@@ -180,8 +183,9 @@ class ServiceRuntime(ServiceLifecycleProtocol):
                         await _maybe_await(hook.after(ctx))
                     except BaseException as after_exc:
                         ctx.after_errors.append(after_exc)
-                        self._logger.exception(
+                        _EVENT_LOGGER.exception(
                             "Lifecycle after hook failed: phase=%s hook=%s",
                             phase.value,
                             hook.__class__.__name__,
+                            logger=self._logger,
                         )
