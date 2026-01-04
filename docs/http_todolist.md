@@ -19,7 +19,7 @@
   - [x] `EXECUTOR_GLOBAL_QUEUE_SIZE`
   - [x] `EXECUTOR_DEFAULT_TIMEOUT_S`
   - [x] `EXECUTOR_KILL_TREE` / `EXECUTOR_KILL_GRACE_S`
-- [x] 更新 `.env.example` 与文档说明
+- [x] 更新 `.env` 与文档说明
 
 ## C. 路由设计（FastAPI/ASGI）
 
