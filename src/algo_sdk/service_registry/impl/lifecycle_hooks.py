@@ -76,7 +76,11 @@ class ServiceRegistryHook(ServiceLifecycleHookProtocol):
     def _build_service_id(config: ServiceRegistryConfig) -> str:
         if config.instance_id:
             return config.instance_id
-        return f"{config.service_name}-{config.service_host}-{config.service_port}"
+        return (
+            f"{config.service_name}-{config.service_host}"
+            f"-{config.service_port}"
+            f"-{config.service_protocol}"
+        )
 
     def _build_registration(self) -> ServiceRegistration:
         health_check: HealthCheck | None = None
