@@ -35,18 +35,20 @@ def build_algorithm_catalog(
     for spec in algorithms:
         route = f"/algorithms/{spec.name}/{spec.version}"
         schema_route = f"{route}/schema"
-        items.append({
-            "name": spec.name,
-            "version": spec.version,
-            "description": spec.description,
-            "algorithm_type": spec.algorithm_type.value,
-            "route": route,
-            "schema_url": schema_route,
-            "absolute_route": f"{base_url}{route}",
-            "absolute_schema_url": f"{base_url}{schema_route}",
-            "input_schema": spec.input_schema(),
-            "output_schema": spec.output_schema(),
-        })
+        items.append(
+            {
+                "name": spec.name,
+                "version": spec.version,
+                "description": spec.description,
+                "algorithm_type": spec.algorithm_type.value,
+                "route": route,
+                "schema_url": schema_route,
+                "absolute_route": f"{base_url}{route}",
+                "absolute_schema_url": f"{base_url}{schema_route}",
+                "input_schema": spec.input_schema(),
+                "output_schema": spec.output_schema(),
+            }
+        )
 
     return {
         "service": config.service_name,
@@ -66,7 +68,9 @@ def _build_catalog_kv_key(
 ) -> str:
     if kv_key:
         return kv_key
-    return f"algo_services/{config.service_name}/{config.instance_id}/algorithms"
+    return (
+        f"algo_services/{config.service_name}/{config.instance_id}/algorithms"
+    )
 
 
 def publish_algorithm_catalog(
@@ -111,7 +115,7 @@ def _parse_catalog_key(
 ) -> tuple[str, str | None] | None:
     if not key.endswith("/algorithms"):
         return None
-    trimmed = key[len(kv_prefix):] if key.startswith(kv_prefix) else key
+    trimmed = key[len(kv_prefix) :] if key.startswith(kv_prefix) else key
     parts = [part for part in trimmed.split("/") if part]
     if len(parts) == 2 and parts[1] == "algorithms":
         return parts[0], None
@@ -181,7 +185,7 @@ def fetch_registry_algorithm_catalogs(
         if not isinstance(payload, dict):
             errors.append(
                 {"key": key, "error": "catalog payload is not a dict"}
-                )
+            )
             continue
         payload.setdefault("kv_key", key)
         if service_id is not None:
