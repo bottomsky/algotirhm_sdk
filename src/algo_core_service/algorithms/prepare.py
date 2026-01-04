@@ -3,7 +3,7 @@ from __future__ import annotations
 from algo_sdk import Algorithm, BaseAlgorithm
 from algo_dto.base import SimTime
 from algo_dto.dto import PrepareRequest, PrepareResult, PrepareResultItem
-from algo_sdk.core import AlgorithmType
+from algo_sdk.core import AlgorithmType, LoggingConfig
 from algo_sdk.runtime import (
     set_response_code,
     set_response_context,
@@ -21,6 +21,7 @@ from algo_sdk.runtime import (
         "log_input": True,
         "log_output": True,
     },
+    logging=LoggingConfig(enabled=True, log_input=True, log_output=True),
 )
 class PrepareAlgorithm(BaseAlgorithm[PrepareRequest, PrepareResult]):
     def run(self, req: PrepareRequest) -> PrepareResult:
@@ -35,6 +36,7 @@ class PrepareAlgorithm(BaseAlgorithm[PrepareRequest, PrepareResult]):
                 },
             }
         )
+
         _ = req
         item = PrepareResultItem(
             sat_id=1,

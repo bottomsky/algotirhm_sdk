@@ -39,7 +39,7 @@ class DefaultAlgorithmDecorator:
         algorithm_type: AlgorithmType | str,
         description: str | None = None,
         execution: dict[str, object] | None = None,
-        logging: dict[str, object] | None = None,
+        logging: LoggingConfig | dict[str, object] | None = None,
     ) -> Callable[
         [type[AlgorithmLifecycleProtocol[BaseModel, BaseModel]]],
         type[AlgorithmLifecycleProtocol[BaseModel, BaseModel]],
@@ -53,6 +53,7 @@ class DefaultAlgorithmDecorator:
                 Prediction)
             description: Optional description
             execution: Optional execution config dict
+            logging: Optional logging config (dict or LoggingConfig)
 
         Returns:
             A decorator that preserves the type of the decorated class
@@ -158,10 +159,12 @@ class DefaultAlgorithmDecorator:
         )
 
     def _build_logging_config(
-        self, logging: dict[str, object] | None
+        self, logging: LoggingConfig | dict[str, object] | None
     ) -> LoggingConfig:
         if not logging:
             return LoggingConfig()
+        if isinstance(logging, LoggingConfig):
+            return logging
 
         allowed_keys = {
             "enabled",
