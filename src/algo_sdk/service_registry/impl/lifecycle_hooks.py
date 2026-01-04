@@ -202,16 +202,18 @@ class ServiceRegistryHook(ServiceLifecycleHookProtocol):
         while not self._session_stop.wait(interval):
             session_id = self._session_id
             if not session_id:
-                return
+                self._recreate_session_and_publish()
+                continue
             try:
                 self._get_registry().renew_session(session_id)
             except Exception:
                 _EVENT_LOGGER.warning(
-                    "Failed to renew registry session %s",
+                    "Failed to renew registry session %s; recreating",
                     session_id,
                     logger=_LOGGER,
                     exc_info=True,
                 )
+                self._recreate_session_and_publish()
 
     def _stop_session(self) -> None:
         if self._session_thread is not None:
@@ -222,6 +224,75 @@ class ServiceRegistryHook(ServiceLifecycleHookProtocol):
             return
         session_id = self._session_id
         self._session_id = None
+        self._destroy_session(session_id)
+
+    def _recreate_session_and_publish(self) -> None:
+        if not self._config.session_enabled:
+            return
+        registry = self._get_registry()
+        session_name = f"{self._config.service_name}-{self._service_id}"
+        try:
+            new_session = registry.create_session(
+                session_name,
+                self._config.session_ttl_seconds,
+            )
+        except Exception:
+            _EVENT_LOGGER.warning(
+                "Failed to create registry session for catalog refresh",
+                logger=_LOGGER,
+                exc_info=True,
+            )
+            return
+
+        with self._session_lock:
+            old_session = self._session_id
+            self._session_id = new_session
+
+        self._publish_catalog_with_session(new_session, old_session)
+
+    def _publish_catalog_with_session(
+        self,
+        session_id: str,
+        old_session: str | None,
+    ) -> None:
+        try:
+            publish_algorithm_catalog(
+                registry=self._get_registry(),
+                config=self._config,
+                algorithm_registry=self._algorithm_registry,
+                kv_key=self._kv_key,
+                session_id=session_id,
+            )
+        except Exception:
+            _EVENT_LOGGER.warning(
+                "Failed to publish catalog with session %s",
+                session_id,
+                logger=_LOGGER,
+                exc_info=True,
+            )
+            if old_session:
+                self._destroy_session(old_session)
+                try:
+                    publish_algorithm_catalog(
+                        registry=self._get_registry(),
+                        config=self._config,
+                        algorithm_registry=self._algorithm_registry,
+                        kv_key=self._kv_key,
+                        session_id=session_id,
+                    )
+                except Exception:
+                    _EVENT_LOGGER.warning(
+                        "Failed to republish catalog with session %s",
+                        session_id,
+                        logger=_LOGGER,
+                        exc_info=True,
+                    )
+            return
+
+        if old_session:
+            self._destroy_session(old_session)
+
+    def _destroy_session(self, session_id: str) -> None:
         try:
             self._get_registry().destroy_session(session_id)
         except Exception:
