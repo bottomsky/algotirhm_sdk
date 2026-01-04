@@ -1213,9 +1213,9 @@ class InMemoryHealthService(IHealthService):
 建议的环境变量：
 
 - `SERVICE_REGISTRY_ENABLED=true/false`
-- `CONSUL_HTTP_ADDR=http://127.0.0.1:8500`
+- `SERVICE_REGISTRY_HOST=http://127.0.0.1:8500`
 - `SERVICE_NAME=algo-core-service`
-- `SERVICE_ID=<可选，默认 name+host+port>`
+- `SERVICE_INSTANCE_ID=<可选，默认自动生成>`
 
 ---
 
@@ -1238,7 +1238,8 @@ ALGO_MODULES = os.getenv(
     "algo_core_service.algorithms.orbit_demo",
 ).split(",")
 
-SERVICE_HOST = os.getenv("SERVICE_HOST", "0.0.0.0")
+SERVICE_HOST = os.getenv("SERVICE_HOST", "127.0.0.1")
+SERVICE_BIND_HOST = os.getenv("SERVICE_BIND_HOST", "0.0.0.0")
 SERVICE_PORT = int(os.getenv("SERVICE_PORT", "8000"))
 
 # runtime/executor
@@ -1247,7 +1248,7 @@ EXECUTOR_DEFAULT_TIMEOUT_S = float(os.getenv("EXECUTOR_DEFAULT_TIMEOUT_S", "300"
 
 # service registry (consul)
 SERVICE_REGISTRY_ENABLED = os.getenv("SERVICE_REGISTRY_ENABLED", "false").lower() == "true"
-CONSUL_HTTP_ADDR = os.getenv("CONSUL_HTTP_ADDR", "http://127.0.0.1:8500")
+SERVICE_REGISTRY_HOST = os.getenv("SERVICE_REGISTRY_HOST", "http://127.0.0.1:8500")
 SERVICE_NAME = os.getenv("SERVICE_NAME", "algo-core-service")
 ```
 
@@ -1274,6 +1275,7 @@ from algo_sdk.service_registry.consul_registrar import ConsulRegistrar, NullRegi
 from .settings import (
     ALGO_MODULES,
     SERVICE_HOST,
+    SERVICE_BIND_HOST,
     SERVICE_PORT,
     EXECUTOR_GLOBAL_MAX_WORKERS,
     EXECUTOR_DEFAULT_TIMEOUT_S,
@@ -1325,7 +1327,7 @@ def create_app():
 
 if __name__ == "__main__":
     app = create_app()
-    uvicorn.run(app, host=SERVICE_HOST, port=SERVICE_PORT)
+    uvicorn.run(app, host=SERVICE_BIND_HOST, port=SERVICE_PORT)
 ```
 
 ---

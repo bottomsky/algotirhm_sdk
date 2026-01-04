@@ -400,7 +400,7 @@ python -c "from algo_sdk.http import Server; Server.run()"
 
 `server.run()` 应该完成以下流程：
 
-1. 读取环境变量（如 `ALGO_MODULES/SERVICE_HOST/SERVICE_PORT/EXECUTOR_*`）
+1. 读取环境变量（如 `ALGO_MODULES/SERVICE_BIND_HOST/SERVICE_HOST/SERVICE_PORT/EXECUTOR_*`）
 2. 导入算法模块（触发 `@Algorithm` 注册）
 3. 创建 `AlgorithmHttpService`（默认 `DispatchingExecutor`）
 4. 绑定观测 hooks（metrics/tracing）
@@ -487,7 +487,8 @@ import os
 from algo_sdk.http import Server
 
 os.environ.setdefault("ALGO_MODULES", "algos")
-os.environ.setdefault("SERVICE_HOST", "0.0.0.0")
+os.environ.setdefault("SERVICE_BIND_HOST", "0.0.0.0")
+os.environ.setdefault("SERVICE_HOST", "127.0.0.1")
 os.environ.setdefault("SERVICE_PORT", "8000")
 
 Server.run()
