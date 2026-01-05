@@ -9,6 +9,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import ClassVar, Generic, Self, TypeVar
 
+import numpy as np
 from pydantic import BaseModel, ConfigDict, RootModel, field_validator
 from pydantic.alias_generators import to_camel
 
@@ -40,10 +41,67 @@ class _VectorBase(RootModel[list[TVal]], Generic[TVal]):
 
     @classmethod
     def from_values(cls, *values: TVal) -> Self:
+        """
+        从可变参数创建向量实例
+        参数:
+          - values: 向量的元素序列（长度必须等于 cls.size）
+        返回:
+          - Self: 当前向量类型的实例
+        异常:
+          - ValueError: 当元素数量与 cls.size 不一致
+          - pydantic.ValidationError: 当元素类型不符合模型约束
+        """
         return cls.model_validate(list(values))
+
+    @classmethod
+    def from_np_array(cls, array: object) -> Self:
+        """
+        从 numpy 数组或可转换为 numpy 数组的对象创建向量实例
+        参数:
+          - array: numpy.ndarray 或任何可被 numpy.asarray 转换的序列/数组对象
+        返回:
+          - Self: 当前向量类型的实例
+        异常:
+          - ValueError: 当数组无法转换或元素数量与 cls.size 不一致
+          - pydantic.ValidationError: 当元素类型不符合模型约束
+        """
+        arr = np.asarray(array).reshape(-1)
+        if arr.size != cls.size:
+            raise ValueError(f"expected {cls.size} elements, got {arr.size}")
+        return cls.model_validate(arr.tolist())
+
+    @classmethod
+    def from_an_array(cls, array: object) -> Self:
+        """
+        从数组创建向量实例（from_np_array 的兼容别名）
+        参数:
+          - array: numpy.ndarray 或任何可被 numpy.asarray 转换的序列/数组对象
+        返回:
+          - Self: 当前向量类型的实例
+        异常:
+          - ValueError: 当数组无法转换或元素数量与 cls.size 不一致
+          - pydantic.ValidationError: 当元素类型不符合模型约束
+        """
+        return cls.from_np_array(array)
 
     def to_list(self) -> list[TVal]:
         return list(self.root)
+
+    def to_np_array(
+        self, *, dtype: object | None = None, copy: bool = True
+    ) -> np.ndarray:
+        """
+        导出为 numpy.ndarray
+        参数:
+          - dtype: 传递给 numpy.array 的 dtype（可选）
+          - copy: 是否复制数据（默认 True）
+        返回:
+          - numpy.ndarray: 形状为 (size,) 的一维数组
+        异常:
+          - TypeError: dtype 参数不合法
+          - ValueError: 当 numpy 转换失败
+        """
+        return np.array(self.root, dtype=dtype, copy=copy)
 
     def to_tuple(self) -> tuple[TVal, ...]:
         return tuple(self.root)
