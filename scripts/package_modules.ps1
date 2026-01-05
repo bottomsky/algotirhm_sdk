@@ -1,10 +1,11 @@
-$ErrorActionPreference = "Stop"
-
 param(
     [string[]]$Modules = @("algo_sdk", "algo_dto"),
     [string]$OutputDir = "dist/modules",
-    [string]$BundleName = ""
+    [string]$BundleName = "",
+    [string]$PackageVersion = "0.0.0"
 )
+
+$ErrorActionPreference = "Stop"
 
 $repoRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
 $srcRoot = Join-Path $repoRoot "src"
@@ -23,6 +24,10 @@ function Resolve-ModuleName([string]$name) {
         return $moduleAliases[$name]
     }
     return $name
+}
+
+function Normalize-PackageName([string]$name) {
+    return $name.Replace("_", "-")
 }
 
 function New-StagingDir() {
@@ -57,6 +62,21 @@ function New-ZipFromStaging([string]$stagingRoot, [string]$zipPath) {
     [System.IO.Compression.ZipFile]::CreateFromDirectory($stagingRoot, $zipPath)
 }
 
+function Write-SetupPy([string]$stagingRoot, [string]$packageName, [string]$version) {
+    $content = @"
+from setuptools import setup, find_packages
+
+setup(
+    name="{0}",
+    version="{1}",
+    packages=find_packages(),
+    include_package_data=True,
+)
+"@ -f $packageName, $version
+    $path = Join-Path $stagingRoot "setup.py"
+    Set-Content -Path $path -Value $content -Encoding ASCII
+}
+
 $timestamp = Get-Date -Format "yyyyMMdd-HHmmss"
 
 if ($BundleName) {
@@ -65,7 +85,11 @@ if ($BundleName) {
         Copy-ModuleToStaging $module $staging
     }
     Remove-CacheArtifacts $staging
-    $zipPath = Join-Path $outputRoot ("{0}-{1}.zip" -f $BundleName, $timestamp)
+    $packageName = Normalize-PackageName $BundleName
+    Write-SetupPy $staging $packageName $PackageVersion
+    $zipPath = Join-Path $outputRoot (
+        "{0}-{1}-{2}.zip" -f $packageName, $PackageVersion, $timestamp
+    )
     New-ZipFromStaging $staging $zipPath
     Remove-Item $staging -Recurse -Force
     Write-Host "Created $zipPath"
@@ -76,7 +100,11 @@ else {
         Copy-ModuleToStaging $module $staging
         Remove-CacheArtifacts $staging
         $resolved = Resolve-ModuleName $module
-        $zipPath = Join-Path $outputRoot ("{0}-{1}.zip" -f $resolved, $timestamp)
+        $packageName = Normalize-PackageName $resolved
+        Write-SetupPy $staging $packageName $PackageVersion
+        $zipPath = Join-Path $outputRoot (
+            "{0}-{1}-{2}.zip" -f $packageName, $PackageVersion, $timestamp
+        )
         New-ZipFromStaging $staging $zipPath
         Remove-Item $staging -Recurse -Force
         Write-Host "Created $zipPath"

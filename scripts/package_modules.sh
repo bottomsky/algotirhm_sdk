@@ -10,6 +10,7 @@ modules="${MODULES:-algo_sdk algo_dto}"
 if [ "$#" -gt 0 ]; then
   modules="$*"
 fi
+package_version="${PACKAGE_VERSION:-0.0.0}"
 
 if [ -x "$repo_root/.venv/bin/python" ]; then
   py="$repo_root/.venv/bin/python"
@@ -34,6 +35,7 @@ out_dir = r"$out_dir"
 modules = "$modules".split()
 aliases = {"algo_sdk_dto": "algo_dto"}
 timestamp = "$timestamp"
+package_version = "$package_version"
 
 
 def stage_module(name: str):
@@ -54,7 +56,18 @@ def stage_module(name: str):
 
 for name in modules:
     staging, resolved = stage_module(name)
-    zip_path = os.path.join(out_dir, f"{resolved}-{timestamp}.zip")
+    package_name = resolved.replace("_", "-")
+    setup_path = os.path.join(staging, "setup.py")
+    with open(setup_path, "w", encoding="ascii") as fh:
+        fh.write(
+            "from setuptools import setup, find_packages\\n\\n"
+            f"setup(name=\\\"{package_name}\\\", "
+            f"version=\\\"{package_version}\\\", "
+            "packages=find_packages(), include_package_data=True)\\n"
+        )
+    zip_path = os.path.join(
+        out_dir, f"{package_name}-{package_version}-{timestamp}.zip"
+    )
     with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
         for root, _, files in os.walk(staging):
             for file in files:
