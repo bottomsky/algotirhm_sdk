@@ -7,7 +7,6 @@ import logging
 import os
 import re
 import sys
-import webbrowser
 from contextlib import asynccontextmanager
 from dataclasses import asdict
 from enum import Enum
@@ -19,19 +18,19 @@ import uvicorn
 from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
-from fastapi.responses import PlainTextResponse
-from fastapi.responses import RedirectResponse
+from fastapi.responses import JSONResponse, PlainTextResponse, RedirectResponse
 
+from ...core.executor import DispatchingExecutor
+from ...core.registry import AlgorithmRegistry, get_registry
+from ...logging import configure_logging as configure_sdk_logging
+from ...logging import get_event_logger
+from ...protocol.models import AlgorithmRequest, api_error, api_success
 from ...runtime import (
     AlreadyInStateError,
     InvalidTransitionError,
     ServiceLifecycleProtocol,
     ServiceState,
 )
-from ...core.executor import DispatchingExecutor
-from ...core.registry import AlgorithmRegistry, get_registry
-from ...protocol.models import AlgorithmRequest, api_error, api_success
 from ...runtime.factory import build_service_runtime
 from ...service_registry.catalog import (
     build_algorithm_catalog,
@@ -39,8 +38,6 @@ from ...service_registry.catalog import (
 )
 from ...service_registry.config import load_config as load_registry_config
 from ...service_registry.errors import ServiceRegistryError
-from ...logging import configure_logging as configure_sdk_logging
-from ...logging import get_event_logger
 
 _LOGGER = logging.getLogger(__name__)
 _EVENT_LOGGER = get_event_logger()
@@ -116,17 +113,6 @@ def _get_env_list(name: str) -> list[str]:
     return [item.strip() for item in raw.split(",") if item.strip()]
 
 
-def _is_vscode() -> bool:
-    term_program = os.getenv("TERM_PROGRAM", "")
-    return bool(os.getenv("VSCODE_PID") or term_program.lower() == "vscode")
-
-
-def _normalize_host(host: str) -> str:
-    if host in {"0.0.0.0", "::"}:
-        return "127.0.0.1"
-    return host
-
-
 def _normalize_path(path: str | None, fallback: str) -> str:
     if not path or not path.strip():
         return fallback
@@ -134,16 +120,6 @@ def _normalize_path(path: str | None, fallback: str) -> str:
     if not path.startswith("/"):
         path = f"/{path}"
     return path
-
-
-def _open_swagger(url: str) -> None:
-    try:
-        webbrowser.open(url, new=2)
-    except Exception:
-        _EVENT_LOGGER.exception(
-            "Failed to open Swagger UI",
-            logger=_LOGGER,
-        )
 
 
 def _resolve_env_path(env_path: str | os.PathLike[str] | None) -> Path | None:
@@ -295,10 +271,6 @@ def create_app(registry: Optional[AlgorithmRegistry] = None) -> FastAPI:
     runtime = bundle.runtime
     metrics_store = bundle.metrics
     swagger_enabled = _get_env_bool_default("SERVICE_SWAGGER_ENABLED", True)
-    swagger_open_on_startup = _get_env_bool_default(
-        "SERVICE_SWAGGER_OPEN_ON_STARTUP",
-        _is_vscode(),
-    )
     swagger_docs_path = _normalize_path(
         os.getenv("SERVICE_SWAGGER_PATH", "/docs"),
         "/docs",
@@ -306,12 +278,6 @@ def create_app(registry: Optional[AlgorithmRegistry] = None) -> FastAPI:
     docs_url = swagger_docs_path if swagger_enabled else None
     openapi_url = "/openapi.json" if swagger_enabled else None
     redoc_url = "/redoc" if swagger_enabled else None
-
-    swagger_url = None
-    if swagger_enabled and swagger_open_on_startup:
-        host = _normalize_host(os.getenv("SERVICE_HOST", "127.0.0.1"))
-        port = int(os.getenv("SERVICE_PORT", "8000"))
-        swagger_url = f"http://{host}:{port}{swagger_docs_path}"
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
@@ -321,8 +287,6 @@ def create_app(registry: Optional[AlgorithmRegistry] = None) -> FastAPI:
             await runtime.provisioning(reason="startup")
             await runtime.ready(reason="startup")
             await runtime.running(reason="startup")
-            if swagger_url is not None:
-                _open_swagger(swagger_url)
             yield
         finally:
             try:
@@ -340,9 +304,9 @@ def create_app(registry: Optional[AlgorithmRegistry] = None) -> FastAPI:
 
     if _get_env_bool_default("CORS_ENABLED", False):
         allow_origins = _get_env_list("CORS_ALLOW_ORIGINS")
-        allow_origin_regex = os.getenv(
-            "CORS_ALLOW_ORIGIN_REGEX", ""
-        ).strip() or None
+        allow_origin_regex = (
+            os.getenv("CORS_ALLOW_ORIGIN_REGEX", "").strip() or None
+        )
         allow_methods = _get_env_list("CORS_ALLOW_METHODS") or ["*"]
         allow_headers = _get_env_list("CORS_ALLOW_HEADERS") or ["*"]
         allow_credentials = _get_env_bool_default(
