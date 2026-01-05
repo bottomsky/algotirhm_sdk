@@ -5,6 +5,7 @@ import uuid
 
 from algo_sdk import (
     AlgorithmSpec,
+    AlgorithmType,
     BaseAlgorithm,
     BaseModel,
     ExecutionConfig,
@@ -84,6 +85,7 @@ def _build_spec(
         description=None,
         input_model=input_model,
         output_model=output_model,
+        algorithm_type=AlgorithmType.PREDICTION,
         execution=execution or ExecutionConfig(),
         entrypoint=entrypoint,  # type: ignore[arg-type]
         is_class=is_class,

@@ -7,6 +7,7 @@ from algo_sdk import (
     AlgorithmRegistry,
     AlgorithmRequest,
     AlgorithmSpec,
+    AlgorithmType,
     BaseAlgorithm,
     BaseModel,
     ExecutionConfig,
@@ -42,6 +43,7 @@ def _build_spec(entrypoint: object, *, name: str) -> AlgorithmSpec:
         description=None,
         input_model=_Req,
         output_model=_Resp,
+        algorithm_type=AlgorithmType.PREDICTION,
         execution=ExecutionConfig(),
         entrypoint=entrypoint,  # type: ignore[arg-type]
         is_class=True,

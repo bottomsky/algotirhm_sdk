@@ -4,6 +4,7 @@ import time
 
 from algo_sdk import (
     AlgorithmSpec,
+    AlgorithmType,
     BaseAlgorithm,
     BaseModel,
     DispatchingExecutor,
@@ -111,6 +112,7 @@ def _build_spec(
         description=None,
         input_model=_Req,
         output_model=_LifecycleResp,
+        algorithm_type=AlgorithmType.PREDICTION,
         execution=ExecutionConfig(stateful=stateful),
         entrypoint=entrypoint,  # type: ignore[arg-type]
         is_class=True,
@@ -320,6 +322,7 @@ def test_process_pool_stateful_calls_shutdown_on_worker_exit(tmp_path) -> None:
         description=None,
         input_model=_ShutdownProbeReq,
         output_model=_ShutdownProbeResp,
+        algorithm_type=AlgorithmType.PREDICTION,
         execution=ExecutionConfig(stateful=True),
         entrypoint=_ShutdownProbeAlgo,
         is_class=True,
@@ -361,6 +364,7 @@ def test_isolated_process_pool_stateful_calls_shutdown_on_worker_exit(
         description=None,
         input_model=_ShutdownProbeReq,
         output_model=_ShutdownProbeResp,
+        algorithm_type=AlgorithmType.PREDICTION,
         execution=ExecutionConfig(stateful=True, isolated_pool=True),
         entrypoint=_ShutdownProbeAlgo,
         is_class=True,
@@ -404,6 +408,7 @@ def test_dispatching_executor_shared_pool_stateful_calls_shutdown_on_worker_exit
         description=None,
         input_model=_ShutdownProbeReq,
         output_model=_ShutdownProbeResp,
+        algorithm_type=AlgorithmType.PREDICTION,
         execution=ExecutionConfig(
             stateful=True,
             isolated_pool=False,
@@ -453,6 +458,7 @@ def test_dispatching_executor_isolated_pool_stateful_calls_shutdown_on_worker_ex
         description=None,
         input_model=_ShutdownProbeReq,
         output_model=_ShutdownProbeResp,
+        algorithm_type=AlgorithmType.PREDICTION,
         execution=ExecutionConfig(
             stateful=True,
             isolated_pool=True,

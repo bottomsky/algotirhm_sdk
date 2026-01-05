@@ -3,6 +3,7 @@ import pytest
 from algo_sdk import (
     AlgorithmRegistry,
     AlgorithmSpec,
+    AlgorithmType,
     BaseAlgorithm,
     BaseModel,
     ExecutionConfig,
@@ -30,6 +31,7 @@ def test_register_and_get_algorithm() -> None:
         description=None,
         input_model=_Req,
         output_model=_Resp,
+        algorithm_type=AlgorithmType.PREDICTION,
         execution=ExecutionConfig(),
         entrypoint=_DoubleAlgo,
         is_class=True,
@@ -49,6 +51,7 @@ def test_register_duplicate_raises() -> None:
         description=None,
         input_model=_Req,
         output_model=_Resp,
+        algorithm_type=AlgorithmType.PREDICTION,
         execution=ExecutionConfig(),
         entrypoint=_DoubleAlgo,
         is_class=True,
