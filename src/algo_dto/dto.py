@@ -93,25 +93,13 @@ class ControlledData(ControlledBase, TimeRange, CamelBaseModel):
 
 
 class OrbitManInfo(ControlledBase, Timestamp, CamelBaseModel):
-    devlta_v: Vector3
+    delta_v: Vector3
     sim_time: SimTime
     system: int
 
 
 class OrbitAng(ControlledBase, Timestamp, CamelBaseModel):
-    aim_aixs: Vector3
-
-
-class ProgrammeResult(SatTypeBase, PlanningBase, CamelBaseModel):
-    controlled_data: list[ControlledData]
-    orbit_ang: list[OrbitAng]
-    task_mode: int
-
-
-class ProgrammeRequest(CamelBaseModel):
-    sat: SatOrbitJ2000
-    plannings: list[Planning]
-    sim_time: SimTime
+    aim_axis: Vector3
 
 
 class ProgrammeResponse(CamelBaseModel):
@@ -179,3 +167,15 @@ class PredictionResult(RootModel[list[PredictionResultItem]], CamelBaseModel):
     """
 
     model_config = CamelBaseModel.model_config
+
+
+class ProgrammeResult(SatTypeBase, PlanningBase, CamelBaseModel):
+    controlled_data: list[ControlledData]
+    orbit_ang: list[OrbitAng]
+    task_mode: int
+
+
+class ProgrammeRequest(CamelBaseModel):
+    sat: SatOrbitJ2000
+    plannings: list[Planning]
+    sim_time: SimTime

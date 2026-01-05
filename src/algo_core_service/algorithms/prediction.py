@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from algo_dto.base import Vector6
+from algo_dto.base import VVLHRV
 from algo_dto.dto import (
     PredictionRequest,
     PredictionResult,
@@ -46,24 +46,23 @@ class PredictionAlgorithm(BaseAlgorithm[PredictionRequest, PredictionResult]):
             }
         )
 
-        rel_states = [
-            Vector6.from_values(0.0, 0.5, 1.0, 0.01, -0.02, 0.03),
-            Vector6.from_values(1.2, -0.4, 0.3, -0.01, 0.00, 0.02),
-        ]
-
         # 生成两条示例结果项
         items: list[PredictionResultItem] = [
             PredictionResultItem(
+                sat_id=1,
                 min_distance=123.45,
-                relative_state_vvlh=rel_states,
+                relative_state_vvlh=VVLHRV.from_values(
+                    0.0, 0.5, 1.0, 0.01, -0.02, 0.03
+                ),
                 sore=0.95,
                 t_nearest_time=req.sim_time,
             ),
             PredictionResultItem(
+                sat_id=2,
                 min_distance=67.89,
-                relative_state_vvlh=[
-                    Vector6.from_values(-0.3, 0.2, 0.8, 0.00, 0.01, -0.02)
-                ],
+                relative_state_vvlh=VVLHRV.from_values(
+                    -0.3, 0.2, 0.8, 0.00, 0.01, -0.02
+                ),
                 sore=0.85,
                 t_nearest_time=req.sim_time,
             ),
