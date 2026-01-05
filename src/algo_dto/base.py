@@ -6,12 +6,11 @@ AlgorithmResponse `data` fields.
 
 from __future__ import annotations
 
-from typing import ClassVar, Self, TypeVar, Generic
+from datetime import datetime
+from typing import ClassVar, Generic, Self, TypeVar
 
 from pydantic import BaseModel, ConfigDict, RootModel, field_validator
 from pydantic.alias_generators import to_camel
-
-from datetime import datetime
 
 
 class CamelBaseModel(BaseModel):
@@ -91,7 +90,7 @@ class Vector6i(_VectorBase[int]):
     size = 6
 
 
-class VVLHRv(Vector6):
+class VVLHRV(Vector6):
     """VVLH coordinates and rates [rx, ry, rz, vx, vy, vz]."""
 
     def relative_position_vector(self) -> Vector3:
@@ -230,7 +229,7 @@ __all__ = [
     "Vector3i",
     "Vector4i",
     "Vector6i",
-    "VVLHRv",
+    "VVLHRV",
     "SimTime",
     "CamelBaseModel",
     "MessageResponse",

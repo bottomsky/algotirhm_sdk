@@ -3,6 +3,7 @@ from __future__ import annotations
 from pydantic import Field, RootModel
 
 from algo_dto.base import (
+    VVLHRV,
     CamelBaseModel,
     SimTime,
     TimeRange,
@@ -167,7 +168,7 @@ class PredictionResultItem(SatBase, CamelBaseModel):
     """
 
     min_distance: float
-    relative_state_vvlh: list[Vector6]
+    relative_state_vvlh: VVLHRV
     sore: float
     t_nearest_time: SimTime
 
