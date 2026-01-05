@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-
 from algo_dto.base import CamelBaseModel, Vector3
 
 
@@ -10,7 +9,7 @@ class ControlledMap(CamelBaseModel):
     relative_v: Vector3
     relative_w: Vector3
     evasion_ang: Vector3
-    peration_interval: int
+    operation_interval: int
     operation_num: int
     operation_dis: int
 

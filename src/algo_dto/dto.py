@@ -4,15 +4,14 @@ from pydantic import Field, RootModel
 
 from algo_dto.base import (
     CamelBaseModel,
+    SimTime,
     TimeRange,
     Timestamp,
+    Vector3,
     Vector4,
     Vector6,
-    SimTime,
-    Vector3,
 )
-
-from algo_dto.device import ControlledMap, PlatformMap, LaserMap, DnMap
+from algo_dto.device import ControlledMap, DnMap, LaserMap, PlatformMap
 
 
 class SatBase(CamelBaseModel):
@@ -44,13 +43,6 @@ class PredictionRequest(CamelBaseModel):
     target_sats: list[SatOrbitVVLHRv]
     sim_time: SimTime
     duration_s: float = Field(alias="duration_s")
-
-
-class PredictionResponseItem(CamelBaseModel):
-    min_distance: float
-    relative_state_vvlh: list[Vector6]
-    sore: float
-    t_nearest_time: SimTime
 
 
 class TargetSatBase(SatOrbit, CamelBaseModel):
@@ -164,6 +156,25 @@ class PrepareResult(RootModel[dict[str, PrepareResultItem]], CamelBaseModel):
 
     Key: str
     Value: PrepareResultItem
+    """
+
+    model_config = CamelBaseModel.model_config
+
+
+class PredictionResultItem(SatBase, CamelBaseModel):
+    """
+    预测算法的结果信息项
+    """
+
+    min_distance: float
+    relative_state_vvlh: list[Vector6]
+    sore: float
+    t_nearest_time: SimTime
+
+
+class PredictionResult(RootModel[list[PredictionResultItem]], CamelBaseModel):
+    """
+    预测算法的结果信息
     """
 
     model_config = CamelBaseModel.model_config
