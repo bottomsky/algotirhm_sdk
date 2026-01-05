@@ -169,10 +169,22 @@ class PredictionResult(RootModel[list[PredictionResultItem]], CamelBaseModel):
     model_config = CamelBaseModel.model_config
 
 
-class ProgrammeResult(SatTypeBase, PlanningBase, CamelBaseModel):
+class ProgrammeResultItem(SatTypeBase, PlanningBase, CamelBaseModel):
+    """
+    规划算法的结果信息项
+    """
+
     controlled_data: list[ControlledData]
     orbit_ang: list[OrbitAng]
     task_mode: int
+
+
+class ProgrammeResult(RootModel[list[ProgrammeResultItem]], CamelBaseModel):
+    """
+    规划算法的结果信息
+    """
+
+    model_config = CamelBaseModel.model_config
 
 
 class ProgrammeRequest(CamelBaseModel):
