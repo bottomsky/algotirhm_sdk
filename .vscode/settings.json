@@ -1,5 +1,5 @@
 {
-    "python.analysis.typeCheckingMode": "off",
+    "python.analysis.typeCheckingMode": "strict",
     "python.languageServer": "Pylance",
     "python.testing.pytestArgs": [
         "tests"
