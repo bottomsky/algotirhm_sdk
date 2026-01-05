@@ -24,12 +24,22 @@ def _build_base_url(config: ServiceRegistryConfig) -> str:
     return f"http://{config.service_host}:{config.service_port}"
 
 
+def _build_service_id(config: ServiceRegistryConfig) -> str:
+    if config.instance_id:
+        return config.instance_id
+    return (
+        f"{config.service_name}-{config.service_host}"
+        f"-{config.service_port}-{config.service_protocol}"
+    )
+
+
 def build_algorithm_catalog(
     config: ServiceRegistryConfig,
     algorithms: Iterable[AlgorithmSpec[BaseModel, BaseModel]],
 ) -> dict[str, object]:
     """Construct catalog payload for registered algorithms."""
     base_url = _build_base_url(config)
+    service_id = _build_service_id(config)
     items: list[dict[str, object]] = []
 
     for spec in algorithms:
@@ -52,7 +62,7 @@ def build_algorithm_catalog(
 
     return {
         "service": config.service_name,
-        "service_id": config.instance_id,
+        "service_id": service_id,
         "service_version": config.service_version,
         "host": config.service_host,
         "port": config.service_port,
@@ -68,8 +78,9 @@ def _build_catalog_kv_key(
 ) -> str:
     if kv_key:
         return kv_key
+    service_id = _build_service_id(config)
     return (
-        f"algo_services/{config.service_name}/{config.instance_id}/algorithms"
+        f"algo_services/{config.service_name}/{service_id}/algorithms"
     )
 
 
