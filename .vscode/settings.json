@@ -28,5 +28,9 @@
         "build": true
     },
     "basedpyright.disableLanguageServices": true,
-    "docsifyPreview.indexFile": "/docs/index.html"
+    "docsifyPreview.indexFile": "/docs/index.html",
+    "cSpell.words": [
+        "vvlh",
+        "VVLHRV"
+    ]
 }
