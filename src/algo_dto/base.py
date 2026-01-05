@@ -10,7 +10,14 @@ from datetime import datetime
 from typing import ClassVar, Generic, Self, TypeVar
 
 import numpy as np
-from pydantic import BaseModel, ConfigDict, RootModel, field_validator
+from pydantic import (
+    AliasChoices,
+    BaseModel,
+    ConfigDict,
+    Field,
+    RootModel,
+    field_validator,
+)
 from pydantic.alias_generators import to_camel
 
 
@@ -300,4 +307,7 @@ class TimeRange:
 
 
 class Timestamp:
-    sim_time: SimTime
+    sim_time: SimTime = Field(
+        validation_alias=AliasChoices("simTime", "startTime"),
+        serialization_alias="simTime",
+    )

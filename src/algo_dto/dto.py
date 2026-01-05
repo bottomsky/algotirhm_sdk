@@ -92,13 +92,17 @@ class ControlledData(ControlledBase, TimeRange, CamelBaseModel):
     pass
 
 
-class LaserData(ControlledBase, Timestamp, CamelBaseModel):
+class LaserData(ControlledBase, TimeRange, CamelBaseModel):
     pass
+
+
+class DnData(ControlledBase, CamelBaseModel):
+    start_v: Vector3
+    start_time: Timestamp
 
 
 class OrbitManInfo(ControlledBase, Timestamp, CamelBaseModel):
     delta_v: Vector3
-    sim_time: SimTime
     system: int
 
 
@@ -111,6 +115,10 @@ class ProgrammeResponse(CamelBaseModel):
 
 
 class PrepareSource(SatTypeOrbit, CamelBaseModel):
+    """
+    规划算法的准备源信息
+    """
+
     controlled_map: ControlledMap
     fixed_axis: Vector3
     q4: Vector4
@@ -183,6 +191,7 @@ class ProgrammeResultItem(SatTypeBase, PlanningBase, CamelBaseModel):
     task_mode: int
     orbit_man_info: list[OrbitManInfo]
     laser_data: list[LaserData]
+    dn_data: list[DnData]
 
 
 class ProgrammeResult(RootModel[list[ProgrammeResultItem]], CamelBaseModel):
@@ -194,6 +203,10 @@ class ProgrammeResult(RootModel[list[ProgrammeResultItem]], CamelBaseModel):
 
 
 class ProgrammeRequest(CamelBaseModel):
+    """
+    规划算法的请求信息
+    """
+
     sat: SatOrbitJ2000
     plannings: list[Planning]
     sim_time: SimTime

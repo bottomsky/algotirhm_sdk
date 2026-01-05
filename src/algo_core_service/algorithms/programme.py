@@ -5,6 +5,7 @@ from datetime import timedelta
 from algo_dto.base import SimTime, Vector3
 from algo_dto.dto import (
     ControlledData,
+    DnData,
     LaserData,
     OrbitAng,
     OrbitManInfo,
@@ -95,7 +96,16 @@ class ProgrammeAlgorithm(BaseAlgorithm[ProgrammeRequest, ProgrammeResult]):
             laser_data: list[LaserData] = [
                 LaserData(
                     id=f"laser-{idx + 1:03d}-001",
-                    sim_time=window_start,
+                    start_time=window_start,
+                    end_time=window_end,
+                )
+            ]
+
+            dn_data: list[DnData] = [
+                DnData(
+                    id=f"dn-{idx + 1:03d}-001",
+                    start_v=Vector3.from_values(0.0, 0.0, 0.0),
+                    start_time={"sim_time": window_start},
                 )
             ]
 
@@ -111,6 +121,7 @@ class ProgrammeAlgorithm(BaseAlgorithm[ProgrammeRequest, ProgrammeResult]):
                     orbit_ang=orbit_ang,
                     orbit_man_info=orbit_man_info,
                     laser_data=laser_data,
+                    dn_data=dn_data,
                 )
             )
 
