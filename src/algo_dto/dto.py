@@ -92,6 +92,10 @@ class ControlledData(ControlledBase, TimeRange, CamelBaseModel):
     pass
 
 
+class LaserData(ControlledBase, Timestamp, CamelBaseModel):
+    pass
+
+
 class OrbitManInfo(ControlledBase, Timestamp, CamelBaseModel):
     delta_v: Vector3
     sim_time: SimTime
@@ -177,6 +181,8 @@ class ProgrammeResultItem(SatTypeBase, PlanningBase, CamelBaseModel):
     controlled_data: list[ControlledData]
     orbit_ang: list[OrbitAng]
     task_mode: int
+    orbit_man_info: list[OrbitManInfo]
+    laser_data: list[LaserData]
 
 
 class ProgrammeResult(RootModel[list[ProgrammeResultItem]], CamelBaseModel):
