@@ -8,6 +8,7 @@ from algo_dto.dto import (
     OrbitAng,
     ProgrammeRequest,
     ProgrammeResult,
+    ProgrammeResultItem,
 )
 from algo_sdk import Algorithm, BaseAlgorithm
 from algo_sdk.core import AlgorithmType, LoggingConfig
@@ -39,7 +40,6 @@ class ProgrammeAlgorithm(BaseAlgorithm[ProgrammeRequest, ProgrammeResult]):
         set_response_code(2001)
         set_response_message("programme ok")
 
-        planning = req.plannings[0] if req.plannings else None
         planning_count = len(req.plannings)
         set_response_context(
             {
@@ -52,41 +52,46 @@ class ProgrammeAlgorithm(BaseAlgorithm[ProgrammeRequest, ProgrammeResult]):
             }
         )
 
-        window_start: SimTime = req.sim_time
-        window_end: SimTime = SimTime.from_datetime(
-            req.sim_time.to_datetime() + timedelta(minutes=10)
-        )
-
-        controlled_data: list[ControlledData] = [
-            ControlledData(
-                id="ctrl-001",
-                start_time=window_start,
-                end_time=window_end,
-            ),
-            ControlledData(
-                id="ctrl-002",
-                start_time=window_end,
-                end_time=SimTime.from_datetime(
-                    req.sim_time.to_datetime() + timedelta(minutes=20)
-                ),
-            ),
-        ]
-
-        orbit_ang: list[OrbitAng] = [
-            OrbitAng(
-                id="ang-001",
-                sim_time=req.sim_time,
-                aim_axis=Vector3.from_values(0.0, 0.0, 1.0),
+        items: list[ProgrammeResultItem] = []
+        for idx, planning in enumerate(req.plannings):
+            window_start: SimTime = planning.task_time_start
+            window_end: SimTime = planning.task_time_end
+            window_end_plus_10m = SimTime.from_datetime(
+                window_end.to_datetime() + timedelta(minutes=10)
             )
-        ]
 
-        return ProgrammeResult(
-            sat_id=req.sat.sat_id,
-            sat_type=planning.target.sat_type if planning else 0,
-            task_id=planning.task_id if planning else "task-001",
-            sub_task_id=planning.sub_task_id if planning else "sub-001",
-            planning_id=planning.planning_id if planning else "planning-001",
-            task_mode=planning.task_mode if planning else 0,
-            controlled_data=controlled_data,
-            orbit_ang=orbit_ang,
-        )
+            controlled_data: list[ControlledData] = [
+                ControlledData(
+                    id=f"ctrl-{idx + 1:03d}-001",
+                    start_time=window_start,
+                    end_time=window_end,
+                ),
+                ControlledData(
+                    id=f"ctrl-{idx + 1:03d}-002",
+                    start_time=window_end,
+                    end_time=window_end_plus_10m,
+                ),
+            ]
+
+            orbit_ang: list[OrbitAng] = [
+                OrbitAng(
+                    id=f"ang-{idx + 1:03d}-001",
+                    sim_time=window_start,
+                    aim_axis=Vector3.from_values(0.0, 0.0, 1.0),
+                )
+            ]
+
+            items.append(
+                ProgrammeResultItem(
+                    sat_id=req.sat.sat_id,
+                    sat_type=planning.target.sat_type,
+                    task_id=planning.task_id,
+                    sub_task_id=planning.sub_task_id,
+                    planning_id=planning.planning_id,
+                    task_mode=planning.task_mode,
+                    controlled_data=controlled_data,
+                    orbit_ang=orbit_ang,
+                )
+            )
+
+        return ProgrammeResult(root=items)
