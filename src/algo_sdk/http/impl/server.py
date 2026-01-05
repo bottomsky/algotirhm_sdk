@@ -18,7 +18,13 @@ import uvicorn
 from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, PlainTextResponse, RedirectResponse
+from fastapi.responses import (
+    HTMLResponse,
+    JSONResponse,
+    PlainTextResponse,
+    RedirectResponse,
+)
+from fastapi.staticfiles import StaticFiles
 
 from ...core.executor import DispatchingExecutor
 from ...core.registry import AlgorithmRegistry, get_registry
@@ -120,6 +126,23 @@ def _normalize_path(path: str | None, fallback: str) -> str:
     if not path.startswith("/"):
         path = f"/{path}"
     return path
+
+
+def _get_env_path(name: str) -> Path | None:
+    raw = os.getenv(name)
+    if raw is None:
+        return None
+    raw = raw.strip()
+    if not raw:
+        return None
+    return Path(raw).expanduser()
+
+
+def _resolve_swagger_static_dir() -> Path:
+    env_path = _get_env_path("SERVICE_SWAGGER_STATIC_DIR")
+    if env_path is not None:
+        return env_path
+    return Path.cwd() / "assets" / "swagger-ui"
 
 
 def _resolve_env_path(env_path: str | os.PathLike[str] | None) -> Path | None:
@@ -275,9 +298,27 @@ def create_app(registry: Optional[AlgorithmRegistry] = None) -> FastAPI:
         os.getenv("SERVICE_SWAGGER_PATH", "/docs"),
         "/docs",
     )
+    swagger_offline_enabled = _get_env_bool_default(
+        "SERVICE_SWAGGER_OFFLINE", False
+    )
     docs_url = swagger_docs_path if swagger_enabled else None
     openapi_url = "/openapi.json" if swagger_enabled else None
     redoc_url = "/redoc" if swagger_enabled else None
+    swagger_static_dir: Path | None = None
+    use_offline_swagger = False
+    if swagger_enabled and swagger_offline_enabled:
+        swagger_static_dir = _resolve_swagger_static_dir()
+        if swagger_static_dir.exists():
+            docs_url = None
+            redoc_url = None
+            use_offline_swagger = True
+        else:
+            docs_url = None
+            redoc_url = None
+            _LOGGER.warning(
+                "Swagger offline enabled but static dir missing: %s",
+                swagger_static_dir,
+            )
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
@@ -301,6 +342,44 @@ def create_app(registry: Optional[AlgorithmRegistry] = None) -> FastAPI:
         openapi_url=openapi_url,
         redoc_url=redoc_url,
     )
+
+    if use_offline_swagger and swagger_static_dir is not None:
+        app.mount(
+            "/swagger-ui",
+            StaticFiles(directory=str(swagger_static_dir)),
+            name="swagger-ui",
+        )
+
+        @app.get(swagger_docs_path, include_in_schema=False)
+        async def swagger_ui_html():
+            openapi = openapi_url or "/openapi.json"
+            html = f"""<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>{app.title} - Swagger UI</title>
+    <link rel="stylesheet" href="/swagger-ui/swagger-ui.css" />
+    <link rel="icon" href="/swagger-ui/favicon.png" />
+  </head>
+  <body>
+    <div id="swagger-ui"></div>
+    <script src="/swagger-ui/swagger-ui-bundle.js"></script>
+    <script src="/swagger-ui/swagger-ui-standalone-preset.js"></script>
+    <script>
+      window.onload = () => {{
+        const ui = SwaggerUIBundle({{
+          url: "{openapi}",
+          dom_id: "#swagger-ui",
+          presets: [SwaggerUIBundle.presets.apis, SwaggerUIStandalonePreset],
+          layout: "BaseLayout"
+        }});
+        window.ui = ui;
+      }};
+    </script>
+  </body>
+</html>
+"""
+            return HTMLResponse(html)
 
     if _get_env_bool_default("CORS_ENABLED", False):
         allow_origins = _get_env_list("CORS_ALLOW_ORIGINS")
