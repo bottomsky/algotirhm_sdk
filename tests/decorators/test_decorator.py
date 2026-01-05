@@ -4,8 +4,8 @@ import pytest
 
 from algo_sdk import (
     AlgorithmRegistry,
+    AlgorithmType,
     AlgorithmValidationError,
-    AlgorithmLifecycleProtocol,
     BaseAlgorithm,
     BaseModel,
     DefaultAlgorithmDecorator,
@@ -40,7 +40,12 @@ def test_function_registration_is_rejected() -> None:
 
     with pytest.raises(AlgorithmValidationError):
 
-        @deco(name="fn_algo", version="v1", description="demo fn")
+        @deco(
+            name="fn_algo",
+            version="v1",
+            description="demo fn",
+            algorithm_type=AlgorithmType.PREDICTION,
+        )
         def fn(req: _Req) -> _Resp:
             return _Resp(doubled=req.value * 2)
 
@@ -52,6 +57,7 @@ def test_class_registration() -> None:
     deco(
         name="cls_algo",
         version="v1",
+        algorithm_type=AlgorithmType.PREDICTION,
         execution={
             "isolated_pool": True,
             "stateful": True,
@@ -77,7 +83,9 @@ def test_local_class_registration_is_rejected_for_pickle() -> None:
             return _Resp(doubled=req.value * 2)
 
     with pytest.raises(AlgorithmValidationError):
-        deco(name="local", version="v1")(_LocalAlgo)
+        deco(
+            name="local", version="v1", algorithm_type=AlgorithmType.PREDICTION
+        )(_LocalAlgo)
 
 
 def test_execution_mode_rejects_string() -> None:
@@ -88,6 +96,7 @@ def test_execution_mode_rejects_string() -> None:
         deco(
             name="bad-mode",
             version="v1",
+            algorithm_type=AlgorithmType.PREDICTION,
             execution={"execution_mode": "in_process"},
         )(_AlgoForRegistration)
 
@@ -99,6 +108,7 @@ def test_logging_config_is_recorded() -> None:
     deco(
         name="log-algo",
         version="v1",
+        algorithm_type=AlgorithmType.PREDICTION,
         logging={
             "enabled": True,
             "log_input": True,
