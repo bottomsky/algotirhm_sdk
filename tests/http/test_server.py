@@ -32,7 +32,7 @@ def client():
     spec = AlgorithmSpec(
         name="test_algo",
         version="v1",
-        algorithm_type=AlgorithmType.PLANNING,
+        algorithm_type=AlgorithmType.PROGRAMME,
         description="test",
         input_model=Req,
         output_model=Resp,
@@ -105,7 +105,7 @@ def test_service_info(monkeypatch):
     spec = AlgorithmSpec(
         name="test_algo",
         version="v1",
-        algorithm_type=AlgorithmType.PLANNING,
+        algorithm_type=AlgorithmType.PROGRAMME,
         description="test",
         input_model=Req,
         output_model=Resp,

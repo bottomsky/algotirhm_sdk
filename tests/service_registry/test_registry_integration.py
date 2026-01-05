@@ -32,7 +32,7 @@ def test_service_start_registers_and_publishes_catalog() -> None:
     spec = AlgorithmSpec(
         name="test_algo",
         version="v1",
-        algorithm_type=AlgorithmType.PLANNING,
+        algorithm_type=AlgorithmType.PROGRAMME,
         description="test",
         input_model=Req,
         output_model=Resp,
@@ -81,8 +81,7 @@ def test_service_start_registers_and_publishes_catalog() -> None:
         assert len(catalogs) == 1
         assert catalogs[0]["service"] == "algo-core-service"
         assert any(
-            algo["name"] == "test_algo"
-            for algo in catalogs[0]["algorithms"]
+            algo["name"] == "test_algo" for algo in catalogs[0]["algorithms"]
         )
     finally:
         asyncio.run(bundle.runtime.shutdown())

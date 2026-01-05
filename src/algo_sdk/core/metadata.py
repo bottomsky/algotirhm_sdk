@@ -17,7 +17,7 @@ class ExecutionMode(Enum):
 
 
 class AlgorithmType(str, Enum):
-    PLANNING = "Planning"
+    PROGRAMME = "Programme"
     PREPARE = "Prepare"
     PREDICTION = "Prediction"
 
@@ -56,9 +56,10 @@ class AlgorithmSpec(Generic[TInput, TOutput]):
     description: str | None
     input_model: type[TInput]
     output_model: type[TOutput]
-    entrypoint: Callable[[TInput],
-                         TOutput] | type[AlgorithmLifecycleProtocol[TInput,
-                                                                    TOutput]]
+    entrypoint: (
+        Callable[[TInput], TOutput]
+        | type[AlgorithmLifecycleProtocol[TInput, TOutput]]
+    )
     algorithm_type: AlgorithmType
     execution: ExecutionConfig = field(default_factory=ExecutionConfig)
     logging: LoggingConfig = field(default_factory=LoggingConfig)
