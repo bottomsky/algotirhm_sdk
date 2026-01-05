@@ -98,7 +98,7 @@ class LaserData(ControlledBase, TimeRange, CamelBaseModel):
 
 class DnData(ControlledBase, CamelBaseModel):
     start_v: Vector3
-    start_time: Timestamp
+    start_time: SimTime
 
 
 class OrbitManInfo(ControlledBase, Timestamp, CamelBaseModel):

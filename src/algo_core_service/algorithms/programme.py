@@ -105,7 +105,7 @@ class ProgrammeAlgorithm(BaseAlgorithm[ProgrammeRequest, ProgrammeResult]):
                 DnData(
                     id=f"dn-{idx + 1:03d}-001",
                     start_v=Vector3.from_values(0.0, 0.0, 0.0),
-                    start_time={"sim_time": window_start},
+                    start_time=window_start,
                 )
             ]
 
