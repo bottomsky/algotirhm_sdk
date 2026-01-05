@@ -5,10 +5,15 @@ script_dir="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
 repo_root="$(CDPATH= cd -- "$script_dir/.." && pwd)"
 cd "$repo_root"
 
-if [ -f "$repo_root/.env" ]; then
-  set -a
-  . "$repo_root/.env"
-  set +a
+# .env is loaded by algo_core_service.main via algo_sdk.
+src_path="$repo_root/src"
+if [ -z "${PYTHONPATH:-}" ]; then
+  export PYTHONPATH="$src_path"
+else
+  case ":$PYTHONPATH:" in
+    *":$src_path:"*) ;;
+    *) export PYTHONPATH="$src_path:$PYTHONPATH" ;;
+  esac
 fi
 
 if [ -z "${SERVICE_INSTANCE_ID:-}" ]; then
