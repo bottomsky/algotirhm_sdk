@@ -54,7 +54,7 @@ class PredictionAlgorithm(BaseAlgorithm[PredictionRequest, PredictionResult]):
                 relative_state_vvlh=VVLHRV.from_values(
                     0.0, 0.5, 1.0, 0.01, -0.02, 0.03
                 ),
-                sore=0.95,
+                score=0.95,
                 t_nearest_time=req.sim_time,
             ),
             PredictionResultItem(
@@ -63,7 +63,7 @@ class PredictionAlgorithm(BaseAlgorithm[PredictionRequest, PredictionResult]):
                 relative_state_vvlh=VVLHRV.from_values(
                     -0.3, 0.2, 0.8, 0.00, 0.01, -0.02
                 ),
-                sore=0.85,
+                score=0.85,
                 t_nearest_time=req.sim_time,
             ),
         ]

@@ -157,7 +157,7 @@ class PredictionResultItem(SatBase, CamelBaseModel):
 
     min_distance: float
     relative_state_vvlh: VVLHRV
-    sore: float
+    score: float
     t_nearest_time: SimTime
 
 
