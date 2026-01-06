@@ -22,6 +22,11 @@ class PrepareParams(HyperParams):
     version="v1",
     description="Prepare algorithm sample implementation.",
     algorithm_type=AlgorithmType.PREPARE,
+    created_time="2026-01-06",
+    author="algo-team",
+    category="prepare",
+    application_scenarios="demo",
+    extra={"owner": "algo-core-service"},
     logging=LoggingConfig(enabled=True, log_input=True, log_output=True),
 )
 class PrepareAlgorithm(BaseAlgorithm[PrepareRequest, PrepareResult]):

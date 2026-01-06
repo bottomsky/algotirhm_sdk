@@ -20,6 +20,11 @@ from algo_sdk.runtime import (
     version="v1",
     description="Prediction algorithm sample implementation.",
     algorithm_type=AlgorithmType.PREDICTION,
+    created_time="2026-01-06",
+    author="algo-team",
+    category="prediction",
+    application_scenarios="demo",
+    extra={"owner": "algo-core-service"},
     logging=LoggingConfig(enabled=True, log_input=True, log_output=True),
 )
 class PredictionAlgorithm(BaseAlgorithm[PredictionRequest, PredictionResult]):

@@ -27,6 +27,11 @@ from algo_sdk.runtime import (
     version="v1",
     description="Programme algorithm sample implementation.",
     algorithm_type=AlgorithmType.PROGRAMME,
+    created_time="2026-01-06",
+    author="algo-team",
+    category="programme",
+    application_scenarios="demo",
+    extra={"owner": "algo-core-service"},
     logging=LoggingConfig(enabled=True, log_input=True, log_output=True),
 )
 class ProgrammeAlgorithm(BaseAlgorithm[ProgrammeRequest, ProgrammeResult]):
