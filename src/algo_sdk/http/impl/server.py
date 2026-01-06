@@ -452,6 +452,11 @@ def create_app(registry: Optional[AlgorithmRegistry] = None) -> FastAPI:
                 "version": s.version,
                 "description": s.description,
                 "algorithm_type": s.algorithm_type.value,
+                "created_time": s.created_time,
+                "author": s.author,
+                "category": s.category,
+                "application_scenarios": s.application_scenarios,
+                "extra": s.extra,
             }
             for s in specs
         ]
@@ -497,6 +502,11 @@ def create_app(registry: Optional[AlgorithmRegistry] = None) -> FastAPI:
                     "execution": _execution_to_dict(spec.execution),
                     "algorithm_type": spec.algorithm_type.value,
                     "hyperparams": hyperparams,
+                    "created_time": spec.created_time,
+                    "author": spec.author,
+                    "category": spec.category,
+                    "application_scenarios": spec.application_scenarios,
+                    "extra": spec.extra,
                 }
             )
         except Exception as e:
