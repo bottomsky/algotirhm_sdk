@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import inspect
 import pickle
+import re
 import sys
+from datetime import date
 from typing import Callable, get_type_hints
 
 from pydantic import BaseModel as _PydanticBaseModel
@@ -32,6 +34,8 @@ class DefaultAlgorithmDecorator:
     def __init__(self, *, registry: AlgorithmRegistry | None = None) -> None:
         self._registry = registry or get_registry()
 
+    _DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+
     def __call__(
         self,
         *,
@@ -39,6 +43,11 @@ class DefaultAlgorithmDecorator:
         version: str,
         algorithm_type: AlgorithmType | str,
         description: str | None = None,
+        created_time: str | None = None,
+        author: str | None = None,
+        category: str | None = None,
+        application_scenarios: str | None = None,
+        extra: dict[str, str] | None = None,
         execution: dict[str, object] | None = None,
         logging: LoggingConfig | dict[str, object] | None = None,
     ) -> Callable[
@@ -53,6 +62,11 @@ class DefaultAlgorithmDecorator:
             algorithm_type: Required algorithm type (Planning, Prepare,
                 Prediction)
             description: Optional description
+            created_time: Required created date (YYYY-MM-DD)
+            author: Required author name
+            category: Required category name
+            application_scenarios: Optional application scenario string
+            extra: Optional string key/value metadata
             execution: Optional execution config dict
             logging: Optional logging config (dict or LoggingConfig)
         Returns:
@@ -78,6 +92,19 @@ class DefaultAlgorithmDecorator:
 
         exec_config = self._build_execution_config(execution)
         log_config = self._build_logging_config(logging)
+        (
+            created_time,
+            author,
+            category,
+            application_scenarios,
+            extra,
+        ) = self._validate_metadata(
+            created_time=created_time,
+            author=author,
+            category=category,
+            application_scenarios=application_scenarios,
+            extra=extra,
+        )
 
         def _decorator(
             target: type[AlgorithmLifecycleProtocol[BaseModel, BaseModel]],
@@ -89,6 +116,11 @@ class DefaultAlgorithmDecorator:
                     version=version,
                     algorithm_type=algorithm_type,
                     description=description,
+                    created_time=created_time,
+                    author=author,
+                    category=category,
+                    application_scenarios=application_scenarios,
+                    extra=extra,
                     exec_config=exec_config,
                     log_config=log_config,
                 )
@@ -241,6 +273,11 @@ class DefaultAlgorithmDecorator:
         version: str,
         algorithm_type: AlgorithmType,
         description: str | None,
+        created_time: str,
+        author: str,
+        category: str,
+        application_scenarios: str | None,
+        extra: dict[str, str],
         exec_config: ExecutionConfig,
         log_config: LoggingConfig,
     ) -> AlgorithmSpec[BaseModel, BaseModel]:
@@ -289,13 +326,79 @@ class DefaultAlgorithmDecorator:
             version=version,
             algorithm_type=algorithm_type,
             description=description,
+            created_time=created_time,
+            author=author,
+            category=category,
             input_model=input_model,
             output_model=output_model,
+            application_scenarios=application_scenarios,
+            extra=extra,
             execution=exec_config,
             logging=log_config,
             hyperparams_model=inferred_hyperparams,
             entrypoint=target_cls,
             is_class=True,
+        )
+
+    def _validate_metadata(
+        self,
+        *,
+        created_time: str | None,
+        author: str | None,
+        category: str | None,
+        application_scenarios: str | None,
+        extra: dict[str, str] | None,
+    ) -> tuple[str, str, str, str | None, dict[str, str]]:
+        if not created_time or not created_time.strip():
+            raise AlgorithmValidationError("created_time is required")
+        created_time = created_time.strip()
+        if not self._DATE_RE.fullmatch(created_time):
+            raise AlgorithmValidationError(
+                "created_time must be in YYYY-MM-DD format"
+            )
+        try:
+            date.fromisoformat(created_time)
+        except ValueError as exc:
+            raise AlgorithmValidationError(
+                "created_time must be a valid date"
+            ) from exc
+
+        if not author or not author.strip():
+            raise AlgorithmValidationError("author is required")
+        author = author.strip()
+
+        if not category or not category.strip():
+            raise AlgorithmValidationError("category is required")
+        category = category.strip()
+
+        if application_scenarios is not None:
+            if not isinstance(application_scenarios, str):
+                raise AlgorithmValidationError(
+                    "application_scenarios must be a str"
+                )
+            if not application_scenarios.strip():
+                raise AlgorithmValidationError(
+                    "application_scenarios must be non-empty"
+                )
+            application_scenarios = application_scenarios.strip()
+
+        if extra is None:
+            extra = {}
+        elif not isinstance(extra, dict):
+            raise AlgorithmValidationError("extra must be a dict[str, str]")
+        else:
+            for key, value in extra.items():
+                if not isinstance(key, str) or not isinstance(value, str):
+                    raise AlgorithmValidationError(
+                        "extra must be a dict[str, str]"
+                    )
+
+        return (
+            created_time,
+            author,
+            category,
+            application_scenarios,
+            extra,
         )
 
     def _assert_picklable(self, obj: object, *, label: str) -> None:

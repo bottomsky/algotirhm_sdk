@@ -103,6 +103,9 @@ class AlgorithmSpec(Generic[TInput, TOutput]):
     name: str
     version: str
     description: str | None
+    created_time: str
+    author: str
+    category: str
     input_model: type[TInput]
     output_model: type[TOutput]
     entrypoint: (
@@ -110,6 +113,8 @@ class AlgorithmSpec(Generic[TInput, TOutput]):
         | type[AlgorithmLifecycleProtocol[TInput, TOutput]]
     )
     algorithm_type: AlgorithmType
+    application_scenarios: str | None = None
+    extra: dict[str, str] = field(default_factory=dict)
     execution: ExecutionConfig = field(default_factory=ExecutionConfig)
     logging: LoggingConfig = field(default_factory=LoggingConfig)
     hyperparams_model: type[HyperParams] | None = None
