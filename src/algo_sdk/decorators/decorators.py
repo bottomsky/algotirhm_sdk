@@ -13,6 +13,7 @@ from algo_sdk.core import (
     AlgorithmSpec,
     AlgorithmValidationError,
     BaseModel,
+    HyperParams,
     ExecutionConfig,
     ExecutionMode,
     LoggingConfig,
@@ -331,7 +332,7 @@ class DefaultAlgorithmDecorator:
         callable_obj: Callable[..., object],
         *,
         skip_first: bool = True,
-    ) -> tuple[type[BaseModel], type[BaseModel], type[BaseModel] | None]:
+    ) -> tuple[type[BaseModel], type[BaseModel], type[HyperParams] | None]:
         """Extract input/output models from callable signature.
 
         Args:
@@ -367,7 +368,7 @@ class DefaultAlgorithmDecorator:
                 "algorithm input must be a BaseModel subclass"
             )
 
-        hyperparams_model: type[BaseModel] | None = None
+        hyperparams_model: type[HyperParams] | None = None
         if len(params) == 2:
             hyper_param = params[1]
             hyper_annotation: object = type_hints.get(
@@ -375,14 +376,14 @@ class DefaultAlgorithmDecorator:
             )
             if hyper_annotation is inspect.Signature.empty:
                 raise AlgorithmValidationError(
-                    "hyperparams must be type-annotated with a BaseModel subclass"
+                    "hyperparams must be type-annotated with a HyperParams subclass"
                 )
             if not (
                 inspect.isclass(hyper_annotation)
-                and issubclass(hyper_annotation, _PydanticBaseModel)
+                and issubclass(hyper_annotation, HyperParams)
             ):
                 raise AlgorithmValidationError(
-                    "hyperparams must be a BaseModel subclass"
+                    "hyperparams must be a HyperParams subclass"
                 )
             hyperparams_model = hyper_annotation  # type: ignore[assignment]
 
@@ -406,30 +407,6 @@ class DefaultAlgorithmDecorator:
             output_annotation,
             hyperparams_model,
         )  # type: ignore[return-value]
-
-    def _resolve_hyperparams_model(
-        self,
-        explicit: type[BaseModel] | None,
-        inferred: type[BaseModel] | None,
-    ) -> type[BaseModel] | None:
-        if explicit is None:
-            return inferred
-        if not (
-            inspect.isclass(explicit)
-            and issubclass(explicit, _PydanticBaseModel)
-        ):
-            raise AlgorithmValidationError(
-                "hyperparams must be a BaseModel subclass"
-            )
-        if inferred is None:
-            raise AlgorithmValidationError(
-                "run method must accept hyperparams when configured"
-            )
-        if explicit is not inferred:
-            raise AlgorithmValidationError(
-                "hyperparams model does not match run signature"
-            )
-        return explicit
 
 
 # Convenience instance for common imports

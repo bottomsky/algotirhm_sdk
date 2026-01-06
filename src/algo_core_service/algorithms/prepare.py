@@ -23,7 +23,6 @@ class PrepareParams(HyperParams):
     description="Prepare algorithm sample implementation.",
     algorithm_type=AlgorithmType.PREPARE,
     logging=LoggingConfig(enabled=True, log_input=True, log_output=True),
-    hyperparams=PrepareParams,
 )
 class PrepareAlgorithm(BaseAlgorithm[PrepareRequest, PrepareResult]):
     def run(self, req: PrepareRequest, params: PrepareParams) -> PrepareResult:
