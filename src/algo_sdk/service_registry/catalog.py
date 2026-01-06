@@ -61,6 +61,11 @@ def build_algorithm_catalog(
                 "output_schema": spec.output_schema(),
                 "hyperparams_schema": hyper_schema,
                 "hyperparams_fields": hyper_fields or [],
+                "created_time": spec.created_time,
+                "author": spec.author,
+                "category": spec.category,
+                "application_scenarios": spec.application_scenarios,
+                "extra": spec.extra,
             }
         )
 
