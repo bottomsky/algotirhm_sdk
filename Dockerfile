@@ -15,7 +15,6 @@ RUN pip install --no-cache-dir uv \
     && uv pip sync --system uv.lock
 
 COPY src ./src
-COPY .env.example ./.env.example
 COPY scripts ./scripts
 
 RUN chmod +x scripts/run_algo_core_service.sh
