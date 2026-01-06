@@ -7,10 +7,34 @@ out_dir="${OUTPUT_DIR:-$repo_root/dist/modules}"
 mkdir -p "$out_dir"
 
 modules="${MODULES:-algo_sdk algo_dto}"
-if [ "$#" -gt 0 ]; then
-  modules="$*"
-fi
 package_version="${PACKAGE_VERSION:-0.0.0}"
+format="${FORMAT:-zip}"
+bundle_name="${BUNDLE_NAME:-}"
+
+remaining_modules=""
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --format)
+      format="$2"
+      shift 2
+      ;;
+    --bundle-name)
+      bundle_name="$2"
+      shift 2
+      ;;
+    --version)
+      package_version="$2"
+      shift 2
+      ;;
+    *)
+      remaining_modules="$remaining_modules $1"
+      shift
+      ;;
+  esac
+done
+if [ -n "$remaining_modules" ]; then
+  modules="$remaining_modules"
+fi
 
 if [ -x "$repo_root/.venv/bin/python" ]; then
   py="$repo_root/.venv/bin/python"
@@ -26,6 +50,7 @@ timestamp=$(date +"%Y%m%d-%H%M%S")
 "$py" - <<PY
 import os
 import shutil
+import subprocess
 import tempfile
 import zipfile
 
@@ -36,6 +61,25 @@ modules = "$modules".split()
 aliases = {"algo_sdk_dto": "algo_dto"}
 timestamp = "$timestamp"
 package_version = "$package_version"
+format = "$format"
+bundle_name = "$bundle_name".strip()
+
+
+def build_wheel(staging: str, out_dir: str) -> None:
+    subprocess.check_call(
+        [
+            os.fspath(os.sys.executable),
+            "-m",
+            "pip",
+            "wheel",
+            ".",
+            "--no-deps",
+            "--no-build-isolation",
+            "-w",
+            out_dir,
+        ],
+        cwd=staging,
+    )
 
 
 def stage_module(name: str):
@@ -54,26 +98,68 @@ def stage_module(name: str):
     return staging, resolved
 
 
-for name in modules:
-    staging, resolved = stage_module(name)
-    package_name = resolved.replace("_", "-")
+def write_setup_py(staging: str, package_name: str, version: str) -> None:
     setup_path = os.path.join(staging, "setup.py")
     with open(setup_path, "w", encoding="ascii") as fh:
         fh.write(
-            "from setuptools import setup, find_packages\\n\\n"
-            f"setup(name=\\\"{package_name}\\\", "
-            f"version=\\\"{package_version}\\\", "
-            "packages=find_packages(), include_package_data=True)\\n"
+            "from setuptools import setup, find_namespace_packages\\n\\n"
+            "setup(\\n"
+            f"    name=\\\"{package_name}\\\",\\n"
+            f"    version=\\\"{version}\\\",\\n"
+            "    packages=find_namespace_packages(),\\n"
+            "    include_package_data=True,\\n"
+            ")\\n"
         )
-    zip_path = os.path.join(
-        out_dir, f"{package_name}-{package_version}-{timestamp}.zip"
-    )
+
+
+def build_zip(staging: str, out_dir: str, package_name: str) -> str:
+    zip_path = os.path.join(out_dir, f"{package_name}-{package_version}-{timestamp}.zip")
     with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
         for root, _, files in os.walk(staging):
             for file in files:
                 full = os.path.join(root, file)
                 rel = os.path.relpath(full, staging)
                 zf.write(full, rel)
-    shutil.rmtree(staging)
-    print(f"Created {zip_path}")
+    return zip_path
+
+
+if bundle_name:
+    staging = tempfile.mkdtemp(prefix="algo-pack-")
+    try:
+        for name in modules:
+            resolved = aliases.get(name, name)
+            src = os.path.join(src_root, resolved)
+            if not os.path.isdir(src):
+                raise SystemExit(f"Module not found: {resolved} (expected at {src})")
+            dest = os.path.join(staging, resolved)
+            shutil.copytree(src, dest)
+        for root, dirs, files in os.walk(staging):
+            dirs[:] = [d for d in dirs if d != "__pycache__"]
+            for file in files:
+                if file.endswith(".pyc"):
+                    os.remove(os.path.join(root, file))
+        package_name = bundle_name.replace("_", "-")
+        write_setup_py(staging, package_name, package_version)
+        if format in ("zip", "both"):
+            zip_path = build_zip(staging, out_dir, package_name)
+            print(f"Created {zip_path}")
+        if format in ("whl", "both"):
+            build_wheel(staging, out_dir)
+            print(f"Created wheel(s) in {out_dir}")
+    finally:
+        shutil.rmtree(staging)
+else:
+    for name in modules:
+        staging, resolved = stage_module(name)
+        try:
+            package_name = resolved.replace("_", "-")
+            write_setup_py(staging, package_name, package_version)
+            if format in ("zip", "both"):
+                zip_path = build_zip(staging, out_dir, package_name)
+                print(f"Created {zip_path}")
+            if format in ("whl", "both"):
+                build_wheel(staging, out_dir)
+                print(f"Created wheel(s) in {out_dir}")
+        finally:
+            shutil.rmtree(staging)
 PY

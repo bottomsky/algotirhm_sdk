@@ -2,7 +2,9 @@ param(
     [string[]]$Modules = @("algo_sdk", "algo_dto"),
     [string]$OutputDir = "dist/modules",
     [string]$BundleName = "",
-    [string]$PackageVersion = "0.0.0"
+    [string]$PackageVersion = "0.0.0",
+    [ValidateSet("zip", "whl", "both")]
+    [string]$Format = "zip"
 )
 
 $ErrorActionPreference = "Stop"
@@ -28,6 +30,23 @@ function Resolve-ModuleName([string]$name) {
 
 function Normalize-PackageName([string]$name) {
     return $name.Replace("_", "-")
+}
+
+function Resolve-PythonExe([string]$repoRoot) {
+    $candidates = @(
+        (Join-Path $repoRoot ".venv\Scripts\python.exe"),
+        (Join-Path $repoRoot ".venv\bin\python")
+    )
+    foreach ($c in $candidates) {
+        if (Test-Path $c) {
+            return $c
+        }
+    }
+    $cmd = Get-Command python -ErrorAction SilentlyContinue
+    if ($cmd) {
+        return $cmd.Path
+    }
+    throw "Python not found. Create .venv first or ensure python is in PATH."
 }
 
 function New-StagingDir() {
@@ -62,14 +81,28 @@ function New-ZipFromStaging([string]$stagingRoot, [string]$zipPath) {
     [System.IO.Compression.ZipFile]::CreateFromDirectory($stagingRoot, $zipPath)
 }
 
+function New-WheelFromStaging([string]$stagingRoot, [string]$wheelDir) {
+    $py = Resolve-PythonExe $repoRoot
+    Push-Location $stagingRoot
+    try {
+        & $py -m pip wheel . --no-deps --no-build-isolation -w $wheelDir
+        if ($LASTEXITCODE -ne 0) {
+            throw "Wheel build failed in staging dir: $stagingRoot"
+        }
+    }
+    finally {
+        Pop-Location
+    }
+}
+
 function Write-SetupPy([string]$stagingRoot, [string]$packageName, [string]$version) {
     $content = @"
-from setuptools import setup, find_packages
+from setuptools import setup, find_namespace_packages
 
 setup(
     name="{0}",
     version="{1}",
-    packages=find_packages(),
+    packages=find_namespace_packages(),
     include_package_data=True,
 )
 "@ -f $packageName, $version
@@ -87,12 +120,18 @@ if ($BundleName) {
     Remove-CacheArtifacts $staging
     $packageName = Normalize-PackageName $BundleName
     Write-SetupPy $staging $packageName $PackageVersion
-    $zipPath = Join-Path $outputRoot (
-        "{0}-{1}-{2}.zip" -f $packageName, $PackageVersion, $timestamp
-    )
-    New-ZipFromStaging $staging $zipPath
+    if ($Format -in @("zip", "both")) {
+        $zipPath = Join-Path $outputRoot (
+            "{0}-{1}-{2}.zip" -f $packageName, $PackageVersion, $timestamp
+        )
+        New-ZipFromStaging $staging $zipPath
+        Write-Host "Created $zipPath"
+    }
+    if ($Format -in @("whl", "both")) {
+        New-WheelFromStaging $staging $outputRoot
+        Write-Host "Created wheel(s) in $outputRoot"
+    }
     Remove-Item $staging -Recurse -Force
-    Write-Host "Created $zipPath"
 }
 else {
     foreach ($module in $Modules) {
@@ -102,11 +141,17 @@ else {
         $resolved = Resolve-ModuleName $module
         $packageName = Normalize-PackageName $resolved
         Write-SetupPy $staging $packageName $PackageVersion
-        $zipPath = Join-Path $outputRoot (
-            "{0}-{1}-{2}.zip" -f $packageName, $PackageVersion, $timestamp
-        )
-        New-ZipFromStaging $staging $zipPath
+        if ($Format -in @("zip", "both")) {
+            $zipPath = Join-Path $outputRoot (
+                "{0}-{1}-{2}.zip" -f $packageName, $PackageVersion, $timestamp
+            )
+            New-ZipFromStaging $staging $zipPath
+            Write-Host "Created $zipPath"
+        }
+        if ($Format -in @("whl", "both")) {
+            New-WheelFromStaging $staging $outputRoot
+            Write-Host "Created wheel(s) in $outputRoot"
+        }
         Remove-Item $staging -Recurse -Force
-        Write-Host "Created $zipPath"
     }
 }
