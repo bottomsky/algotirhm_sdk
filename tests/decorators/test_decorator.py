@@ -10,6 +10,7 @@ from algo_sdk import (
     BaseModel,
     DefaultAlgorithmDecorator,
     ExecutionMode,
+    HyperParams,
     LoggingConfig,
 )
 
@@ -32,6 +33,26 @@ class _AlgoForRegistration(BaseAlgorithm[_Req, _Resp]):
 
     def shutdown(self) -> None:
         self.ready = False
+
+
+class _ParamsInvalid(BaseModel):
+    value: int
+
+
+class _ParamsValid(HyperParams):
+    value: int
+
+
+class _AlgoWithInvalidParams(BaseAlgorithm[_Req, _Resp]):
+
+    def run(self, req: _Req, params: _ParamsInvalid) -> _Resp:  # type: ignore[override]
+        return _Resp(doubled=req.value * 2)
+
+
+class _AlgoWithValidParams(BaseAlgorithm[_Req, _Resp]):
+
+    def run(self, req: _Req, params: _ParamsValid) -> _Resp:  # type: ignore[override]
+        return _Resp(doubled=req.value * 2)
 
 
 def test_function_registration_is_rejected() -> None:
@@ -125,3 +146,24 @@ def test_logging_config_is_recorded() -> None:
     assert spec.logging.log_output is True
     assert spec.logging.max_length == 128
     assert spec.logging.redact_fields == ("secret",)
+
+
+def test_hyperparams_requires_hyperparams_base() -> None:
+    reg = AlgorithmRegistry()
+    deco = DefaultAlgorithmDecorator(registry=reg)
+
+    with pytest.raises(AlgorithmValidationError, match="HyperParams"):
+        deco(
+            name="bad-params",
+            version="v1",
+            algorithm_type=AlgorithmType.PREDICTION,
+        )(_AlgoWithInvalidParams)
+
+    deco(
+        name="good-params",
+        version="v1",
+        algorithm_type=AlgorithmType.PREDICTION,
+    )(_AlgoWithValidParams)
+
+    spec = reg.get("good-params", "v1")
+    assert spec.hyperparams_model is _ParamsValid

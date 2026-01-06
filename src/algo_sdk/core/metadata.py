@@ -112,7 +112,7 @@ class AlgorithmSpec(Generic[TInput, TOutput]):
     algorithm_type: AlgorithmType
     execution: ExecutionConfig = field(default_factory=ExecutionConfig)
     logging: LoggingConfig = field(default_factory=LoggingConfig)
-    hyperparams_model: type[BaseModel] | None = None
+    hyperparams_model: type[HyperParams] | None = None
     is_class: bool = False
 
     def key(self) -> tuple[str, str]:
