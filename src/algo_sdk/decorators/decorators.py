@@ -40,7 +40,6 @@ class DefaultAlgorithmDecorator:
         description: str | None = None,
         execution: dict[str, object] | None = None,
         logging: LoggingConfig | dict[str, object] | None = None,
-        hyperparams: type[BaseModel] | None = None,
     ) -> Callable[
         [type[AlgorithmLifecycleProtocol[BaseModel, BaseModel]]],
         type[AlgorithmLifecycleProtocol[BaseModel, BaseModel]],
@@ -55,8 +54,6 @@ class DefaultAlgorithmDecorator:
             description: Optional description
             execution: Optional execution config dict
             logging: Optional logging config (dict or LoggingConfig)
-            hyperparams: Optional hyper-parameter model
-
         Returns:
             A decorator that preserves the type of the decorated class
         """
@@ -93,7 +90,6 @@ class DefaultAlgorithmDecorator:
                     description=description,
                     exec_config=exec_config,
                     log_config=log_config,
-                    hyperparams_model=hyperparams,
                 )
             else:
                 raise AlgorithmValidationError(
@@ -246,7 +242,6 @@ class DefaultAlgorithmDecorator:
         description: str | None,
         exec_config: ExecutionConfig,
         log_config: LoggingConfig,
-        hyperparams_model: type[BaseModel] | None,
     ) -> AlgorithmSpec[BaseModel, BaseModel]:
         run_method: object = getattr(target_cls, "run", None)
         if run_method is None or not callable(run_method):
@@ -265,10 +260,6 @@ class DefaultAlgorithmDecorator:
         input_model, output_model, inferred_hyperparams = self._extract_io(
             run_method
         )
-        resolved_hyperparams = self._resolve_hyperparams_model(
-            hyperparams_model,
-            inferred_hyperparams,
-        )
 
         for hook_name in ("initialize", "before_run", "after_run", "shutdown"):
             if not hasattr(target_cls, hook_name):
@@ -286,9 +277,9 @@ class DefaultAlgorithmDecorator:
         self._assert_picklable(target_cls, label="algorithm entrypoint")
         self._assert_picklable(input_model, label="algorithm input model")
         self._assert_picklable(output_model, label="algorithm output model")
-        if resolved_hyperparams is not None:
+        if inferred_hyperparams is not None:
             self._assert_picklable(
-                resolved_hyperparams,
+                inferred_hyperparams,
                 label="algorithm hyperparams model",
             )
 
@@ -301,53 +292,9 @@ class DefaultAlgorithmDecorator:
             output_model=output_model,
             execution=exec_config,
             logging=log_config,
-            hyperparams_model=resolved_hyperparams,
+            hyperparams_model=inferred_hyperparams,
             entrypoint=target_cls,
             is_class=True,
-        )
-
-    def _build_function_spec(
-        self,
-        func: Callable[..., object],
-        *,
-        name: str,
-        version: str,
-        algorithm_type: AlgorithmType,
-        description: str | None,
-        exec_config: ExecutionConfig,
-        log_config: LoggingConfig,
-        hyperparams_model: type[BaseModel] | None,
-    ) -> AlgorithmSpec[BaseModel, BaseModel]:
-        if not callable(func):
-            raise AlgorithmValidationError("algorithm must be callable")
-        input_model, output_model, inferred_hyperparams = self._extract_io(
-            func, skip_first=False
-        )
-        resolved_hyperparams = self._resolve_hyperparams_model(
-            hyperparams_model,
-            inferred_hyperparams,
-        )
-
-        self._assert_picklable(func, label="algorithm entrypoint")
-        self._assert_picklable(input_model, label="algorithm input model")
-        self._assert_picklable(output_model, label="algorithm output model")
-        if resolved_hyperparams is not None:
-            self._assert_picklable(
-                resolved_hyperparams,
-                label="algorithm hyperparams model",
-            )
-        return AlgorithmSpec(
-            name=name,
-            version=version,
-            algorithm_type=algorithm_type,
-            description=description,
-            input_model=input_model,
-            output_model=output_model,
-            execution=exec_config,
-            logging=log_config,
-            hyperparams_model=resolved_hyperparams,
-            entrypoint=func,
-            is_class=False,
         )
 
     def _assert_picklable(self, obj: object, *, label: str) -> None:
