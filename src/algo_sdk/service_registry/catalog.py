@@ -45,6 +45,8 @@ def build_algorithm_catalog(
     for spec in algorithms:
         route = f"/algorithms/{spec.name}/{spec.version}"
         schema_route = f"{route}/schema"
+        hyper_schema = spec.hyperparams_schema()
+        hyper_fields = spec.hyperparams_fields()
         items.append(
             {
                 "name": spec.name,
@@ -57,6 +59,8 @@ def build_algorithm_catalog(
                 "absolute_schema_url": f"{base_url}{schema_route}",
                 "input_schema": spec.input_schema(),
                 "output_schema": spec.output_schema(),
+                "hyperparams_schema": hyper_schema,
+                "hyperparams_fields": hyper_fields or [],
             }
         )
 

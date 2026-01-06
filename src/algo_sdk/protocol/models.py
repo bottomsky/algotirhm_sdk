@@ -24,13 +24,14 @@ class AlgorithmRequest(_PydanticBaseModel, Generic[T]):
     """Standardized algorithm request envelope.
 
     The `data` field carries business-domain models (from algo_dto) used as
-    the algorithm input.
+    the algorithm input. `hyperParams` carries optional hyper-parameters.
     """
 
     requestId: str = Field(min_length=1)
     datetime: DateTime
     context: AlgorithmContext = Field(default_factory=AlgorithmContext)
     data: T
+    hyperParams: Dict[str, Any] | None = None
 
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
