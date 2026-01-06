@@ -40,6 +40,7 @@ class DefaultAlgorithmDecorator:
         description: str | None = None,
         execution: dict[str, object] | None = None,
         logging: LoggingConfig | dict[str, object] | None = None,
+        hyperparams: type[BaseModel] | None = None,
     ) -> Callable[
         [type[AlgorithmLifecycleProtocol[BaseModel, BaseModel]]],
         type[AlgorithmLifecycleProtocol[BaseModel, BaseModel]],
@@ -54,6 +55,7 @@ class DefaultAlgorithmDecorator:
             description: Optional description
             execution: Optional execution config dict
             logging: Optional logging config (dict or LoggingConfig)
+            hyperparams: Optional hyper-parameter model
 
         Returns:
             A decorator that preserves the type of the decorated class
@@ -91,6 +93,7 @@ class DefaultAlgorithmDecorator:
                     description=description,
                     exec_config=exec_config,
                     log_config=log_config,
+                    hyperparams_model=hyperparams,
                 )
             else:
                 raise AlgorithmValidationError(
@@ -243,6 +246,7 @@ class DefaultAlgorithmDecorator:
         description: str | None,
         exec_config: ExecutionConfig,
         log_config: LoggingConfig,
+        hyperparams_model: type[BaseModel] | None,
     ) -> AlgorithmSpec[BaseModel, BaseModel]:
         run_method: object = getattr(target_cls, "run", None)
         if run_method is None or not callable(run_method):
@@ -258,7 +262,13 @@ class DefaultAlgorithmDecorator:
                 "class-based algorithm must not be abstract"
             )
 
-        input_model, output_model = self._extract_io(run_method)
+        input_model, output_model, inferred_hyperparams = self._extract_io(
+            run_method
+        )
+        resolved_hyperparams = self._resolve_hyperparams_model(
+            hyperparams_model,
+            inferred_hyperparams,
+        )
 
         for hook_name in ("initialize", "before_run", "after_run", "shutdown"):
             if not hasattr(target_cls, hook_name):
@@ -276,6 +286,11 @@ class DefaultAlgorithmDecorator:
         self._assert_picklable(target_cls, label="algorithm entrypoint")
         self._assert_picklable(input_model, label="algorithm input model")
         self._assert_picklable(output_model, label="algorithm output model")
+        if resolved_hyperparams is not None:
+            self._assert_picklable(
+                resolved_hyperparams,
+                label="algorithm hyperparams model",
+            )
 
         return AlgorithmSpec(
             name=name,
@@ -286,6 +301,7 @@ class DefaultAlgorithmDecorator:
             output_model=output_model,
             execution=exec_config,
             logging=log_config,
+            hyperparams_model=resolved_hyperparams,
             entrypoint=target_cls,
             is_class=True,
         )
@@ -300,14 +316,26 @@ class DefaultAlgorithmDecorator:
         description: str | None,
         exec_config: ExecutionConfig,
         log_config: LoggingConfig,
+        hyperparams_model: type[BaseModel] | None,
     ) -> AlgorithmSpec[BaseModel, BaseModel]:
         if not callable(func):
             raise AlgorithmValidationError("algorithm must be callable")
-        input_model, output_model = self._extract_io(func, skip_first=False)
+        input_model, output_model, inferred_hyperparams = self._extract_io(
+            func, skip_first=False
+        )
+        resolved_hyperparams = self._resolve_hyperparams_model(
+            hyperparams_model,
+            inferred_hyperparams,
+        )
 
         self._assert_picklable(func, label="algorithm entrypoint")
         self._assert_picklable(input_model, label="algorithm input model")
         self._assert_picklable(output_model, label="algorithm output model")
+        if resolved_hyperparams is not None:
+            self._assert_picklable(
+                resolved_hyperparams,
+                label="algorithm hyperparams model",
+            )
         return AlgorithmSpec(
             name=name,
             version=version,
@@ -317,6 +345,7 @@ class DefaultAlgorithmDecorator:
             output_model=output_model,
             execution=exec_config,
             logging=log_config,
+            hyperparams_model=resolved_hyperparams,
             entrypoint=func,
             is_class=False,
         )
@@ -355,23 +384,23 @@ class DefaultAlgorithmDecorator:
         callable_obj: Callable[..., object],
         *,
         skip_first: bool = True,
-    ) -> tuple[type[BaseModel], type[BaseModel]]:
+    ) -> tuple[type[BaseModel], type[BaseModel], type[BaseModel] | None]:
         """Extract input/output models from callable signature.
 
         Args:
             run_method: The run method of the algorithm class
 
         Returns:
-            Tuple of (input_model, output_model) types
+            Tuple of (input_model, output_model, hyperparams_model) types
         """
         sig = inspect.signature(callable_obj)
         params = list(sig.parameters.values())
         if skip_first and params:
             params = params[1:]
 
-        if len(params) != 1:
+        if len(params) not in (1, 2):
             raise AlgorithmValidationError(
-                "run method must accept exactly one argument (besides self)"
+                "run method must accept one or two arguments (besides self)"
             )
 
         param = params[0]
@@ -391,6 +420,25 @@ class DefaultAlgorithmDecorator:
                 "algorithm input must be a BaseModel subclass"
             )
 
+        hyperparams_model: type[BaseModel] | None = None
+        if len(params) == 2:
+            hyper_param = params[1]
+            hyper_annotation: object = type_hints.get(
+                hyper_param.name, hyper_param.annotation
+            )
+            if hyper_annotation is inspect.Signature.empty:
+                raise AlgorithmValidationError(
+                    "hyperparams must be type-annotated with a BaseModel subclass"
+                )
+            if not (
+                inspect.isclass(hyper_annotation)
+                and issubclass(hyper_annotation, _PydanticBaseModel)
+            ):
+                raise AlgorithmValidationError(
+                    "hyperparams must be a BaseModel subclass"
+                )
+            hyperparams_model = hyper_annotation  # type: ignore[assignment]
+
         ret_anno = sig.return_annotation  # pyright: ignore[reportAny]
         output_annotation: object = type_hints.get("return", ret_anno)
         if output_annotation is inspect.Signature.empty:
@@ -406,7 +454,35 @@ class DefaultAlgorithmDecorator:
             )
 
         # After validation, we know these are type[BaseModel] subclasses
-        return (annotation, output_annotation)  # type: ignore[return-value]
+        return (
+            annotation,
+            output_annotation,
+            hyperparams_model,
+        )  # type: ignore[return-value]
+
+    def _resolve_hyperparams_model(
+        self,
+        explicit: type[BaseModel] | None,
+        inferred: type[BaseModel] | None,
+    ) -> type[BaseModel] | None:
+        if explicit is None:
+            return inferred
+        if not (
+            inspect.isclass(explicit)
+            and issubclass(explicit, _PydanticBaseModel)
+        ):
+            raise AlgorithmValidationError(
+                "hyperparams must be a BaseModel subclass"
+            )
+        if inferred is None:
+            raise AlgorithmValidationError(
+                "run method must accept hyperparams when configured"
+            )
+        if explicit is not inferred:
+            raise AlgorithmValidationError(
+                "hyperparams model does not match run signature"
+            )
+        return explicit
 
 
 # Convenience instance for common imports
