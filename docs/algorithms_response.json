@@ -1,0 +1,2020 @@
+{
+    "code": 0,
+    "message": "success",
+    "requestId": null,
+    "datetime": "2026-01-06T02:56:00.151297Z",
+    "context": null,
+    "data": {
+        "catalogs": [
+            {
+                "service": "algo-service",
+                "service_id": "algo-service-192.168.1.23-8000-http",
+                "service_version": "v1",
+                "host": "192.168.1.23",
+                "port": 8000,
+                "base_url": "http://192.168.1.23:8000",
+                "list_url": "http://192.168.1.23:8000/algorithms",
+                "algorithms": [
+                    {
+                        "name": "Prediction",
+                        "version": "v1",
+                        "description": "Prediction algorithm sample implementation.",
+                        "algorithm_type": "Prediction",
+                        "route": "/algorithms/Prediction/v1",
+                        "schema_url": "/algorithms/Prediction/v1/schema",
+                        "absolute_route": "http://192.168.1.23:8000/algorithms/Prediction/v1",
+                        "absolute_schema_url": "http://192.168.1.23:8000/algorithms/Prediction/v1/schema",
+                        "input_schema": {
+                            "$defs": {
+                                "SatOrbitVVLHRv": {
+                                    "properties": {
+                                        "satId": {
+                                            "title": "Satid",
+                                            "type": "integer"
+                                        },
+                                        "vvlhRv": {
+                                            "$ref": "#/$defs/Vector6"
+                                        }
+                                    },
+                                    "required": [
+                                        "satId",
+                                        "vvlhRv"
+                                    ],
+                                    "title": "SatOrbitVVLHRv",
+                                    "type": "object"
+                                },
+                                "SimTime": {
+                                    "description": "Time representation as a fixed-length array\n[year, month, day, hour, minute, second].",
+                                    "items": {
+                                        "type": "integer"
+                                    },
+                                    "title": "SimTime",
+                                    "type": "array"
+                                },
+                                "Vector6": {
+                                    "items": {
+                                        "type": "number"
+                                    },
+                                    "title": "Vector6",
+                                    "type": "array"
+                                }
+                            },
+                            "properties": {
+                                "satStates": {
+                                    "$ref": "#/$defs/SatOrbitVVLHRv"
+                                },
+                                "targetSats": {
+                                    "items": {
+                                        "$ref": "#/$defs/SatOrbitVVLHRv"
+                                    },
+                                    "title": "Targetsats",
+                                    "type": "array"
+                                },
+                                "simTime": {
+                                    "$ref": "#/$defs/SimTime"
+                                },
+                                "duration_s": {
+                                    "title": "Duration S",
+                                    "type": "number"
+                                }
+                            },
+                            "required": [
+                                "satStates",
+                                "targetSats",
+                                "simTime",
+                                "duration_s"
+                            ],
+                            "title": "PredictionRequest",
+                            "type": "object"
+                        },
+                        "output_schema": {
+                            "$defs": {
+                                "PredictionResultItem": {
+                                    "description": "预测算法的结果信息项",
+                                    "properties": {
+                                        "satId": {
+                                            "title": "Satid",
+                                            "type": "integer"
+                                        },
+                                        "minDistance": {
+                                            "title": "Mindistance",
+                                            "type": "number"
+                                        },
+                                        "relativeStateVvlh": {
+                                            "$ref": "#/$defs/VVLHRV"
+                                        },
+                                        "score": {
+                                            "title": "Score",
+                                            "type": "number"
+                                        },
+                                        "tNearestTime": {
+                                            "$ref": "#/$defs/SimTime"
+                                        }
+                                    },
+                                    "required": [
+                                        "satId",
+                                        "minDistance",
+                                        "relativeStateVvlh",
+                                        "score",
+                                        "tNearestTime"
+                                    ],
+                                    "title": "PredictionResultItem",
+                                    "type": "object"
+                                },
+                                "SimTime": {
+                                    "description": "Time representation as a fixed-length array\n[year, month, day, hour, minute, second].",
+                                    "items": {
+                                        "type": "integer"
+                                    },
+                                    "title": "SimTime",
+                                    "type": "array"
+                                },
+                                "VVLHRV": {
+                                    "description": "VVLH coordinates and rates [rx, ry, rz, vx, vy, vz].",
+                                    "items": {
+                                        "type": "number"
+                                    },
+                                    "title": "VVLHRV",
+                                    "type": "array"
+                                }
+                            },
+                            "description": "预测算法的结果信息",
+                            "items": {
+                                "$ref": "#/$defs/PredictionResultItem"
+                            },
+                            "title": "PredictionResult",
+                            "type": "array"
+                        }
+                    },
+                    {
+                        "name": "Prepare",
+                        "version": "v1",
+                        "description": "Prepare algorithm sample implementation.",
+                        "algorithm_type": "Prepare",
+                        "route": "/algorithms/Prepare/v1",
+                        "schema_url": "/algorithms/Prepare/v1/schema",
+                        "absolute_route": "http://192.168.1.23:8000/algorithms/Prepare/v1",
+                        "absolute_schema_url": "http://192.168.1.23:8000/algorithms/Prepare/v1/schema",
+                        "input_schema": {
+                            "$defs": {
+                                "ControlledMap": {
+                                    "properties": {
+                                        "dissCoe": {
+                                            "title": "Disscoe",
+                                            "type": "integer"
+                                        },
+                                        "area": {
+                                            "title": "Area",
+                                            "type": "integer"
+                                        },
+                                        "relativeV": {
+                                            "$ref": "#/$defs/Vector3"
+                                        },
+                                        "relativeW": {
+                                            "$ref": "#/$defs/Vector3"
+                                        },
+                                        "evasionAng": {
+                                            "$ref": "#/$defs/Vector3"
+                                        },
+                                        "operationInterval": {
+                                            "title": "Operationinterval",
+                                            "type": "integer"
+                                        },
+                                        "operationNum": {
+                                            "title": "Operationnum",
+                                            "type": "integer"
+                                        },
+                                        "operationDis": {
+                                            "title": "Operationdis",
+                                            "type": "integer"
+                                        }
+                                    },
+                                    "required": [
+                                        "dissCoe",
+                                        "area",
+                                        "relativeV",
+                                        "relativeW",
+                                        "evasionAng",
+                                        "operationInterval",
+                                        "operationNum",
+                                        "operationDis"
+                                    ],
+                                    "title": "ControlledMap",
+                                    "type": "object"
+                                },
+                                "PlanningSource": {
+                                    "properties": {
+                                        "satId": {
+                                            "title": "Satid",
+                                            "type": "integer"
+                                        },
+                                        "j2000Rv": {
+                                            "$ref": "#/$defs/Vector6"
+                                        },
+                                        "vvlhRv": {
+                                            "$ref": "#/$defs/Vector6"
+                                        },
+                                        "controlledMap": {
+                                            "$ref": "#/$defs/ControlledMap"
+                                        },
+                                        "platformMap": {
+                                            "$ref": "#/$defs/PlatformMap"
+                                        },
+                                        "fixedAxis": {
+                                            "$ref": "#/$defs/Vector3"
+                                        },
+                                        "q4": {
+                                            "$ref": "#/$defs/Vector4"
+                                        },
+                                        "satType": {
+                                            "title": "Sattype",
+                                            "type": "integer"
+                                        }
+                                    },
+                                    "required": [
+                                        "satId",
+                                        "j2000Rv",
+                                        "vvlhRv",
+                                        "controlledMap",
+                                        "platformMap",
+                                        "fixedAxis",
+                                        "q4",
+                                        "satType"
+                                    ],
+                                    "title": "PlanningSource",
+                                    "type": "object"
+                                },
+                                "PlatformMap": {
+                                    "properties": {
+                                        "singleManeuver": {
+                                            "title": "Singlemaneuver",
+                                            "type": "integer"
+                                        },
+                                        "allManuever": {
+                                            "title": "Allmanuever",
+                                            "type": "integer"
+                                        },
+                                        "orbitCtrlInterval": {
+                                            "title": "Orbitctrlinterval",
+                                            "type": "integer"
+                                        }
+                                    },
+                                    "required": [
+                                        "singleManeuver",
+                                        "allManuever",
+                                        "orbitCtrlInterval"
+                                    ],
+                                    "title": "PlatformMap",
+                                    "type": "object"
+                                },
+                                "Prepare": {
+                                    "properties": {
+                                        "startTime": {
+                                            "$ref": "#/$defs/SimTime"
+                                        },
+                                        "endTime": {
+                                            "$ref": "#/$defs/SimTime"
+                                        },
+                                        "taskId": {
+                                            "title": "Taskid",
+                                            "type": "string"
+                                        },
+                                        "subTaskId": {
+                                            "title": "Subtaskid",
+                                            "type": "string"
+                                        },
+                                        "targetSats": {
+                                            "items": {
+                                                "$ref": "#/$defs/TargetSatBase"
+                                            },
+                                            "title": "Targetsats",
+                                            "type": "array"
+                                        },
+                                        "source": {
+                                            "items": {
+                                                "$ref": "#/$defs/PlanningSource"
+                                            },
+                                            "title": "Source",
+                                            "type": "array"
+                                        },
+                                        "algorithmName": {
+                                            "title": "Algorithmname",
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "startTime",
+                                        "endTime",
+                                        "taskId",
+                                        "subTaskId",
+                                        "targetSats",
+                                        "source",
+                                        "algorithmName"
+                                    ],
+                                    "title": "Prepare",
+                                    "type": "object"
+                                },
+                                "SatOrbitJ2000": {
+                                    "properties": {
+                                        "satId": {
+                                            "title": "Satid",
+                                            "type": "integer"
+                                        },
+                                        "j2000Rv": {
+                                            "$ref": "#/$defs/Vector6"
+                                        }
+                                    },
+                                    "required": [
+                                        "satId",
+                                        "j2000Rv"
+                                    ],
+                                    "title": "SatOrbitJ2000",
+                                    "type": "object"
+                                },
+                                "SimTime": {
+                                    "description": "Time representation as a fixed-length array\n[year, month, day, hour, minute, second].",
+                                    "items": {
+                                        "type": "integer"
+                                    },
+                                    "title": "SimTime",
+                                    "type": "array"
+                                },
+                                "TargetSatBase": {
+                                    "properties": {
+                                        "satId": {
+                                            "title": "Satid",
+                                            "type": "integer"
+                                        },
+                                        "j2000Rv": {
+                                            "$ref": "#/$defs/Vector6"
+                                        },
+                                        "vvlhRv": {
+                                            "$ref": "#/$defs/Vector6"
+                                        },
+                                        "dwellDis": {
+                                            "$ref": "#/$defs/Vector3"
+                                        },
+                                        "dwellTime": {
+                                            "$ref": "#/$defs/Vector3"
+                                        },
+                                        "sprayTime": {
+                                            "title": "Spraytime",
+                                            "type": "integer"
+                                        },
+                                        "powerDensity": {
+                                            "$ref": "#/$defs/Vector3"
+                                        },
+                                        "missDis": {
+                                            "title": "Missdis",
+                                            "type": "integer"
+                                        },
+                                        "fixedAxis": {
+                                            "$ref": "#/$defs/Vector3"
+                                        },
+                                        "q4": {
+                                            "$ref": "#/$defs/Vector4"
+                                        },
+                                        "satType": {
+                                            "title": "Sattype",
+                                            "type": "integer"
+                                        }
+                                    },
+                                    "required": [
+                                        "satId",
+                                        "j2000Rv",
+                                        "vvlhRv",
+                                        "dwellDis",
+                                        "dwellTime",
+                                        "sprayTime",
+                                        "powerDensity",
+                                        "missDis",
+                                        "fixedAxis",
+                                        "q4",
+                                        "satType"
+                                    ],
+                                    "title": "TargetSatBase",
+                                    "type": "object"
+                                },
+                                "Vector3": {
+                                    "items": {
+                                        "type": "number"
+                                    },
+                                    "title": "Vector3",
+                                    "type": "array"
+                                },
+                                "Vector4": {
+                                    "items": {
+                                        "type": "number"
+                                    },
+                                    "title": "Vector4",
+                                    "type": "array"
+                                },
+                                "Vector6": {
+                                    "items": {
+                                        "type": "number"
+                                    },
+                                    "title": "Vector6",
+                                    "type": "array"
+                                }
+                            },
+                            "description": "规划算法的请求信息",
+                            "properties": {
+                                "sat": {
+                                    "$ref": "#/$defs/SatOrbitJ2000"
+                                },
+                                "simTime": {
+                                    "$ref": "#/$defs/SimTime"
+                                },
+                                "task": {
+                                    "items": {
+                                        "$ref": "#/$defs/Prepare"
+                                    },
+                                    "title": "Task",
+                                    "type": "array"
+                                }
+                            },
+                            "required": [
+                                "sat",
+                                "simTime",
+                                "task"
+                            ],
+                            "title": "PrepareRequest",
+                            "type": "object"
+                        },
+                        "output_schema": {
+                            "$defs": {
+                                "PrepareResultItem": {
+                                    "description": "规划算法的结果信息",
+                                    "properties": {
+                                        "taskId": {
+                                            "title": "Taskid",
+                                            "type": "string"
+                                        },
+                                        "subTaskId": {
+                                            "title": "Subtaskid",
+                                            "type": "string"
+                                        },
+                                        "startTime": {
+                                            "$ref": "#/$defs/SimTime"
+                                        },
+                                        "endTime": {
+                                            "$ref": "#/$defs/SimTime"
+                                        },
+                                        "satId": {
+                                            "title": "Satid",
+                                            "type": "integer"
+                                        },
+                                        "taskMode": {
+                                            "title": "Taskmode",
+                                            "type": "integer"
+                                        }
+                                    },
+                                    "required": [
+                                        "taskId",
+                                        "subTaskId",
+                                        "startTime",
+                                        "endTime",
+                                        "satId",
+                                        "taskMode"
+                                    ],
+                                    "title": "PrepareResultItem",
+                                    "type": "object"
+                                },
+                                "SimTime": {
+                                    "description": "Time representation as a fixed-length array\n[year, month, day, hour, minute, second].",
+                                    "items": {
+                                        "type": "integer"
+                                    },
+                                    "title": "SimTime",
+                                    "type": "array"
+                                }
+                            },
+                            "additionalProperties": {
+                                "$ref": "#/$defs/PrepareResultItem"
+                            },
+                            "description": "规划算法的结果信息（字典形式）\n\nKey: str\nValue: PrepareResultItem",
+                            "title": "PrepareResult",
+                            "type": "object"
+                        }
+                    },
+                    {
+                        "name": "Programme",
+                        "version": "v1",
+                        "description": "Programme algorithm sample implementation.",
+                        "algorithm_type": "Programme",
+                        "route": "/algorithms/Programme/v1",
+                        "schema_url": "/algorithms/Programme/v1/schema",
+                        "absolute_route": "http://192.168.1.23:8000/algorithms/Programme/v1",
+                        "absolute_schema_url": "http://192.168.1.23:8000/algorithms/Programme/v1/schema",
+                        "input_schema": {
+                            "$defs": {
+                                "ControlledMap": {
+                                    "properties": {
+                                        "dissCoe": {
+                                            "title": "Disscoe",
+                                            "type": "integer"
+                                        },
+                                        "area": {
+                                            "title": "Area",
+                                            "type": "integer"
+                                        },
+                                        "relativeV": {
+                                            "$ref": "#/$defs/Vector3"
+                                        },
+                                        "relativeW": {
+                                            "$ref": "#/$defs/Vector3"
+                                        },
+                                        "evasionAng": {
+                                            "$ref": "#/$defs/Vector3"
+                                        },
+                                        "operationInterval": {
+                                            "title": "Operationinterval",
+                                            "type": "integer"
+                                        },
+                                        "operationNum": {
+                                            "title": "Operationnum",
+                                            "type": "integer"
+                                        },
+                                        "operationDis": {
+                                            "title": "Operationdis",
+                                            "type": "integer"
+                                        }
+                                    },
+                                    "required": [
+                                        "dissCoe",
+                                        "area",
+                                        "relativeV",
+                                        "relativeW",
+                                        "evasionAng",
+                                        "operationInterval",
+                                        "operationNum",
+                                        "operationDis"
+                                    ],
+                                    "title": "ControlledMap",
+                                    "type": "object"
+                                },
+                                "Planning": {
+                                    "properties": {
+                                        "taskId": {
+                                            "title": "Taskid",
+                                            "type": "string"
+                                        },
+                                        "subTaskId": {
+                                            "title": "Subtaskid",
+                                            "type": "string"
+                                        },
+                                        "planningId": {
+                                            "title": "Planningid",
+                                            "type": "string"
+                                        },
+                                        "target": {
+                                            "$ref": "#/$defs/TargetSatBase"
+                                        },
+                                        "source": {
+                                            "$ref": "#/$defs/PlanningSource"
+                                        },
+                                        "taskTimeStart": {
+                                            "$ref": "#/$defs/SimTime"
+                                        },
+                                        "taskTimeEnd": {
+                                            "$ref": "#/$defs/SimTime"
+                                        },
+                                        "taskMode": {
+                                            "title": "Taskmode",
+                                            "type": "integer"
+                                        },
+                                        "algorithmName": {
+                                            "title": "Algorithmname",
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "taskId",
+                                        "subTaskId",
+                                        "planningId",
+                                        "target",
+                                        "source",
+                                        "taskTimeStart",
+                                        "taskTimeEnd",
+                                        "taskMode",
+                                        "algorithmName"
+                                    ],
+                                    "title": "Planning",
+                                    "type": "object"
+                                },
+                                "PlanningSource": {
+                                    "properties": {
+                                        "satId": {
+                                            "title": "Satid",
+                                            "type": "integer"
+                                        },
+                                        "j2000Rv": {
+                                            "$ref": "#/$defs/Vector6"
+                                        },
+                                        "vvlhRv": {
+                                            "$ref": "#/$defs/Vector6"
+                                        },
+                                        "controlledMap": {
+                                            "$ref": "#/$defs/ControlledMap"
+                                        },
+                                        "platformMap": {
+                                            "$ref": "#/$defs/PlatformMap"
+                                        },
+                                        "fixedAxis": {
+                                            "$ref": "#/$defs/Vector3"
+                                        },
+                                        "q4": {
+                                            "$ref": "#/$defs/Vector4"
+                                        },
+                                        "satType": {
+                                            "title": "Sattype",
+                                            "type": "integer"
+                                        }
+                                    },
+                                    "required": [
+                                        "satId",
+                                        "j2000Rv",
+                                        "vvlhRv",
+                                        "controlledMap",
+                                        "platformMap",
+                                        "fixedAxis",
+                                        "q4",
+                                        "satType"
+                                    ],
+                                    "title": "PlanningSource",
+                                    "type": "object"
+                                },
+                                "PlatformMap": {
+                                    "properties": {
+                                        "singleManeuver": {
+                                            "title": "Singlemaneuver",
+                                            "type": "integer"
+                                        },
+                                        "allManuever": {
+                                            "title": "Allmanuever",
+                                            "type": "integer"
+                                        },
+                                        "orbitCtrlInterval": {
+                                            "title": "Orbitctrlinterval",
+                                            "type": "integer"
+                                        }
+                                    },
+                                    "required": [
+                                        "singleManeuver",
+                                        "allManuever",
+                                        "orbitCtrlInterval"
+                                    ],
+                                    "title": "PlatformMap",
+                                    "type": "object"
+                                },
+                                "SatOrbitJ2000": {
+                                    "properties": {
+                                        "satId": {
+                                            "title": "Satid",
+                                            "type": "integer"
+                                        },
+                                        "j2000Rv": {
+                                            "$ref": "#/$defs/Vector6"
+                                        }
+                                    },
+                                    "required": [
+                                        "satId",
+                                        "j2000Rv"
+                                    ],
+                                    "title": "SatOrbitJ2000",
+                                    "type": "object"
+                                },
+                                "SimTime": {
+                                    "description": "Time representation as a fixed-length array\n[year, month, day, hour, minute, second].",
+                                    "items": {
+                                        "type": "integer"
+                                    },
+                                    "title": "SimTime",
+                                    "type": "array"
+                                },
+                                "TargetSatBase": {
+                                    "properties": {
+                                        "satId": {
+                                            "title": "Satid",
+                                            "type": "integer"
+                                        },
+                                        "j2000Rv": {
+                                            "$ref": "#/$defs/Vector6"
+                                        },
+                                        "vvlhRv": {
+                                            "$ref": "#/$defs/Vector6"
+                                        },
+                                        "dwellDis": {
+                                            "$ref": "#/$defs/Vector3"
+                                        },
+                                        "dwellTime": {
+                                            "$ref": "#/$defs/Vector3"
+                                        },
+                                        "sprayTime": {
+                                            "title": "Spraytime",
+                                            "type": "integer"
+                                        },
+                                        "powerDensity": {
+                                            "$ref": "#/$defs/Vector3"
+                                        },
+                                        "missDis": {
+                                            "title": "Missdis",
+                                            "type": "integer"
+                                        },
+                                        "fixedAxis": {
+                                            "$ref": "#/$defs/Vector3"
+                                        },
+                                        "q4": {
+                                            "$ref": "#/$defs/Vector4"
+                                        },
+                                        "satType": {
+                                            "title": "Sattype",
+                                            "type": "integer"
+                                        }
+                                    },
+                                    "required": [
+                                        "satId",
+                                        "j2000Rv",
+                                        "vvlhRv",
+                                        "dwellDis",
+                                        "dwellTime",
+                                        "sprayTime",
+                                        "powerDensity",
+                                        "missDis",
+                                        "fixedAxis",
+                                        "q4",
+                                        "satType"
+                                    ],
+                                    "title": "TargetSatBase",
+                                    "type": "object"
+                                },
+                                "Vector3": {
+                                    "items": {
+                                        "type": "number"
+                                    },
+                                    "title": "Vector3",
+                                    "type": "array"
+                                },
+                                "Vector4": {
+                                    "items": {
+                                        "type": "number"
+                                    },
+                                    "title": "Vector4",
+                                    "type": "array"
+                                },
+                                "Vector6": {
+                                    "items": {
+                                        "type": "number"
+                                    },
+                                    "title": "Vector6",
+                                    "type": "array"
+                                }
+                            },
+                            "description": "规划算法的请求信息",
+                            "properties": {
+                                "sat": {
+                                    "$ref": "#/$defs/SatOrbitJ2000"
+                                },
+                                "plannings": {
+                                    "items": {
+                                        "$ref": "#/$defs/Planning"
+                                    },
+                                    "title": "Plannings",
+                                    "type": "array"
+                                },
+                                "simTime": {
+                                    "$ref": "#/$defs/SimTime"
+                                }
+                            },
+                            "required": [
+                                "sat",
+                                "plannings",
+                                "simTime"
+                            ],
+                            "title": "ProgrammeRequest",
+                            "type": "object"
+                        },
+                        "output_schema": {
+                            "$defs": {
+                                "ControlledData": {
+                                    "properties": {
+                                        "startTime": {
+                                            "$ref": "#/$defs/SimTime"
+                                        },
+                                        "endTime": {
+                                            "$ref": "#/$defs/SimTime"
+                                        },
+                                        "id": {
+                                            "title": "Id",
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "startTime",
+                                        "endTime",
+                                        "id"
+                                    ],
+                                    "title": "ControlledData",
+                                    "type": "object"
+                                },
+                                "DnData": {
+                                    "properties": {
+                                        "id": {
+                                            "title": "Id",
+                                            "type": "string"
+                                        },
+                                        "startV": {
+                                            "$ref": "#/$defs/Vector3"
+                                        },
+                                        "startTime": {
+                                            "$ref": "#/$defs/SimTime"
+                                        }
+                                    },
+                                    "required": [
+                                        "id",
+                                        "startV",
+                                        "startTime"
+                                    ],
+                                    "title": "DnData",
+                                    "type": "object"
+                                },
+                                "LaserData": {
+                                    "properties": {
+                                        "startTime": {
+                                            "$ref": "#/$defs/SimTime"
+                                        },
+                                        "endTime": {
+                                            "$ref": "#/$defs/SimTime"
+                                        },
+                                        "id": {
+                                            "title": "Id",
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "startTime",
+                                        "endTime",
+                                        "id"
+                                    ],
+                                    "title": "LaserData",
+                                    "type": "object"
+                                },
+                                "OrbitAng": {
+                                    "properties": {
+                                        "simTime": {
+                                            "$ref": "#/$defs/SimTime"
+                                        },
+                                        "id": {
+                                            "title": "Id",
+                                            "type": "string"
+                                        },
+                                        "aimAxis": {
+                                            "$ref": "#/$defs/Vector3"
+                                        }
+                                    },
+                                    "required": [
+                                        "simTime",
+                                        "id",
+                                        "aimAxis"
+                                    ],
+                                    "title": "OrbitAng",
+                                    "type": "object"
+                                },
+                                "OrbitManInfo": {
+                                    "properties": {
+                                        "simTime": {
+                                            "$ref": "#/$defs/SimTime"
+                                        },
+                                        "id": {
+                                            "title": "Id",
+                                            "type": "string"
+                                        },
+                                        "deltaV": {
+                                            "$ref": "#/$defs/Vector3"
+                                        },
+                                        "system": {
+                                            "title": "System",
+                                            "type": "integer"
+                                        }
+                                    },
+                                    "required": [
+                                        "simTime",
+                                        "id",
+                                        "deltaV",
+                                        "system"
+                                    ],
+                                    "title": "OrbitManInfo",
+                                    "type": "object"
+                                },
+                                "ProgrammeResultItem": {
+                                    "description": "规划算法的结果信息项",
+                                    "properties": {
+                                        "taskId": {
+                                            "title": "Taskid",
+                                            "type": "string"
+                                        },
+                                        "subTaskId": {
+                                            "title": "Subtaskid",
+                                            "type": "string"
+                                        },
+                                        "planningId": {
+                                            "title": "Planningid",
+                                            "type": "string"
+                                        },
+                                        "satId": {
+                                            "title": "Satid",
+                                            "type": "integer"
+                                        },
+                                        "satType": {
+                                            "title": "Sattype",
+                                            "type": "integer"
+                                        },
+                                        "controlledData": {
+                                            "items": {
+                                                "$ref": "#/$defs/ControlledData"
+                                            },
+                                            "title": "Controlleddata",
+                                            "type": "array"
+                                        },
+                                        "orbitAng": {
+                                            "items": {
+                                                "$ref": "#/$defs/OrbitAng"
+                                            },
+                                            "title": "Orbitang",
+                                            "type": "array"
+                                        },
+                                        "taskMode": {
+                                            "title": "Taskmode",
+                                            "type": "integer"
+                                        },
+                                        "orbitManInfo": {
+                                            "items": {
+                                                "$ref": "#/$defs/OrbitManInfo"
+                                            },
+                                            "title": "Orbitmaninfo",
+                                            "type": "array"
+                                        },
+                                        "laserData": {
+                                            "items": {
+                                                "$ref": "#/$defs/LaserData"
+                                            },
+                                            "title": "Laserdata",
+                                            "type": "array"
+                                        },
+                                        "dnData": {
+                                            "items": {
+                                                "$ref": "#/$defs/DnData"
+                                            },
+                                            "title": "Dndata",
+                                            "type": "array"
+                                        }
+                                    },
+                                    "required": [
+                                        "taskId",
+                                        "subTaskId",
+                                        "planningId",
+                                        "satId",
+                                        "satType",
+                                        "controlledData",
+                                        "orbitAng",
+                                        "taskMode",
+                                        "orbitManInfo",
+                                        "laserData",
+                                        "dnData"
+                                    ],
+                                    "title": "ProgrammeResultItem",
+                                    "type": "object"
+                                },
+                                "SimTime": {
+                                    "description": "Time representation as a fixed-length array\n[year, month, day, hour, minute, second].",
+                                    "items": {
+                                        "type": "integer"
+                                    },
+                                    "title": "SimTime",
+                                    "type": "array"
+                                },
+                                "Vector3": {
+                                    "items": {
+                                        "type": "number"
+                                    },
+                                    "title": "Vector3",
+                                    "type": "array"
+                                }
+                            },
+                            "description": "规划算法的结果信息",
+                            "items": {
+                                "$ref": "#/$defs/ProgrammeResultItem"
+                            },
+                            "title": "ProgrammeResult",
+                            "type": "array"
+                        }
+                    }
+                ],
+                "kv_key": "algo_services/algo-service/algo-service-192.168.1.23-8000-http/algorithms"
+            }
+        ],
+        "algorithms": [
+            {
+                "name": "Prediction",
+                "version": "v1",
+                "description": "Prediction algorithm sample implementation.",
+                "algorithm_type": "Prediction",
+                "route": "/algorithms/Prediction/v1",
+                "schema_url": "/algorithms/Prediction/v1/schema",
+                "absolute_route": "http://192.168.1.23:8000/algorithms/Prediction/v1",
+                "absolute_schema_url": "http://192.168.1.23:8000/algorithms/Prediction/v1/schema",
+                "input_schema": {
+                    "$defs": {
+                        "SatOrbitVVLHRv": {
+                            "properties": {
+                                "satId": {
+                                    "title": "Satid",
+                                    "type": "integer"
+                                },
+                                "vvlhRv": {
+                                    "$ref": "#/$defs/Vector6"
+                                }
+                            },
+                            "required": [
+                                "satId",
+                                "vvlhRv"
+                            ],
+                            "title": "SatOrbitVVLHRv",
+                            "type": "object"
+                        },
+                        "SimTime": {
+                            "description": "Time representation as a fixed-length array\n[year, month, day, hour, minute, second].",
+                            "items": {
+                                "type": "integer"
+                            },
+                            "title": "SimTime",
+                            "type": "array"
+                        },
+                        "Vector6": {
+                            "items": {
+                                "type": "number"
+                            },
+                            "title": "Vector6",
+                            "type": "array"
+                        }
+                    },
+                    "properties": {
+                        "satStates": {
+                            "$ref": "#/$defs/SatOrbitVVLHRv"
+                        },
+                        "targetSats": {
+                            "items": {
+                                "$ref": "#/$defs/SatOrbitVVLHRv"
+                            },
+                            "title": "Targetsats",
+                            "type": "array"
+                        },
+                        "simTime": {
+                            "$ref": "#/$defs/SimTime"
+                        },
+                        "duration_s": {
+                            "title": "Duration S",
+                            "type": "number"
+                        }
+                    },
+                    "required": [
+                        "satStates",
+                        "targetSats",
+                        "simTime",
+                        "duration_s"
+                    ],
+                    "title": "PredictionRequest",
+                    "type": "object"
+                },
+                "output_schema": {
+                    "$defs": {
+                        "PredictionResultItem": {
+                            "description": "预测算法的结果信息项",
+                            "properties": {
+                                "satId": {
+                                    "title": "Satid",
+                                    "type": "integer"
+                                },
+                                "minDistance": {
+                                    "title": "Mindistance",
+                                    "type": "number"
+                                },
+                                "relativeStateVvlh": {
+                                    "$ref": "#/$defs/VVLHRV"
+                                },
+                                "score": {
+                                    "title": "Score",
+                                    "type": "number"
+                                },
+                                "tNearestTime": {
+                                    "$ref": "#/$defs/SimTime"
+                                }
+                            },
+                            "required": [
+                                "satId",
+                                "minDistance",
+                                "relativeStateVvlh",
+                                "score",
+                                "tNearestTime"
+                            ],
+                            "title": "PredictionResultItem",
+                            "type": "object"
+                        },
+                        "SimTime": {
+                            "description": "Time representation as a fixed-length array\n[year, month, day, hour, minute, second].",
+                            "items": {
+                                "type": "integer"
+                            },
+                            "title": "SimTime",
+                            "type": "array"
+                        },
+                        "VVLHRV": {
+                            "description": "VVLH coordinates and rates [rx, ry, rz, vx, vy, vz].",
+                            "items": {
+                                "type": "number"
+                            },
+                            "title": "VVLHRV",
+                            "type": "array"
+                        }
+                    },
+                    "description": "预测算法的结果信息",
+                    "items": {
+                        "$ref": "#/$defs/PredictionResultItem"
+                    },
+                    "title": "PredictionResult",
+                    "type": "array"
+                },
+                "service": "algo-service",
+                "kv_key": "algo_services/algo-service/algo-service-192.168.1.23-8000-http/algorithms"
+            },
+            {
+                "name": "Prepare",
+                "version": "v1",
+                "description": "Prepare algorithm sample implementation.",
+                "algorithm_type": "Prepare",
+                "route": "/algorithms/Prepare/v1",
+                "schema_url": "/algorithms/Prepare/v1/schema",
+                "absolute_route": "http://192.168.1.23:8000/algorithms/Prepare/v1",
+                "absolute_schema_url": "http://192.168.1.23:8000/algorithms/Prepare/v1/schema",
+                "input_schema": {
+                    "$defs": {
+                        "ControlledMap": {
+                            "properties": {
+                                "dissCoe": {
+                                    "title": "Disscoe",
+                                    "type": "integer"
+                                },
+                                "area": {
+                                    "title": "Area",
+                                    "type": "integer"
+                                },
+                                "relativeV": {
+                                    "$ref": "#/$defs/Vector3"
+                                },
+                                "relativeW": {
+                                    "$ref": "#/$defs/Vector3"
+                                },
+                                "evasionAng": {
+                                    "$ref": "#/$defs/Vector3"
+                                },
+                                "operationInterval": {
+                                    "title": "Operationinterval",
+                                    "type": "integer"
+                                },
+                                "operationNum": {
+                                    "title": "Operationnum",
+                                    "type": "integer"
+                                },
+                                "operationDis": {
+                                    "title": "Operationdis",
+                                    "type": "integer"
+                                }
+                            },
+                            "required": [
+                                "dissCoe",
+                                "area",
+                                "relativeV",
+                                "relativeW",
+                                "evasionAng",
+                                "operationInterval",
+                                "operationNum",
+                                "operationDis"
+                            ],
+                            "title": "ControlledMap",
+                            "type": "object"
+                        },
+                        "PlanningSource": {
+                            "properties": {
+                                "satId": {
+                                    "title": "Satid",
+                                    "type": "integer"
+                                },
+                                "j2000Rv": {
+                                    "$ref": "#/$defs/Vector6"
+                                },
+                                "vvlhRv": {
+                                    "$ref": "#/$defs/Vector6"
+                                },
+                                "controlledMap": {
+                                    "$ref": "#/$defs/ControlledMap"
+                                },
+                                "platformMap": {
+                                    "$ref": "#/$defs/PlatformMap"
+                                },
+                                "fixedAxis": {
+                                    "$ref": "#/$defs/Vector3"
+                                },
+                                "q4": {
+                                    "$ref": "#/$defs/Vector4"
+                                },
+                                "satType": {
+                                    "title": "Sattype",
+                                    "type": "integer"
+                                }
+                            },
+                            "required": [
+                                "satId",
+                                "j2000Rv",
+                                "vvlhRv",
+                                "controlledMap",
+                                "platformMap",
+                                "fixedAxis",
+                                "q4",
+                                "satType"
+                            ],
+                            "title": "PlanningSource",
+                            "type": "object"
+                        },
+                        "PlatformMap": {
+                            "properties": {
+                                "singleManeuver": {
+                                    "title": "Singlemaneuver",
+                                    "type": "integer"
+                                },
+                                "allManuever": {
+                                    "title": "Allmanuever",
+                                    "type": "integer"
+                                },
+                                "orbitCtrlInterval": {
+                                    "title": "Orbitctrlinterval",
+                                    "type": "integer"
+                                }
+                            },
+                            "required": [
+                                "singleManeuver",
+                                "allManuever",
+                                "orbitCtrlInterval"
+                            ],
+                            "title": "PlatformMap",
+                            "type": "object"
+                        },
+                        "Prepare": {
+                            "properties": {
+                                "startTime": {
+                                    "$ref": "#/$defs/SimTime"
+                                },
+                                "endTime": {
+                                    "$ref": "#/$defs/SimTime"
+                                },
+                                "taskId": {
+                                    "title": "Taskid",
+                                    "type": "string"
+                                },
+                                "subTaskId": {
+                                    "title": "Subtaskid",
+                                    "type": "string"
+                                },
+                                "targetSats": {
+                                    "items": {
+                                        "$ref": "#/$defs/TargetSatBase"
+                                    },
+                                    "title": "Targetsats",
+                                    "type": "array"
+                                },
+                                "source": {
+                                    "items": {
+                                        "$ref": "#/$defs/PlanningSource"
+                                    },
+                                    "title": "Source",
+                                    "type": "array"
+                                },
+                                "algorithmName": {
+                                    "title": "Algorithmname",
+                                    "type": "string"
+                                }
+                            },
+                            "required": [
+                                "startTime",
+                                "endTime",
+                                "taskId",
+                                "subTaskId",
+                                "targetSats",
+                                "source",
+                                "algorithmName"
+                            ],
+                            "title": "Prepare",
+                            "type": "object"
+                        },
+                        "SatOrbitJ2000": {
+                            "properties": {
+                                "satId": {
+                                    "title": "Satid",
+                                    "type": "integer"
+                                },
+                                "j2000Rv": {
+                                    "$ref": "#/$defs/Vector6"
+                                }
+                            },
+                            "required": [
+                                "satId",
+                                "j2000Rv"
+                            ],
+                            "title": "SatOrbitJ2000",
+                            "type": "object"
+                        },
+                        "SimTime": {
+                            "description": "Time representation as a fixed-length array\n[year, month, day, hour, minute, second].",
+                            "items": {
+                                "type": "integer"
+                            },
+                            "title": "SimTime",
+                            "type": "array"
+                        },
+                        "TargetSatBase": {
+                            "properties": {
+                                "satId": {
+                                    "title": "Satid",
+                                    "type": "integer"
+                                },
+                                "j2000Rv": {
+                                    "$ref": "#/$defs/Vector6"
+                                },
+                                "vvlhRv": {
+                                    "$ref": "#/$defs/Vector6"
+                                },
+                                "dwellDis": {
+                                    "$ref": "#/$defs/Vector3"
+                                },
+                                "dwellTime": {
+                                    "$ref": "#/$defs/Vector3"
+                                },
+                                "sprayTime": {
+                                    "title": "Spraytime",
+                                    "type": "integer"
+                                },
+                                "powerDensity": {
+                                    "$ref": "#/$defs/Vector3"
+                                },
+                                "missDis": {
+                                    "title": "Missdis",
+                                    "type": "integer"
+                                },
+                                "fixedAxis": {
+                                    "$ref": "#/$defs/Vector3"
+                                },
+                                "q4": {
+                                    "$ref": "#/$defs/Vector4"
+                                },
+                                "satType": {
+                                    "title": "Sattype",
+                                    "type": "integer"
+                                }
+                            },
+                            "required": [
+                                "satId",
+                                "j2000Rv",
+                                "vvlhRv",
+                                "dwellDis",
+                                "dwellTime",
+                                "sprayTime",
+                                "powerDensity",
+                                "missDis",
+                                "fixedAxis",
+                                "q4",
+                                "satType"
+                            ],
+                            "title": "TargetSatBase",
+                            "type": "object"
+                        },
+                        "Vector3": {
+                            "items": {
+                                "type": "number"
+                            },
+                            "title": "Vector3",
+                            "type": "array"
+                        },
+                        "Vector4": {
+                            "items": {
+                                "type": "number"
+                            },
+                            "title": "Vector4",
+                            "type": "array"
+                        },
+                        "Vector6": {
+                            "items": {
+                                "type": "number"
+                            },
+                            "title": "Vector6",
+                            "type": "array"
+                        }
+                    },
+                    "description": "规划算法的请求信息",
+                    "properties": {
+                        "sat": {
+                            "$ref": "#/$defs/SatOrbitJ2000"
+                        },
+                        "simTime": {
+                            "$ref": "#/$defs/SimTime"
+                        },
+                        "task": {
+                            "items": {
+                                "$ref": "#/$defs/Prepare"
+                            },
+                            "title": "Task",
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "sat",
+                        "simTime",
+                        "task"
+                    ],
+                    "title": "PrepareRequest",
+                    "type": "object"
+                },
+                "output_schema": {
+                    "$defs": {
+                        "PrepareResultItem": {
+                            "description": "规划算法的结果信息",
+                            "properties": {
+                                "taskId": {
+                                    "title": "Taskid",
+                                    "type": "string"
+                                },
+                                "subTaskId": {
+                                    "title": "Subtaskid",
+                                    "type": "string"
+                                },
+                                "startTime": {
+                                    "$ref": "#/$defs/SimTime"
+                                },
+                                "endTime": {
+                                    "$ref": "#/$defs/SimTime"
+                                },
+                                "satId": {
+                                    "title": "Satid",
+                                    "type": "integer"
+                                },
+                                "taskMode": {
+                                    "title": "Taskmode",
+                                    "type": "integer"
+                                }
+                            },
+                            "required": [
+                                "taskId",
+                                "subTaskId",
+                                "startTime",
+                                "endTime",
+                                "satId",
+                                "taskMode"
+                            ],
+                            "title": "PrepareResultItem",
+                            "type": "object"
+                        },
+                        "SimTime": {
+                            "description": "Time representation as a fixed-length array\n[year, month, day, hour, minute, second].",
+                            "items": {
+                                "type": "integer"
+                            },
+                            "title": "SimTime",
+                            "type": "array"
+                        }
+                    },
+                    "additionalProperties": {
+                        "$ref": "#/$defs/PrepareResultItem"
+                    },
+                    "description": "规划算法的结果信息（字典形式）\n\nKey: str\nValue: PrepareResultItem",
+                    "title": "PrepareResult",
+                    "type": "object"
+                },
+                "service": "algo-service",
+                "kv_key": "algo_services/algo-service/algo-service-192.168.1.23-8000-http/algorithms"
+            },
+            {
+                "name": "Programme",
+                "version": "v1",
+                "description": "Programme algorithm sample implementation.",
+                "algorithm_type": "Programme",
+                "route": "/algorithms/Programme/v1",
+                "schema_url": "/algorithms/Programme/v1/schema",
+                "absolute_route": "http://192.168.1.23:8000/algorithms/Programme/v1",
+                "absolute_schema_url": "http://192.168.1.23:8000/algorithms/Programme/v1/schema",
+                "input_schema": {
+                    "$defs": {
+                        "ControlledMap": {
+                            "properties": {
+                                "dissCoe": {
+                                    "title": "Disscoe",
+                                    "type": "integer"
+                                },
+                                "area": {
+                                    "title": "Area",
+                                    "type": "integer"
+                                },
+                                "relativeV": {
+                                    "$ref": "#/$defs/Vector3"
+                                },
+                                "relativeW": {
+                                    "$ref": "#/$defs/Vector3"
+                                },
+                                "evasionAng": {
+                                    "$ref": "#/$defs/Vector3"
+                                },
+                                "operationInterval": {
+                                    "title": "Operationinterval",
+                                    "type": "integer"
+                                },
+                                "operationNum": {
+                                    "title": "Operationnum",
+                                    "type": "integer"
+                                },
+                                "operationDis": {
+                                    "title": "Operationdis",
+                                    "type": "integer"
+                                }
+                            },
+                            "required": [
+                                "dissCoe",
+                                "area",
+                                "relativeV",
+                                "relativeW",
+                                "evasionAng",
+                                "operationInterval",
+                                "operationNum",
+                                "operationDis"
+                            ],
+                            "title": "ControlledMap",
+                            "type": "object"
+                        },
+                        "Planning": {
+                            "properties": {
+                                "taskId": {
+                                    "title": "Taskid",
+                                    "type": "string"
+                                },
+                                "subTaskId": {
+                                    "title": "Subtaskid",
+                                    "type": "string"
+                                },
+                                "planningId": {
+                                    "title": "Planningid",
+                                    "type": "string"
+                                },
+                                "target": {
+                                    "$ref": "#/$defs/TargetSatBase"
+                                },
+                                "source": {
+                                    "$ref": "#/$defs/PlanningSource"
+                                },
+                                "taskTimeStart": {
+                                    "$ref": "#/$defs/SimTime"
+                                },
+                                "taskTimeEnd": {
+                                    "$ref": "#/$defs/SimTime"
+                                },
+                                "taskMode": {
+                                    "title": "Taskmode",
+                                    "type": "integer"
+                                },
+                                "algorithmName": {
+                                    "title": "Algorithmname",
+                                    "type": "string"
+                                }
+                            },
+                            "required": [
+                                "taskId",
+                                "subTaskId",
+                                "planningId",
+                                "target",
+                                "source",
+                                "taskTimeStart",
+                                "taskTimeEnd",
+                                "taskMode",
+                                "algorithmName"
+                            ],
+                            "title": "Planning",
+                            "type": "object"
+                        },
+                        "PlanningSource": {
+                            "properties": {
+                                "satId": {
+                                    "title": "Satid",
+                                    "type": "integer"
+                                },
+                                "j2000Rv": {
+                                    "$ref": "#/$defs/Vector6"
+                                },
+                                "vvlhRv": {
+                                    "$ref": "#/$defs/Vector6"
+                                },
+                                "controlledMap": {
+                                    "$ref": "#/$defs/ControlledMap"
+                                },
+                                "platformMap": {
+                                    "$ref": "#/$defs/PlatformMap"
+                                },
+                                "fixedAxis": {
+                                    "$ref": "#/$defs/Vector3"
+                                },
+                                "q4": {
+                                    "$ref": "#/$defs/Vector4"
+                                },
+                                "satType": {
+                                    "title": "Sattype",
+                                    "type": "integer"
+                                }
+                            },
+                            "required": [
+                                "satId",
+                                "j2000Rv",
+                                "vvlhRv",
+                                "controlledMap",
+                                "platformMap",
+                                "fixedAxis",
+                                "q4",
+                                "satType"
+                            ],
+                            "title": "PlanningSource",
+                            "type": "object"
+                        },
+                        "PlatformMap": {
+                            "properties": {
+                                "singleManeuver": {
+                                    "title": "Singlemaneuver",
+                                    "type": "integer"
+                                },
+                                "allManuever": {
+                                    "title": "Allmanuever",
+                                    "type": "integer"
+                                },
+                                "orbitCtrlInterval": {
+                                    "title": "Orbitctrlinterval",
+                                    "type": "integer"
+                                }
+                            },
+                            "required": [
+                                "singleManeuver",
+                                "allManuever",
+                                "orbitCtrlInterval"
+                            ],
+                            "title": "PlatformMap",
+                            "type": "object"
+                        },
+                        "SatOrbitJ2000": {
+                            "properties": {
+                                "satId": {
+                                    "title": "Satid",
+                                    "type": "integer"
+                                },
+                                "j2000Rv": {
+                                    "$ref": "#/$defs/Vector6"
+                                }
+                            },
+                            "required": [
+                                "satId",
+                                "j2000Rv"
+                            ],
+                            "title": "SatOrbitJ2000",
+                            "type": "object"
+                        },
+                        "SimTime": {
+                            "description": "Time representation as a fixed-length array\n[year, month, day, hour, minute, second].",
+                            "items": {
+                                "type": "integer"
+                            },
+                            "title": "SimTime",
+                            "type": "array"
+                        },
+                        "TargetSatBase": {
+                            "properties": {
+                                "satId": {
+                                    "title": "Satid",
+                                    "type": "integer"
+                                },
+                                "j2000Rv": {
+                                    "$ref": "#/$defs/Vector6"
+                                },
+                                "vvlhRv": {
+                                    "$ref": "#/$defs/Vector6"
+                                },
+                                "dwellDis": {
+                                    "$ref": "#/$defs/Vector3"
+                                },
+                                "dwellTime": {
+                                    "$ref": "#/$defs/Vector3"
+                                },
+                                "sprayTime": {
+                                    "title": "Spraytime",
+                                    "type": "integer"
+                                },
+                                "powerDensity": {
+                                    "$ref": "#/$defs/Vector3"
+                                },
+                                "missDis": {
+                                    "title": "Missdis",
+                                    "type": "integer"
+                                },
+                                "fixedAxis": {
+                                    "$ref": "#/$defs/Vector3"
+                                },
+                                "q4": {
+                                    "$ref": "#/$defs/Vector4"
+                                },
+                                "satType": {
+                                    "title": "Sattype",
+                                    "type": "integer"
+                                }
+                            },
+                            "required": [
+                                "satId",
+                                "j2000Rv",
+                                "vvlhRv",
+                                "dwellDis",
+                                "dwellTime",
+                                "sprayTime",
+                                "powerDensity",
+                                "missDis",
+                                "fixedAxis",
+                                "q4",
+                                "satType"
+                            ],
+                            "title": "TargetSatBase",
+                            "type": "object"
+                        },
+                        "Vector3": {
+                            "items": {
+                                "type": "number"
+                            },
+                            "title": "Vector3",
+                            "type": "array"
+                        },
+                        "Vector4": {
+                            "items": {
+                                "type": "number"
+                            },
+                            "title": "Vector4",
+                            "type": "array"
+                        },
+                        "Vector6": {
+                            "items": {
+                                "type": "number"
+                            },
+                            "title": "Vector6",
+                            "type": "array"
+                        }
+                    },
+                    "description": "规划算法的请求信息",
+                    "properties": {
+                        "sat": {
+                            "$ref": "#/$defs/SatOrbitJ2000"
+                        },
+                        "plannings": {
+                            "items": {
+                                "$ref": "#/$defs/Planning"
+                            },
+                            "title": "Plannings",
+                            "type": "array"
+                        },
+                        "simTime": {
+                            "$ref": "#/$defs/SimTime"
+                        }
+                    },
+                    "required": [
+                        "sat",
+                        "plannings",
+                        "simTime"
+                    ],
+                    "title": "ProgrammeRequest",
+                    "type": "object"
+                },
+                "output_schema": {
+                    "$defs": {
+                        "ControlledData": {
+                            "properties": {
+                                "startTime": {
+                                    "$ref": "#/$defs/SimTime"
+                                },
+                                "endTime": {
+                                    "$ref": "#/$defs/SimTime"
+                                },
+                                "id": {
+                                    "title": "Id",
+                                    "type": "string"
+                                }
+                            },
+                            "required": [
+                                "startTime",
+                                "endTime",
+                                "id"
+                            ],
+                            "title": "ControlledData",
+                            "type": "object"
+                        },
+                        "DnData": {
+                            "properties": {
+                                "id": {
+                                    "title": "Id",
+                                    "type": "string"
+                                },
+                                "startV": {
+                                    "$ref": "#/$defs/Vector3"
+                                },
+                                "startTime": {
+                                    "$ref": "#/$defs/SimTime"
+                                }
+                            },
+                            "required": [
+                                "id",
+                                "startV",
+                                "startTime"
+                            ],
+                            "title": "DnData",
+                            "type": "object"
+                        },
+                        "LaserData": {
+                            "properties": {
+                                "startTime": {
+                                    "$ref": "#/$defs/SimTime"
+                                },
+                                "endTime": {
+                                    "$ref": "#/$defs/SimTime"
+                                },
+                                "id": {
+                                    "title": "Id",
+                                    "type": "string"
+                                }
+                            },
+                            "required": [
+                                "startTime",
+                                "endTime",
+                                "id"
+                            ],
+                            "title": "LaserData",
+                            "type": "object"
+                        },
+                        "OrbitAng": {
+                            "properties": {
+                                "simTime": {
+                                    "$ref": "#/$defs/SimTime"
+                                },
+                                "id": {
+                                    "title": "Id",
+                                    "type": "string"
+                                },
+                                "aimAxis": {
+                                    "$ref": "#/$defs/Vector3"
+                                }
+                            },
+                            "required": [
+                                "simTime",
+                                "id",
+                                "aimAxis"
+                            ],
+                            "title": "OrbitAng",
+                            "type": "object"
+                        },
+                        "OrbitManInfo": {
+                            "properties": {
+                                "simTime": {
+                                    "$ref": "#/$defs/SimTime"
+                                },
+                                "id": {
+                                    "title": "Id",
+                                    "type": "string"
+                                },
+                                "deltaV": {
+                                    "$ref": "#/$defs/Vector3"
+                                },
+                                "system": {
+                                    "title": "System",
+                                    "type": "integer"
+                                }
+                            },
+                            "required": [
+                                "simTime",
+                                "id",
+                                "deltaV",
+                                "system"
+                            ],
+                            "title": "OrbitManInfo",
+                            "type": "object"
+                        },
+                        "ProgrammeResultItem": {
+                            "description": "规划算法的结果信息项",
+                            "properties": {
+                                "taskId": {
+                                    "title": "Taskid",
+                                    "type": "string"
+                                },
+                                "subTaskId": {
+                                    "title": "Subtaskid",
+                                    "type": "string"
+                                },
+                                "planningId": {
+                                    "title": "Planningid",
+                                    "type": "string"
+                                },
+                                "satId": {
+                                    "title": "Satid",
+                                    "type": "integer"
+                                },
+                                "satType": {
+                                    "title": "Sattype",
+                                    "type": "integer"
+                                },
+                                "controlledData": {
+                                    "items": {
+                                        "$ref": "#/$defs/ControlledData"
+                                    },
+                                    "title": "Controlleddata",
+                                    "type": "array"
+                                },
+                                "orbitAng": {
+                                    "items": {
+                                        "$ref": "#/$defs/OrbitAng"
+                                    },
+                                    "title": "Orbitang",
+                                    "type": "array"
+                                },
+                                "taskMode": {
+                                    "title": "Taskmode",
+                                    "type": "integer"
+                                },
+                                "orbitManInfo": {
+                                    "items": {
+                                        "$ref": "#/$defs/OrbitManInfo"
+                                    },
+                                    "title": "Orbitmaninfo",
+                                    "type": "array"
+                                },
+                                "laserData": {
+                                    "items": {
+                                        "$ref": "#/$defs/LaserData"
+                                    },
+                                    "title": "Laserdata",
+                                    "type": "array"
+                                },
+                                "dnData": {
+                                    "items": {
+                                        "$ref": "#/$defs/DnData"
+                                    },
+                                    "title": "Dndata",
+                                    "type": "array"
+                                }
+                            },
+                            "required": [
+                                "taskId",
+                                "subTaskId",
+                                "planningId",
+                                "satId",
+                                "satType",
+                                "controlledData",
+                                "orbitAng",
+                                "taskMode",
+                                "orbitManInfo",
+                                "laserData",
+                                "dnData"
+                            ],
+                            "title": "ProgrammeResultItem",
+                            "type": "object"
+                        },
+                        "SimTime": {
+                            "description": "Time representation as a fixed-length array\n[year, month, day, hour, minute, second].",
+                            "items": {
+                                "type": "integer"
+                            },
+                            "title": "SimTime",
+                            "type": "array"
+                        },
+                        "Vector3": {
+                            "items": {
+                                "type": "number"
+                            },
+                            "title": "Vector3",
+                            "type": "array"
+                        }
+                    },
+                    "description": "规划算法的结果信息",
+                    "items": {
+                        "$ref": "#/$defs/ProgrammeResultItem"
+                    },
+                    "title": "ProgrammeResult",
+                    "type": "array"
+                },
+                "service": "algo-service",
+                "kv_key": "algo_services/algo-service/algo-service-192.168.1.23-8000-http/algorithms"
+            }
+        ],
+        "errors": []
+    }
+}

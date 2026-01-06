@@ -1,0 +1,281 @@
+{
+  "sat": {
+    "satId": 1,
+    "j2000Rv": [
+      6378137.0,
+      0.0,
+      0.0,
+      0.0,
+      7500.0,
+      0.0
+    ]
+  },
+  "plannings": [
+    {
+      "taskId": "task-001",
+      "subTaskId": "sub-001",
+      "planningId": "planning-001",
+      "target": {
+        "satId": 2,
+        "j2000Rv": [
+          6378137.0,
+          1000.0,
+          0.0,
+          0.0,
+          7500.0,
+          0.0
+        ],
+        "vvlhRv": [
+          0.0,
+          1000.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "dwellDis": [
+          1.0,
+          2.0,
+          3.0
+        ],
+        "dwellTime": [
+          10.0,
+          20.0,
+          30.0
+        ],
+        "sprayTime": 5,
+        "powerDensity": [
+          0.1,
+          0.2,
+          0.3
+        ],
+        "missDis": 100,
+        "fixedAxis": [
+          1.0,
+          0.0,
+          0.0
+        ],
+        "q4": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "satType": 1
+      },
+      "source": {
+        "satId": 1,
+        "j2000Rv": [
+          6378137.0,
+          0.0,
+          0.0,
+          0.0,
+          7500.0,
+          0.0
+        ],
+        "vvlhRv": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "controlledMap": {
+          "dissCoe": 1,
+          "area": 10,
+          "relativeV": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "relativeW": [
+            0.1,
+            0.1,
+            0.1
+          ],
+          "evasionAng": [
+            30.0,
+            30.0,
+            30.0
+          ],
+          "operationInterval": 60,
+          "operationNum": 3,
+          "operationDis": 500
+        },
+        "platformMap": {
+          "singleManeuver": 1,
+          "allManuever": 5,
+          "orbitCtrlInterval": 300
+        },
+        "fixedAxis": [
+          1.0,
+          0.0,
+          0.0
+        ],
+        "q4": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "satType": 1
+      },
+      "taskTimeStart": [
+        2025,
+        1,
+        1,
+        0,
+        0,
+        0
+      ],
+      "taskTimeEnd": [
+        2025,
+        1,
+        1,
+        0,
+        10,
+        0
+      ],
+      "taskMode": 1,
+      "algorithmName": "Programme"
+    },
+    {
+      "taskId": "task-002",
+      "subTaskId": "sub-001",
+      "planningId": "planning-002",
+      "target": {
+        "satId": 3,
+        "j2000Rv": [
+          6378137.0,
+          -1500.0,
+          500.0,
+          0.0,
+          7480.0,
+          10.0
+        ],
+        "vvlhRv": [
+          -200.0,
+          800.0,
+          150.0,
+          0.05,
+          -0.02,
+          0.01
+        ],
+        "dwellDis": [
+          2.0,
+          2.0,
+          2.0
+        ],
+        "dwellTime": [
+          15.0,
+          25.0,
+          35.0
+        ],
+        "sprayTime": 8,
+        "powerDensity": [
+          0.15,
+          0.25,
+          0.35
+        ],
+        "missDis": 120,
+        "fixedAxis": [
+          0.0,
+          1.0,
+          0.0
+        ],
+        "q4": [
+          0.0,
+          0.0,
+          0.70710678,
+          0.70710678
+        ],
+        "satType": 2
+      },
+      "source": {
+        "satId": 1,
+        "j2000Rv": [
+          6378137.0,
+          0.0,
+          0.0,
+          0.0,
+          7500.0,
+          0.0
+        ],
+        "vvlhRv": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "controlledMap": {
+          "dissCoe": 1,
+          "area": 10,
+          "relativeV": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "relativeW": [
+            0.1,
+            0.1,
+            0.1
+          ],
+          "evasionAng": [
+            30.0,
+            30.0,
+            30.0
+          ],
+          "operationInterval": 60,
+          "operationNum": 3,
+          "operationDis": 500
+        },
+        "platformMap": {
+          "singleManeuver": 1,
+          "allManuever": 5,
+          "orbitCtrlInterval": 300
+        },
+        "fixedAxis": [
+          1.0,
+          0.0,
+          0.0
+        ],
+        "q4": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "satType": 1
+      },
+      "taskTimeStart": [
+        2025,
+        1,
+        1,
+        0,
+        10,
+        0
+      ],
+      "taskTimeEnd": [
+        2025,
+        1,
+        1,
+        0,
+        25,
+        0
+      ],
+      "taskMode": 2,
+      "algorithmName": "Programme"
+    }
+  ],
+  "simTime": [
+    2025,
+    1,
+    1,
+    0,
+    0,
+    0
+  ]
+}
