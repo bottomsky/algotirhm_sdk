@@ -4,11 +4,17 @@ from algo_dto.base import SimTime
 from algo_dto.dto import PrepareRequest, PrepareResult, PrepareResultItem
 from algo_sdk import Algorithm, BaseAlgorithm
 from algo_sdk.core import AlgorithmType, LoggingConfig
+from algo_sdk.core.metadata import HyperParams
 from algo_sdk.runtime import (
     set_response_code,
     set_response_context,
     set_response_message,
 )
+
+
+class PrepareParams(HyperParams):
+    mode: str = "fast"
+    top_k: int = 10
 
 
 @Algorithm(
@@ -17,13 +23,15 @@ from algo_sdk.runtime import (
     description="Prepare algorithm sample implementation.",
     algorithm_type=AlgorithmType.PREPARE,
     logging=LoggingConfig(enabled=True, log_input=True, log_output=True),
+    hyperparams=PrepareParams,
 )
 class PrepareAlgorithm(BaseAlgorithm[PrepareRequest, PrepareResult]):
-    def run(self, req: PrepareRequest) -> PrepareResult:
+    def run(self, req: PrepareRequest, params: PrepareParams) -> PrepareResult:
         set_response_code(2001)
         set_response_message("prepare ok")
         set_response_context(
             {
+                "userId": "user-001",
                 "traceId": "trace-prepare",
                 "extra": {
                     "source": "prepare",
