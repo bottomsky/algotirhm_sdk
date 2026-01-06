@@ -482,12 +482,21 @@ def create_app(registry: Optional[AlgorithmRegistry] = None) -> FastAPI:
         """Get input/output schema for an algorithm."""
         try:
             spec = reg.get(name, version)
+            hyper_schema = spec.hyperparams_schema()
+            hyper_fields = spec.hyperparams_fields()
+            hyperparams = None
+            if hyper_schema is not None:
+                hyperparams = {
+                    "schema": hyper_schema,
+                    "fields": hyper_fields or [],
+                }
             return api_success(
                 data={
                     "input": spec.input_schema(),
                     "output": spec.output_schema(),
                     "execution": _execution_to_dict(spec.execution),
                     "algorithm_type": spec.algorithm_type.value,
+                    "hyperparams": hyperparams,
                 }
             )
         except Exception as e:

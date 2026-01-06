@@ -79,6 +79,7 @@ class AlgorithmHttpService:
         exec_request = ExecutionRequest(
             spec=spec,
             payload=request.data,
+            hyperparams=request.hyperParams,
             request_id=request.requestId,
             request_datetime=request.datetime,
             trace_id=request.context.traceId if request.context else None,
