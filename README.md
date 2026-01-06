@@ -221,3 +221,35 @@ python -m pyright
    ```
 
    - 使用脚本启动时（`run_algo_core_service.ps1` / `run_algo_core_service.sh`）会自动将 `src` 添加到 `PYTHONPATH`，无需额外调整。
+
+### 拷贝 .venv 的风险与解决办法
+
+不建议直接拷贝 `.venv` 到其他电脑，主要风险如下：
+
+- **解释器绝对路径固化**：Windows 的 `.venv\Scripts\python.exe`、`.venv\pyvenv.cfg`、以及部分已安装包的元数据可能包含创建环境时的绝对路径；换机器或换用户目录后会出现“找不到解释器/模块”等问题。
+- **平台与 ABI 不兼容**：跨操作系统（Windows ↔ Linux/macOS）拷贝必然不可用；即便同为 Windows，不同 Python 小版本/架构也可能导致已编译依赖（如 numpy/scipy 等）不可用。
+- **依赖状态不可追溯**：直接拷贝的 `.venv` 往往难以确认是否与 `uv.lock` 完全一致，后续排查问题成本高。
+
+可行的解决办法（推荐顺序）：
+
+1. **重新创建虚拟环境（推荐）**
+
+   ```powershell
+   uv venv
+   uv pip sync uv.lock
+   ```
+
+2. **必须拷贝时的折中方案（同系统/同 Python 版本前提）**
+   - 在目标机器上先确保 Python 版本与原机器一致（建议用项目的 `requires-python` 约束，并保持 3.11 运行时一致）。
+   - 拷贝 `.venv` 后，若出现 pip 或解释器异常，优先用锁文件“重建到一致状态”：
+
+   ```powershell
+   uv pip sync uv.lock
+   ```
+
+   - 如果 `.venv` 内缺失 pip（例如 `python -m pip` 报错），可先补齐 pip 再同步依赖：
+
+   ```powershell
+   uv pip install pip
+   uv pip sync uv.lock
+   ```
