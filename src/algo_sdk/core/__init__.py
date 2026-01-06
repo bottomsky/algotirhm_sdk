@@ -23,6 +23,7 @@ from .metadata import (
     ExecutionConfig,
     ExecutionMode,
     LoggingConfig,
+    HyperParams,
 )
 from .registry import AlgorithmRegistry, get_registry
 from ..runtime.protocol import (
@@ -48,6 +49,7 @@ __all__ = [
     "ExecutionConfig",
     "ExecutionMode",
     "LoggingConfig",
+    "HyperParams",
     "AlgorithmRegistry",
     "BaseModel",
     "get_registry",

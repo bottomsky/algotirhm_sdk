@@ -47,6 +47,55 @@ class LoggingConfig:
     redact_fields: tuple[str, ...] = field(default_factory=tuple)
 
 
+class HyperParams(BaseModel):
+    """Base model for algorithm hyper-parameters."""
+
+
+def _extract_schema_type(schema: dict[str, Any]) -> str | None:
+    schema_type = schema.get("type")
+    if isinstance(schema_type, str):
+        return schema_type
+    if isinstance(schema_type, list):
+        return " | ".join(str(item) for item in schema_type)
+    ref = schema.get("$ref")
+    if isinstance(ref, str):
+        return ref
+    if "anyOf" in schema:
+        return "anyOf"
+    if "oneOf" in schema:
+        return "oneOf"
+    if "allOf" in schema:
+        return "allOf"
+    return None
+
+
+def _schema_to_fields(schema: dict[str, Any]) -> list[dict[str, Any]]:
+    properties = schema.get("properties", {})
+    if not isinstance(properties, dict):
+        return []
+    required = schema.get("required", [])
+    required_set = (
+        set(required) if isinstance(required, list) else set()
+    )
+    fields: list[dict[str, Any]] = []
+    for name, prop in properties.items():
+        if not isinstance(prop, dict):
+            continue
+        entry: dict[str, Any] = {
+            "name": name,
+            "required": name in required_set,
+        }
+        field_type = _extract_schema_type(prop)
+        if field_type is not None:
+            entry["type"] = field_type
+        if "default" in prop:
+            entry["default"] = prop["default"]
+        if "description" in prop:
+            entry["description"] = prop["description"]
+        fields.append(entry)
+    return fields
+
+
 @dataclass(slots=True)
 class AlgorithmSpec(Generic[TInput, TOutput]):
     """Metadata for an algorithm entry."""
@@ -63,6 +112,7 @@ class AlgorithmSpec(Generic[TInput, TOutput]):
     algorithm_type: AlgorithmType
     execution: ExecutionConfig = field(default_factory=ExecutionConfig)
     logging: LoggingConfig = field(default_factory=LoggingConfig)
+    hyperparams_model: type[BaseModel] | None = None
     is_class: bool = False
 
     def key(self) -> tuple[str, str]:
@@ -75,3 +125,16 @@ class AlgorithmSpec(Generic[TInput, TOutput]):
     def output_schema(self) -> dict[str, Any]:
         """Return JSON schema for the output model."""
         return self.output_model.model_json_schema()
+
+    def hyperparams_schema(self) -> dict[str, Any] | None:
+        """Return JSON schema for the hyper-parameter model."""
+        if self.hyperparams_model is None:
+            return None
+        return self.hyperparams_model.model_json_schema()
+
+    def hyperparams_fields(self) -> list[dict[str, Any]] | None:
+        """Return flattened field metadata for hyper-parameters."""
+        schema = self.hyperparams_schema()
+        if schema is None:
+            return None
+        return _schema_to_fields(schema)

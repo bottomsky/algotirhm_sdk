@@ -70,6 +70,7 @@ class ExecutionRequest(Generic[TInput, TOutput]):
     spec: AlgorithmSpec[TInput, TOutput]
     payload: TInput | Mapping[str, Any]
     request_id: str
+    hyperparams: Mapping[str, Any] | BaseModel | None = None
     request_datetime: datetime | None = None
     trace_id: str | None = None
     context: AlgorithmContext | None = None
@@ -157,6 +158,57 @@ def _coerce_input_model(
     )
 
 
+def _normalize_hyperparams_payload(
+    spec: AlgorithmSpec[Any, Any],
+    payload: Mapping[str, Any] | BaseModel | None,
+) -> Mapping[str, Any] | None:
+    if spec.hyperparams_model is None:
+        return None
+    if payload is None:
+        return {}
+    if isinstance(payload, Mapping):
+        return dict(payload)
+    if isinstance(payload, BaseModel):
+        return payload.model_dump()
+    raise ValidationError.from_exception_data(
+        "ValidationError",
+        [
+            {
+                "type": "type_error",
+                "loc": ("hyperParams",),
+                "msg": "Unsupported hyperparams type",
+            }
+        ],
+    )
+
+
+def _coerce_hyperparams_model(
+    spec: AlgorithmSpec[Any, Any],
+    payload: Mapping[str, Any] | None,
+) -> BaseModel | None:
+    hyper_model = spec.hyperparams_model
+    if hyper_model is None:
+        return None
+    if payload is None:
+        return hyper_model.model_validate({})
+    if isinstance(payload, hyper_model):
+        return payload
+    if isinstance(payload, Mapping):
+        return hyper_model.model_validate(payload)
+    if isinstance(payload, BaseModel):
+        return hyper_model.model_validate(payload.model_dump())
+    raise ValidationError.from_exception_data(
+        "ValidationError",
+        [
+            {
+                "type": "type_error",
+                "loc": ("hyperParams",),
+                "msg": "Unsupported hyperparams type",
+            }
+        ],
+    )
+
+
 def _coerce_output_model(
     spec: AlgorithmSpec[Any, Any], output: Any
 ) -> BaseModel:
@@ -166,6 +218,16 @@ def _coerce_output_model(
     if isinstance(output, BaseModel):
         return output_model.model_validate(output.model_dump())
     return output_model.model_validate(output)
+
+
+def _invoke_run(
+    entrypoint: Any,
+    request_model: BaseModel,
+    params_model: BaseModel | None,
+) -> Any:
+    if params_model is None:
+        return entrypoint(request_model)
+    return entrypoint(request_model, params_model)
 
 
 def _extract_validation_details(exc: ValidationError) -> Any:
@@ -368,6 +430,7 @@ def _log_execution_result(
 class _WorkerPayload(Generic[TInput, TOutput]):
     spec: AlgorithmSpec[TInput, TOutput]
     payload: Mapping[str, Any]
+    hyperparams: Mapping[str, Any] | None
     request_id: str
     request_datetime: datetime | None
     trace_id: str | None
@@ -477,11 +540,32 @@ def _worker_execute(payload: _WorkerPayload[Any, Any]) -> _WorkerResponse[Any]:
             )
 
         try:
+            params_model = _coerce_hyperparams_model(
+                spec, payload.hyperparams
+            )
+        except ValidationError as exc:
+            return _WorkerResponse(
+                success=False,
+                data=None,
+                error=ExecutionError(
+                    kind="validation",
+                    message=str(exc),
+                    details=_extract_validation_details(exc),
+                ),
+                response_meta=_serialize_response_meta(get_response_meta()),
+                worker_pid=os.getpid(),
+                started_at=started_at,
+                ended_at=time.monotonic(),
+            )
+
+        try:
             if spec.is_class:
                 if spec.execution.stateful:
                     algo = _get_or_create_worker_instance(spec)
                     algo.before_run()
-                    raw_output = algo.run(request_model)
+                    raw_output = _invoke_run(
+                        algo.run, request_model, params_model
+                    )
                     algo.after_run()
                 else:
                     entrypoint = spec.entrypoint
@@ -499,7 +583,9 @@ def _worker_execute(payload: _WorkerPayload[Any, Any]) -> _WorkerResponse[Any]:
                     created.initialize()
                     try:
                         created.before_run()
-                        raw_output = created.run(request_model)
+                        raw_output = _invoke_run(
+                            created.run, request_model, params_model
+                        )
                         created.after_run()
                     finally:
                         try:
@@ -508,7 +594,9 @@ def _worker_execute(payload: _WorkerPayload[Any, Any]) -> _WorkerResponse[Any]:
                             pass
             else:
                 raw_output: AlgorithmLifecycleProtocol[Any, Any] | Any = (
-                    spec.entrypoint(request_model)  # type: ignore[arg-type]
+                    _invoke_run(
+                        spec.entrypoint, request_model, params_model
+                    )
                 )
         except Exception as exc:
             return _WorkerResponse(
@@ -677,6 +765,12 @@ class InProcessExecutor(ExecutorProtocol):
                 payload_model = _coerce_input_model(
                     request.spec, request.payload
                 )
+                params_model = _coerce_hyperparams_model(
+                    request.spec,
+                    _normalize_hyperparams_payload(
+                        request.spec, request.hyperparams
+                    ),
+                )
             except ValidationError as exc:
                 result.error = ExecutionError(
                     kind="validation",
@@ -686,7 +780,11 @@ class InProcessExecutor(ExecutorProtocol):
                 return result
 
             try:
-                output = self._invoke(request.spec, payload_model)
+                output = self._invoke(
+                    request.spec,
+                    payload_model,
+                    params_model,
+                )
             except TimeoutError as exc:
                 result.error = ExecutionError(kind="timeout", message=str(exc))
                 return result
@@ -736,13 +834,18 @@ class InProcessExecutor(ExecutorProtocol):
         self._started = False
 
     def _invoke(
-        self, spec: AlgorithmSpec[Any, Any], payload_model: BaseModel
+        self,
+        spec: AlgorithmSpec[Any, Any],
+        payload_model: BaseModel,
+        params_model: BaseModel | None,
     ) -> Any:
         if spec.is_class:
             if spec.execution.stateful:
                 instance = self._get_instance(spec)
                 instance.before_run()
-                result = instance.run(payload_model)
+                result = _invoke_run(
+                    instance.run, payload_model, params_model
+                )
                 instance.after_run()
                 return result
 
@@ -761,7 +864,9 @@ class InProcessExecutor(ExecutorProtocol):
             created.initialize()
             try:
                 created.before_run()
-                result = created.run(payload_model)
+                result = _invoke_run(
+                    created.run, payload_model, params_model
+                )
                 created.after_run()
                 return result
             finally:
@@ -769,7 +874,9 @@ class InProcessExecutor(ExecutorProtocol):
                     created.shutdown()
                 except Exception:
                     pass
-        return spec.entrypoint(payload_model)  # type: ignore[arg-type]
+        return _invoke_run(
+            spec.entrypoint, payload_model, params_model
+        )
 
     def _get_instance(
         self, spec: AlgorithmSpec[Any, Any]
@@ -885,6 +992,9 @@ class ProcessPoolExecutor(ExecutorProtocol):
         try:
             payload_model = _coerce_input_model(request.spec, request.payload)
             payload_data = payload_model.model_dump()
+            hyperparams_data = _normalize_hyperparams_payload(
+                request.spec, request.hyperparams
+            )
             context_data = (
                 request.context.model_dump()
                 if request.context is not None
@@ -910,6 +1020,7 @@ class ProcessPoolExecutor(ExecutorProtocol):
             payload = _WorkerPayload(
                 spec=request.spec,
                 payload=payload_data,
+                hyperparams=hyperparams_data,
                 request_id=request.request_id,
                 request_datetime=request.request_datetime,
                 trace_id=request.trace_id,
