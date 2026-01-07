@@ -3,7 +3,7 @@
 Use this module for supported imports. Subpackages are internal.
 """
 
-from .decorators import Algorithm, DefaultAlgorithmDecorator
+from algo_decorators import Algorithm, DefaultAlgorithmDecorator
 from .core import (
     AlgorithmError,
     AlgorithmMarker,
