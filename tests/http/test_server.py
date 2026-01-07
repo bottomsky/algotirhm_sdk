@@ -162,6 +162,7 @@ def test_service_info(monkeypatch):
 
 
 def test_list_registry_algorithms(monkeypatch):
+    monkeypatch.setenv("SERVICE_REGISTRY_ENABLED", "true")
     registry = AlgorithmRegistry()
     captured = {}
 
@@ -207,6 +208,30 @@ def test_list_registry_algorithms(monkeypatch):
         assert len(data["catalogs"]) == 2
         assert len(data["algorithms"]) == 1
         assert data["algorithms"][0]["service"] == "svc-a"
+
+
+def test_list_registry_algorithms_disabled(monkeypatch):
+    monkeypatch.setenv("SERVICE_REGISTRY_ENABLED", "false")
+    registry = AlgorithmRegistry()
+
+    def _should_not_call(*, kv_prefix: str, healthy_only: bool = False):
+        raise AssertionError(
+            "fetch_registry_algorithm_catalogs should not be called"
+        )
+
+    monkeypatch.setattr(
+        http_server,
+        "fetch_registry_algorithm_catalogs",
+        _should_not_call,
+    )
+
+    app = create_app(registry)
+    with TestClient(app) as client:
+        response = client.get("/registry/algorithms")
+        assert response.status_code == 200
+        payload = response.json()
+        assert payload["code"] == 503
+        assert payload["message"] == "service registry disabled"
 
 
 def test_swagger_docs_disabled(monkeypatch):
