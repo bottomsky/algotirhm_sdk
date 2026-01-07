@@ -248,8 +248,9 @@ def _load_module_from_path(path: Path) -> ModuleType:
     return module
 
 
-def load_algorithm_modules(modules: List[str]) -> None:
+def load_algorithm_modules(modules: List[str]) -> list[ModuleType]:
     """Import modules or file paths to trigger algorithm registration."""
+    loaded: list[ModuleType] = []
     for module_spec in modules:
         if not module_spec:
             continue
@@ -269,6 +270,7 @@ def load_algorithm_modules(modules: List[str]) -> None:
                 module = importlib.import_module(module_path)
             if attr:
                 getattr(module, attr)
+            loaded.append(module)
             _EVENT_LOGGER.info(
                 "Loaded algorithm module: %s",
                 module_spec,
@@ -280,6 +282,7 @@ def load_algorithm_modules(modules: List[str]) -> None:
                 module_spec,
                 logger=_LOGGER,
             )
+    return loaded
 
 
 def create_app(registry: Optional[AlgorithmRegistry] = None) -> FastAPI:
@@ -663,7 +666,16 @@ def run(*, env_path: str | os.PathLike[str] | None = None) -> None:
     # Load modules to register algorithms
     modules_str = os.getenv("ALGO_MODULES", "")
     if modules_str:
-        load_algorithm_modules([m.strip() for m in modules_str.split(",")])
+        modules = load_algorithm_modules(
+            [m.strip() for m in modules_str.split(",")]
+        )
+        registry = get_registry()
+        for module in modules:
+            registry.register_from_module(module)
+
+    module_dir = os.getenv("ALGO_MODULE_DIR", "").strip()
+    if module_dir:
+        get_registry().load_packages_from_dir(module_dir)
 
     config_dir = os.getenv("ALGO_METADATA_CONFIG_DIR", "").strip()
     if config_dir:

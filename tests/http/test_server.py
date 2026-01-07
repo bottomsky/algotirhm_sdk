@@ -239,3 +239,52 @@ def test_swagger_docs_disabled(monkeypatch):
     app = create_app(AlgorithmRegistry())
     with TestClient(app) as client:
         assert client.get("/docs").status_code == 404
+
+
+def test_module_dir_loading(monkeypatch, tmp_path):
+    package_dir = tmp_path / "demo_pkg"
+    package_dir.mkdir()
+    (package_dir / "__init__.py").write_text(
+        """
+from algo_sdk import Algorithm, BaseAlgorithm, BaseModel, AlgorithmType
+
+
+class Req(BaseModel):
+    value: int
+
+
+class Resp(BaseModel):
+    doubled: int
+
+
+@Algorithm(
+    name="demo",
+    version="v1",
+    algorithm_type=AlgorithmType.PREDICTION,
+    created_time="2026-01-06",
+    author="qa",
+    category="unit",
+)
+class DemoAlgo(BaseAlgorithm[Req, Resp]):
+    def run(self, req: Req) -> Resp:  # type: ignore[override]
+        return Resp(doubled=req.value * 2)
+
+
+__all__ = ["DemoAlgo"]
+""".strip(),
+        encoding="utf-8",
+    )
+    env_path = tmp_path / ".env"
+    env_path.write_text("", encoding="utf-8")
+
+    monkeypatch.setenv("ALGO_MODULE_DIR", str(tmp_path))
+    monkeypatch.delenv("ALGO_MODULES", raising=False)
+
+    registry = AlgorithmRegistry()
+    monkeypatch.setattr(http_server, "get_registry", lambda: registry)
+    monkeypatch.setattr(http_server.uvicorn, "run", lambda *args, **kwargs: None)
+
+    http_server.run(env_path=env_path)
+
+    spec = registry.get("demo", "v1")
+    assert spec.algorithm_type is AlgorithmType.PREDICTION

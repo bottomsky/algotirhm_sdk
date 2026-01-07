@@ -1,5 +1,7 @@
 """Algorithm implementations for the core service."""
 
-from . import prediction, prepare, programme
+from .prediction import PredictionAlgorithm
+from .prepare import PrepareAlgorithm
+from .programme import ProgrammeAlgorithm
 
-__all__ = ["prepare", "prediction", "programme"]
+__all__ = ["PredictionAlgorithm", "PrepareAlgorithm", "ProgrammeAlgorithm"]
