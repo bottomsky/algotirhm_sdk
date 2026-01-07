@@ -11,8 +11,8 @@ import signal
 import subprocess
 import time
 import traceback
-from datetime import datetime
 from dataclasses import dataclass, field
+from datetime import datetime
 from threading import BoundedSemaphore, Condition, Event, Lock, Thread
 from typing import (
     Any,
@@ -27,16 +27,16 @@ from typing import (
 
 from pydantic import ValidationError
 
-from ..protocol.models import AlgorithmContext
-from .base_model_impl import BaseModel
-from .lifecycle import AlgorithmLifecycleProtocol
 from ..logging import get_event_logger
+from ..protocol.models import AlgorithmContext
 from ..runtime.context import (
+    ResponseMeta,
     get_response_meta,
     reset_execution_context,
-    ResponseMeta,
     set_execution_context,
 )
+from .base_model_impl import BaseModel
+from .lifecycle import AlgorithmLifecycleProtocol
 from .metadata import AlgorithmSpec, ExecutionMode, LoggingConfig
 
 TInput = TypeVar("TInput", bound=BaseModel)
@@ -540,9 +540,7 @@ def _worker_execute(payload: _WorkerPayload[Any, Any]) -> _WorkerResponse[Any]:
             )
 
         try:
-            params_model = _coerce_hyperparams_model(
-                spec, payload.hyperparams
-            )
+            params_model = _coerce_hyperparams_model(spec, payload.hyperparams)
         except ValidationError as exc:
             return _WorkerResponse(
                 success=False,
@@ -594,9 +592,7 @@ def _worker_execute(payload: _WorkerPayload[Any, Any]) -> _WorkerResponse[Any]:
                             pass
             else:
                 raw_output: AlgorithmLifecycleProtocol[Any, Any] | Any = (
-                    _invoke_run(
-                        spec.entrypoint, request_model, params_model
-                    )
+                    _invoke_run(spec.entrypoint, request_model, params_model)
                 )
         except Exception as exc:
             return _WorkerResponse(
@@ -843,9 +839,7 @@ class InProcessExecutor(ExecutorProtocol):
             if spec.execution.stateful:
                 instance = self._get_instance(spec)
                 instance.before_run()
-                result = _invoke_run(
-                    instance.run, payload_model, params_model
-                )
+                result = _invoke_run(instance.run, payload_model, params_model)
                 instance.after_run()
                 return result
 
@@ -864,9 +858,7 @@ class InProcessExecutor(ExecutorProtocol):
             created.initialize()
             try:
                 created.before_run()
-                result = _invoke_run(
-                    created.run, payload_model, params_model
-                )
+                result = _invoke_run(created.run, payload_model, params_model)
                 created.after_run()
                 return result
             finally:
@@ -874,9 +866,7 @@ class InProcessExecutor(ExecutorProtocol):
                     created.shutdown()
                 except Exception:
                     pass
-        return _invoke_run(
-            spec.entrypoint, payload_model, params_model
-        )
+        return _invoke_run(spec.entrypoint, payload_model, params_model)
 
     def _get_instance(
         self, spec: AlgorithmSpec[Any, Any]
