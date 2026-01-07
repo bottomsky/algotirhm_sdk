@@ -1,0 +1,17 @@
+- name: Prediction
+  version: v1
+  category: prediction
+  algorithm_type: Prediction
+  description: "Prediction algorithm override config."
+  created_time: "2026-02-01"
+  author: "algo-config"
+  application_scenarios: "demo,offline"
+  extra:
+    owner: "algo-core-service"
+    source: "config"
+  logging:
+    enabled: true
+    log_input: false
+    log_output: true
+  execution:
+    timeout_s: 120

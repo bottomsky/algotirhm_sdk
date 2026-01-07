@@ -12,16 +12,16 @@ from typing import Callable, get_type_hints
 from pydantic import BaseModel as _PydanticBaseModel
 
 from algo_sdk.core import (
+    AlgorithmLifecycleProtocol,
     AlgorithmSpec,
+    AlgorithmType,
     AlgorithmValidationError,
     BaseModel,
-    HyperParams,
     ExecutionConfig,
     ExecutionMode,
+    HyperParams,
     LoggingConfig,
     get_registry,
-    AlgorithmLifecycleProtocol,
-    AlgorithmType,
 )
 from algo_sdk.core.registry import AlgorithmRegistry
 
@@ -479,7 +479,8 @@ class DefaultAlgorithmDecorator:
             )
             if hyper_annotation is inspect.Signature.empty:
                 raise AlgorithmValidationError(
-                    "hyperparams must be type-annotated with a HyperParams subclass"
+                    "hyperparams must be type-annotated with a HyperParams "
+                    "subclass"
                 )
             if not (
                 inspect.isclass(hyper_annotation)
