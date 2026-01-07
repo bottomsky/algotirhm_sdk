@@ -665,6 +665,16 @@ def run(*, env_path: str | os.PathLike[str] | None = None) -> None:
     if modules_str:
         load_algorithm_modules([m.strip() for m in modules_str.split(",")])
 
+    config_dir = os.getenv("ALGO_METADATA_CONFIG_DIR", "").strip()
+    if config_dir:
+        try:
+            get_registry().load_config(config_dir)
+        except Exception:
+            _EVENT_LOGGER.exception(
+                "Failed to load algorithm metadata overrides",
+                logger=_LOGGER,
+            )
+
     app = create_app()
     uvicorn.run(app, host=bind_host, port=port)
 
