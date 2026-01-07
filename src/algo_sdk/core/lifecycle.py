@@ -1,7 +1,12 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Protocol, TypeVar, override, runtime_checkable
+from typing import Protocol, TypeVar, runtime_checkable
+
+try:
+    from typing import override
+except ImportError:  # pragma: no cover
+    from typing_extensions import override
 
 from .base_model_impl import BaseModel
 

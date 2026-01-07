@@ -10,7 +10,12 @@ import urllib.request
 import uuid
 from collections.abc import Iterable, Mapping
 from http.client import HTTPResponse
-from typing import ClassVar, cast, override
+from typing import ClassVar, cast
+
+try:
+    from typing import override
+except ImportError:  # pragma: no cover
+    from typing_extensions import override
 
 from ..config import ServiceRegistryConfig, load_config
 from ..errors import (

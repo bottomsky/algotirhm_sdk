@@ -5,7 +5,11 @@ from __future__ import annotations
 import threading
 import uuid
 from collections import defaultdict
-from typing import override
+
+try:
+    from typing import override
+except ImportError:  # pragma: no cover
+    from typing_extensions import override
 
 from ..errors import (
     KVOperationError,
