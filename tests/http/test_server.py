@@ -75,10 +75,10 @@ def test_list_algorithms(client):
     data = response.json()
     assert data["code"] == 0
     algo = next(a for a in data["data"] if a["name"] == "test_algo")
-    assert algo["created_time"] == "2026-01-06"
+    assert algo["createdTime"] == "2026-01-06"
     assert algo["author"] == "qa"
     assert algo["category"] == "unit"
-    assert algo["application_scenarios"] == "demo"
+    assert algo["applicationScenarios"] == "demo"
     assert algo["extra"] == {"owner": "unit"}
 
 
@@ -101,10 +101,10 @@ def test_schema_includes_metadata(client):
     assert response.status_code == 200
     payload = response.json()
     data = payload["data"]
-    assert data["created_time"] == "2026-01-06"
+    assert data["createdTime"] == "2026-01-06"
     assert data["author"] == "qa"
     assert data["category"] == "unit"
-    assert data["application_scenarios"] == "demo"
+    assert data["applicationScenarios"] == "demo"
     assert data["extra"] == {"owner": "unit"}
 
 
@@ -152,7 +152,7 @@ def test_service_info(monkeypatch):
         service = data["service"]
         assert service["name"] == "algo-core-service"
         assert service["version"] == "1.2.3"
-        assert service["instance_id"] == "algo-core-service-abc123"
+        assert service["instanceId"] == "algo-core-service-abc123"
         assert service["host"] == "127.0.0.1"
         assert service["port"] == 8000
         assert any(

@@ -25,6 +25,7 @@ from fastapi.responses import (
     RedirectResponse,
 )
 from fastapi.staticfiles import StaticFiles
+from pydantic.alias_generators import to_camel
 
 from ...core.executor import DispatchingExecutor
 from ...core.registry import AlgorithmRegistry, get_registry
@@ -198,6 +199,35 @@ def _execution_to_dict(execution: object) -> dict[str, object]:
         if isinstance(value, Enum):
             payload[key] = value.value
     return payload
+
+
+_CAMEL_SKIP_VALUE_KEYS = {
+    "extra",
+    "input_schema",
+    "output_schema",
+    "hyperparams_schema",
+    "input",
+    "output",
+    "schema",
+}
+
+
+def _camelize_payload(value: object) -> object:
+    if isinstance(value, dict):
+        converted: dict[object, object] = {}
+        for key, item in value.items():
+            if isinstance(key, str):
+                camel_key = to_camel(key)
+                if key in _CAMEL_SKIP_VALUE_KEYS:
+                    converted[camel_key] = item
+                else:
+                    converted[camel_key] = _camelize_payload(item)
+            else:
+                converted[key] = _camelize_payload(item)
+        return converted
+    if isinstance(value, list):
+        return [_camelize_payload(item) for item in value]
+    return value
 
 
 def _split_module_spec(module_spec: str) -> tuple[str, str | None]:
@@ -422,7 +452,7 @@ def create_app(registry: Optional[AlgorithmRegistry] = None) -> FastAPI:
     @app.get("/healthz")
     async def healthz():
         """Liveness probe."""
-        return {"status": "ok"}
+        return _camelize_payload({"status": "ok"})
 
     @app.get("/readyz")
     async def readyz():
@@ -436,9 +466,11 @@ def create_app(registry: Optional[AlgorithmRegistry] = None) -> FastAPI:
             )
             return JSONResponse(
                 status_code=503,
-                content={"status": "not_ready", "state": state},
+                content=_camelize_payload(
+                    {"status": "not_ready", "state": state}
+                ),
             )
-        return {"status": "ready"}
+        return _camelize_payload({"status": "ready"})
 
     @app.get("/metrics")
     async def metrics():
@@ -463,27 +495,26 @@ def create_app(registry: Optional[AlgorithmRegistry] = None) -> FastAPI:
             }
             for s in specs
         ]
-        return api_success(data=data)
+        return api_success(data=_camelize_payload(data))
 
     @app.get("/service/info")
     async def service_info():
         """Describe the current service instance and its algorithms."""
         registry_config = load_registry_config()
         catalog = build_algorithm_catalog(registry_config, reg.list())
-        return api_success(
-            data={
-                "service": {
-                    "name": registry_config.service_name,
-                    "instance_id": registry_config.instance_id,
-                    "version": registry_config.service_version,
-                    "host": registry_config.service_host,
-                    "port": registry_config.service_port,
-                },
-                "base_url": catalog.get("base_url"),
-                "list_url": catalog.get("list_url"),
-                "algorithms": catalog.get("algorithms", []),
-            }
-        )
+        data = {
+            "service": {
+                "name": registry_config.service_name,
+                "instance_id": registry_config.instance_id,
+                "version": registry_config.service_version,
+                "host": registry_config.service_host,
+                "port": registry_config.service_port,
+            },
+            "base_url": catalog.get("base_url"),
+            "list_url": catalog.get("list_url"),
+            "algorithms": catalog.get("algorithms", []),
+        }
+        return api_success(data=_camelize_payload(data))
 
     @app.get("/algorithms/{name}/{version}/schema")
     async def get_schema(name: str, version: str):
@@ -499,18 +530,20 @@ def create_app(registry: Optional[AlgorithmRegistry] = None) -> FastAPI:
                     "fields": hyper_fields or [],
                 }
             return api_success(
-                data={
-                    "input": spec.input_schema(),
-                    "output": spec.output_schema(),
-                    "execution": _execution_to_dict(spec.execution),
-                    "algorithm_type": spec.algorithm_type.value,
-                    "hyperparams": hyperparams,
-                    "created_time": spec.created_time,
-                    "author": spec.author,
-                    "category": spec.category,
-                    "application_scenarios": spec.application_scenarios,
-                    "extra": spec.extra,
-                }
+                data=_camelize_payload(
+                    {
+                        "input": spec.input_schema(),
+                        "output": spec.output_schema(),
+                        "execution": _execution_to_dict(spec.execution),
+                        "algorithm_type": spec.algorithm_type.value,
+                        "hyperparams": hyperparams,
+                        "created_time": spec.created_time,
+                        "author": spec.author,
+                        "category": spec.category,
+                        "application_scenarios": spec.application_scenarios,
+                        "extra": spec.extra,
+                    }
+                )
             )
         except Exception as e:
             return api_error(code=404, message=str(e))
@@ -548,11 +581,13 @@ def create_app(registry: Optional[AlgorithmRegistry] = None) -> FastAPI:
                 algorithms.append(entry)
 
         return api_success(
-            data={
-                "catalogs": catalogs,
-                "algorithms": algorithms,
-                "errors": errors,
-            }
+            data=_camelize_payload(
+                {
+                    "catalogs": catalogs,
+                    "algorithms": algorithms,
+                    "errors": errors,
+                }
+            )
         )
 
     @app.post("/algorithms/{name}/{version}")
@@ -578,11 +613,17 @@ def create_app(registry: Optional[AlgorithmRegistry] = None) -> FastAPI:
             )
             return JSONResponse(
                 status_code=status_code,
-                content=envelope.model_dump(by_alias=True),
+                content=_camelize_payload(
+                    envelope.model_dump(by_alias=True, mode="json")
+                ),
             )
         try:
             response = service.invoke(name, version, request)
-            return response
+            return JSONResponse(
+                content=_camelize_payload(
+                    response.model_dump(by_alias=True, mode="json")
+                )
+            )
         except Exception as e:
             return api_error(code=500, message=str(e))
 
@@ -596,12 +637,18 @@ def create_app(registry: Optional[AlgorithmRegistry] = None) -> FastAPI:
             if service_runtime is None:
                 return JSONResponse(
                     status_code=503,
-                    content={"status": "not_ready", "state": "Unknown"},
+                    content=_camelize_payload(
+                        {"status": "not_ready", "state": "Unknown"}
+                    ),
                 )
-            return {
-                "state": service_runtime.state.value,
-                "accepting_requests": service_runtime.accepting_requests,
-            }
+            return _camelize_payload(
+                {
+                    "state": service_runtime.state.value,
+                    "accepting_requests": (
+                        service_runtime.accepting_requests
+                    ),
+                }
+            )
 
         def _lifecycle_error(exc: Exception) -> JSONResponse:
             if isinstance(exc, (AlreadyInStateError, InvalidTransitionError)):
