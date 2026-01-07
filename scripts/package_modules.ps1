@@ -1,5 +1,5 @@
 param(
-    [string[]]$Modules = @("algo_sdk", "algo_dto"),
+    [string[]]$Modules = @("algo_sdk", "algo_dto", "algo_decorators", "algo_core_service"),
     [string]$OutputDir = "dist/modules",
     [string]$BundleName = "",
     [string]$PackageVersion = "0.0.0",
@@ -32,6 +32,63 @@ function Normalize-PackageName([string]$name) {
     return $name.Replace("_", "-")
 }
 
+function Normalize-Modules([string[]]$modules) {
+    if (-not $modules) {
+        return @()
+    }
+    if ($modules.Count -eq 1) {
+        $single = $modules[0]
+        if ($single -match "[,;\s]") {
+            return @($single -split "[,;\s]+" | Where-Object { $_ -and $_.Trim() })
+        }
+    }
+    return $modules
+}
+
+function Get-ModuleDependencies([string]$resolvedModule, [string]$version) {
+    $name = Normalize-PackageName $resolvedModule
+    $deps = @()
+    switch ($name) {
+        "algo-dto" {
+            $deps += "pydantic>=2.12.5"
+            $deps += "numpy>=2.4.0"
+        }
+        "algo-decorators" {
+            $deps += "pydantic>=2.12.5"
+            $deps += "typing-extensions>=4.12.2; python_version < '3.12'"
+        }
+        "algo-sdk" {
+            $deps += "algo-decorators>=$version"
+            $deps += "fastapi>=0.128.0"
+            $deps += "pydantic>=2.12.5"
+            $deps += "python-dotenv>=1.2.1"
+            $deps += "pyyaml>=6.0.3"
+            $deps += "typing-extensions>=4.12.2; python_version < '3.12'"
+            $deps += "uvicorn>=0.40.0"
+        }
+        "algo-core-service" {
+            $deps += "algo-dto>=$version"
+            $deps += "algo-sdk>=$version"
+        }
+        default {
+            $deps = @()
+        }
+    }
+    return $deps
+}
+
+function Merge-Dependencies([string[]]$moduleNames, [string]$version) {
+    $set = New-Object System.Collections.Generic.HashSet[string]
+    foreach ($m in $moduleNames) {
+        $resolved = Resolve-ModuleName $m
+        $deps = Get-ModuleDependencies $resolved $version
+        foreach ($d in $deps) {
+            [void]$set.Add($d)
+        }
+    }
+    return $set.ToArray()
+}
+
 function Resolve-PythonExe([string]$repoRoot) {
     $candidates = @(
         (Join-Path $repoRoot ".venv\Scripts\python.exe"),
@@ -47,6 +104,25 @@ function Resolve-PythonExe([string]$repoRoot) {
         return $cmd.Path
     }
     throw "Python not found. Create .venv first or ensure python is in PATH."
+}
+
+function Ensure-PipInstalled([string]$pythonExe) {
+    try {
+        & $pythonExe -m pip --version | Out-Null
+        if ($LASTEXITCODE -eq 0) { return }
+    }
+    catch {
+    }
+
+    & $pythonExe -m ensurepip --upgrade | Out-Null
+    if ($LASTEXITCODE -ne 0) {
+        throw "pip bootstrap failed via ensurepip"
+    }
+
+    & $pythonExe -m pip --version | Out-Null
+    if ($LASTEXITCODE -ne 0) {
+        throw "pip is still unavailable after ensurepip"
+    }
 }
 
 function New-StagingDir() {
@@ -83,9 +159,10 @@ function New-ZipFromStaging([string]$stagingRoot, [string]$zipPath) {
 
 function New-WheelFromStaging([string]$stagingRoot, [string]$wheelDir) {
     $py = Resolve-PythonExe $repoRoot
+    Ensure-PipInstalled $py
     Push-Location $stagingRoot
     try {
-        & $py -m pip wheel . --no-deps --no-build-isolation -w $wheelDir
+        & $py -m pip wheel . --no-deps -w $wheelDir
         if ($LASTEXITCODE -ne 0) {
             throw "Wheel build failed in staging dir: $stagingRoot"
         }
@@ -95,22 +172,37 @@ function New-WheelFromStaging([string]$stagingRoot, [string]$wheelDir) {
     }
 }
 
-function Write-SetupPy([string]$stagingRoot, [string]$packageName, [string]$version) {
+function Write-SetupPy(
+    [string]$stagingRoot,
+    [string]$packageName,
+    [string]$version,
+    [string[]]$installRequires
+) {
+    $requiresLines = ""
+    if ($installRequires -and $installRequires.Length -gt 0) {
+        $quoted = $installRequires | ForEach-Object { "        `"$($_)`"," }
+        $requiresLines = ($quoted -join "`r`n")
+    }
     $content = @"
-from setuptools import setup, find_namespace_packages
+from setuptools import setup, find_packages
 
 setup(
     name="{0}",
     version="{1}",
-    packages=find_namespace_packages(),
+    python_requires=">=3.11",
+    packages=find_packages(),
     include_package_data=True,
+    install_requires=[
+{2}
+    ],
 )
-"@ -f $packageName, $version
+"@ -f $packageName, $version, $requiresLines
     $path = Join-Path $stagingRoot "setup.py"
     Set-Content -Path $path -Value $content -Encoding ASCII
 }
 
 $timestamp = Get-Date -Format "yyyyMMdd-HHmmss"
+$Modules = Normalize-Modules $Modules
 
 if ($BundleName) {
     $staging = New-StagingDir
@@ -119,7 +211,8 @@ if ($BundleName) {
     }
     Remove-CacheArtifacts $staging
     $packageName = Normalize-PackageName $BundleName
-    Write-SetupPy $staging $packageName $PackageVersion
+    $bundleDeps = Merge-Dependencies $Modules $PackageVersion
+    Write-SetupPy $staging $packageName $PackageVersion $bundleDeps
     if ($Format -in @("zip", "both")) {
         $zipPath = Join-Path $outputRoot (
             "{0}-{1}-{2}.zip" -f $packageName, $PackageVersion, $timestamp
@@ -140,7 +233,8 @@ else {
         Remove-CacheArtifacts $staging
         $resolved = Resolve-ModuleName $module
         $packageName = Normalize-PackageName $resolved
-        Write-SetupPy $staging $packageName $PackageVersion
+        $deps = Get-ModuleDependencies $resolved $PackageVersion
+        Write-SetupPy $staging $packageName $PackageVersion $deps
         if ($Format -in @("zip", "both")) {
             $zipPath = Join-Path $outputRoot (
                 "{0}-{1}-{2}.zip" -f $packageName, $PackageVersion, $timestamp
