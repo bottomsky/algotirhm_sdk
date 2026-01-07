@@ -18,6 +18,7 @@ from .executor import (
 )
 from .lifecycle import AlgorithmLifecycleProtocol, BaseAlgorithm
 from .metadata import (
+    AlgorithmMarker,
     AlgorithmSpec,
     AlgorithmType,
     ExecutionConfig,
@@ -45,6 +46,7 @@ __all__ = [
     "AlgorithmLifecycleProtocol",
     "BaseAlgorithm",
     "AlgorithmSpec",
+    "AlgorithmMarker",
     "AlgorithmType",
     "ExecutionConfig",
     "ExecutionMode",

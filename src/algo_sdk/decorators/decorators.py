@@ -3,36 +3,28 @@
 from __future__ import annotations
 
 import inspect
-import pickle
 import re
-import sys
 from datetime import date
+from dataclasses import asdict
 from typing import Callable, get_type_hints
 
 from pydantic import BaseModel as _PydanticBaseModel
 
 from algo_sdk.core import (
-    AlgorithmLifecycleProtocol,
-    AlgorithmSpec,
+    AlgorithmMarker,
     AlgorithmType,
     AlgorithmValidationError,
+    BaseAlgorithm,
     BaseModel,
     ExecutionConfig,
     ExecutionMode,
     HyperParams,
     LoggingConfig,
-    get_registry,
 )
-from algo_sdk.core.registry import AlgorithmRegistry
 
 
 class DefaultAlgorithmDecorator:
-    """Decorator used to register class-based algorithms."""
-
-    _registry: AlgorithmRegistry
-
-    def __init__(self, *, registry: AlgorithmRegistry | None = None) -> None:
-        self._registry = registry or get_registry()
+    """Decorator used to mark class-based algorithms."""
 
     _DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
@@ -51,10 +43,10 @@ class DefaultAlgorithmDecorator:
         execution: dict[str, object] | None = None,
         logging: LoggingConfig | dict[str, object] | None = None,
     ) -> Callable[
-        [type[AlgorithmLifecycleProtocol[BaseModel, BaseModel]]],
-        type[AlgorithmLifecycleProtocol[BaseModel, BaseModel]],
+        [type[BaseAlgorithm[BaseModel, BaseModel]]],
+        type[BaseAlgorithm[BaseModel, BaseModel]],
     ]:
-        """Register a class-based algorithm.
+        """Mark a class-based algorithm.
 
         Args:
             name: Algorithm name
@@ -106,29 +98,50 @@ class DefaultAlgorithmDecorator:
             extra=extra,
         )
 
+        execution_payload = asdict(exec_config)
+        logging_payload = asdict(log_config)
+
         def _decorator(
-            target: type[AlgorithmLifecycleProtocol[BaseModel, BaseModel]],
-        ) -> type[AlgorithmLifecycleProtocol[BaseModel, BaseModel]]:
-            if inspect.isclass(target):
-                spec = self._build_class_spec(
-                    target,
-                    name=name,
-                    version=version,
-                    algorithm_type=algorithm_type,
-                    description=description,
-                    created_time=created_time,
-                    author=author,
-                    category=category,
-                    application_scenarios=application_scenarios,
-                    extra=extra,
-                    exec_config=exec_config,
-                    log_config=log_config,
-                )
-            else:
+            target: type[BaseAlgorithm[BaseModel, BaseModel]],
+        ) -> type[BaseAlgorithm[BaseModel, BaseModel]]:
+            if not inspect.isclass(target):
                 raise AlgorithmValidationError(
                     "decorator target must be a class"
                 )
-            self._registry.register(spec)
+            if not issubclass(target, BaseAlgorithm):
+                raise AlgorithmValidationError(
+                    "algorithm must inherit BaseAlgorithm"
+                )
+            run_method: object = getattr(target, "run", None)
+            if run_method is None or not callable(run_method):
+                raise AlgorithmValidationError(
+                    "class-based algorithm must define a callable 'run' method"
+                )
+            if getattr(run_method, "__isabstractmethod__", False):
+                raise AlgorithmValidationError(
+                    "class-based algorithm must provide a concrete 'run' method"
+                )
+            if inspect.isabstract(target):
+                raise AlgorithmValidationError(
+                    "class-based algorithm must not be abstract"
+                )
+
+            _, _, inferred_hyperparams = self._extract_io(run_method)
+            marker = AlgorithmMarker(
+                name=name,
+                version=version,
+                algorithm_type=algorithm_type,
+                description=description,
+                created_time=created_time,
+                author=author,
+                category=category,
+                application_scenarios=application_scenarios,
+                extra=extra,
+                execution=execution_payload,
+                logging=logging_payload,
+                hyperparams_model=inferred_hyperparams,
+            )
+            setattr(target, "__algo_meta__", marker)
             return target
 
         return _decorator
@@ -265,80 +278,6 @@ class DefaultAlgorithmDecorator:
             redact_fields=redact_tuple,
         )
 
-    def _build_class_spec(
-        self,
-        target_cls: type[AlgorithmLifecycleProtocol[BaseModel, BaseModel]],
-        *,
-        name: str,
-        version: str,
-        algorithm_type: AlgorithmType,
-        description: str | None,
-        created_time: str,
-        author: str,
-        category: str,
-        application_scenarios: str | None,
-        extra: dict[str, str],
-        exec_config: ExecutionConfig,
-        log_config: LoggingConfig,
-    ) -> AlgorithmSpec[BaseModel, BaseModel]:
-        run_method: object = getattr(target_cls, "run", None)
-        if run_method is None or not callable(run_method):
-            raise AlgorithmValidationError(
-                "class-based algorithm must define a callable 'run' method"
-            )
-        if getattr(run_method, "__isabstractmethod__", False):
-            raise AlgorithmValidationError(
-                "class-based algorithm must provide a concrete 'run' method"
-            )
-        if inspect.isabstract(target_cls):
-            raise AlgorithmValidationError(
-                "class-based algorithm must not be abstract"
-            )
-
-        input_model, output_model, inferred_hyperparams = self._extract_io(
-            run_method
-        )
-
-        for hook_name in ("initialize", "before_run", "after_run", "shutdown"):
-            if not hasattr(target_cls, hook_name):
-                raise AlgorithmValidationError(
-                    f"hook '{hook_name}' must be implemented"
-                )
-            hook = getattr(target_cls, hook_name)  # pyright: ignore[reportAny]
-            if hook is not None and not callable(
-                hook
-            ):  # pyright: ignore[reportAny]
-                raise AlgorithmValidationError(
-                    f"hook '{hook_name}' must be callable or absent"
-                )
-
-        self._assert_picklable(target_cls, label="algorithm entrypoint")
-        self._assert_picklable(input_model, label="algorithm input model")
-        self._assert_picklable(output_model, label="algorithm output model")
-        if inferred_hyperparams is not None:
-            self._assert_picklable(
-                inferred_hyperparams,
-                label="algorithm hyperparams model",
-            )
-
-        return AlgorithmSpec(
-            name=name,
-            version=version,
-            algorithm_type=algorithm_type,
-            description=description,
-            created_time=created_time,
-            author=author,
-            category=category,
-            input_model=input_model,
-            output_model=output_model,
-            application_scenarios=application_scenarios,
-            extra=extra,
-            execution=exec_config,
-            logging=log_config,
-            hyperparams_model=inferred_hyperparams,
-            entrypoint=target_cls,
-            is_class=True,
-        )
 
     def _validate_metadata(
         self,
@@ -400,35 +339,6 @@ class DefaultAlgorithmDecorator:
             application_scenarios,
             extra,
         )
-
-    def _assert_picklable(self, obj: object, *, label: str) -> None:
-        qualname = getattr(obj, "__qualname__", None)
-        module_name = getattr(obj, "__module__", None)
-        obj_name = getattr(obj, "__name__", None)
-        if (
-            module_name
-            and obj_name
-            and qualname
-            and qualname == obj_name
-            and "<locals>" not in qualname
-        ):
-            module = sys.modules.get(module_name)
-            if module is not None and not hasattr(module, obj_name):
-                setattr(module, obj_name, obj)
-        try:
-            pickle.dumps(obj)
-        except Exception as exc:
-            module = getattr(obj, "__module__", None)
-            hint = (
-                "Entrypoint and model types must be defined at module top "
-                "level (not inside a function), and must be importable by "
-                "module path. Avoid lambdas/closures/local classes."
-            )
-            details = (
-                f"{label} is not picklable"
-                f" (module={module!r}, qualname={qualname!r}): {exc}"
-            )
-            raise AlgorithmValidationError(f"{details}. {hint}") from exc
 
     def _extract_io(
         self,

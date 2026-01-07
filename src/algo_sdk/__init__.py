@@ -6,6 +6,7 @@ Use this module for supported imports. Subpackages are internal.
 from .decorators import Algorithm, DefaultAlgorithmDecorator
 from .core import (
     AlgorithmError,
+    AlgorithmMarker,
     AlgorithmNotFoundError,
     AlgorithmRegistrationError,
     AlgorithmValidationError,
@@ -88,6 +89,7 @@ __all__ = [
     "api_success",
     "api_error",
     "AlgorithmError",
+    "AlgorithmMarker",
     "AlgorithmNotFoundError",
     "AlgorithmRegistrationError",
     "AlgorithmValidationError",

@@ -51,6 +51,24 @@ class HyperParams(BaseModel):
     """Base model for algorithm hyper-parameters."""
 
 
+@dataclass(frozen=True, slots=True)
+class AlgorithmMarker:
+    """Metadata marker stored on algorithm classes."""
+
+    name: str
+    version: str
+    algorithm_type: AlgorithmType
+    description: str | None
+    created_time: str
+    author: str
+    category: str
+    application_scenarios: str | None = None
+    extra: dict[str, str] = field(default_factory=dict)
+    execution: dict[str, object] = field(default_factory=dict)
+    logging: dict[str, object] = field(default_factory=dict)
+    hyperparams_model: type[HyperParams] | None = None
+
+
 def _extract_schema_type(schema: dict[str, Any]) -> str | None:
     schema_type = schema.get("type")
     if isinstance(schema_type, str):

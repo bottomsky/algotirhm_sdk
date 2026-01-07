@@ -1,9 +1,7 @@
-import inspect
-
 import pytest
 
 from algo_sdk import (
-    AlgorithmRegistry,
+    AlgorithmMarker,
     AlgorithmType,
     AlgorithmValidationError,
     BaseAlgorithm,
@@ -11,7 +9,6 @@ from algo_sdk import (
     DefaultAlgorithmDecorator,
     ExecutionMode,
     HyperParams,
-    LoggingConfig,
 )
 
 
@@ -63,8 +60,7 @@ _DEFAULT_METADATA = {
 
 
 def test_function_registration_is_rejected() -> None:
-    reg = AlgorithmRegistry()
-    deco = DefaultAlgorithmDecorator(registry=reg)
+    deco = DefaultAlgorithmDecorator()
 
     with pytest.raises(AlgorithmValidationError):
 
@@ -79,9 +75,8 @@ def test_function_registration_is_rejected() -> None:
             return _Resp(doubled=req.value * 2)
 
 
-def test_class_registration() -> None:
-    reg = AlgorithmRegistry()
-    deco = DefaultAlgorithmDecorator(registry=reg)
+def test_class_registration_marks_metadata() -> None:
+    deco = DefaultAlgorithmDecorator()
 
     deco(
         name="cls_algo",
@@ -95,35 +90,35 @@ def test_class_registration() -> None:
         },
     )(_AlgoForRegistration)
 
-    spec = reg.get("cls_algo", "v1")
-    assert inspect.isclass(spec.entrypoint)
-    assert spec.is_class
-    assert spec.execution.isolated_pool is True
-    assert spec.execution.stateful is True
-    assert spec.execution.execution_mode is ExecutionMode.PROCESS_POOL
+    meta = getattr(_AlgoForRegistration, "__algo_meta__")
+    assert isinstance(meta, AlgorithmMarker)
+    assert meta.name == "cls_algo"
+    assert meta.execution["isolated_pool"] is True
+    assert meta.execution["stateful"] is True
+    assert meta.execution["execution_mode"] is ExecutionMode.PROCESS_POOL
 
 
-def test_local_class_registration_is_rejected_for_pickle() -> None:
-    reg = AlgorithmRegistry()
-    deco = DefaultAlgorithmDecorator(registry=reg)
+def test_local_class_is_marked() -> None:
+    deco = DefaultAlgorithmDecorator()
 
     class _LocalAlgo(BaseAlgorithm[_Req, _Resp]):
 
         def run(self, req: _Req) -> _Resp:  # type: ignore[override]
             return _Resp(doubled=req.value * 2)
 
-    with pytest.raises(AlgorithmValidationError):
-        deco(
-            name="local",
-            version="v1",
-            algorithm_type=AlgorithmType.PREDICTION,
-            **_DEFAULT_METADATA,
-        )(_LocalAlgo)
+    deco(
+        name="local",
+        version="v1",
+        algorithm_type=AlgorithmType.PREDICTION,
+        **_DEFAULT_METADATA,
+    )(_LocalAlgo)
+
+    meta = getattr(_LocalAlgo, "__algo_meta__")
+    assert isinstance(meta, AlgorithmMarker)
 
 
 def test_execution_mode_rejects_string() -> None:
-    reg = AlgorithmRegistry()
-    deco = DefaultAlgorithmDecorator(registry=reg)
+    deco = DefaultAlgorithmDecorator()
 
     with pytest.raises(AlgorithmValidationError):
         deco(
@@ -136,8 +131,7 @@ def test_execution_mode_rejects_string() -> None:
 
 
 def test_logging_config_is_recorded() -> None:
-    reg = AlgorithmRegistry()
-    deco = DefaultAlgorithmDecorator(registry=reg)
+    deco = DefaultAlgorithmDecorator()
 
     deco(
         name="log-algo",
@@ -153,18 +147,16 @@ def test_logging_config_is_recorded() -> None:
         },
     )(_AlgoForRegistration)
 
-    spec = reg.get("log-algo", "v1")
-    assert isinstance(spec.logging, LoggingConfig)
-    assert spec.logging.enabled is True
-    assert spec.logging.log_input is True
-    assert spec.logging.log_output is True
-    assert spec.logging.max_length == 128
-    assert spec.logging.redact_fields == ("secret",)
+    meta = getattr(_AlgoForRegistration, "__algo_meta__")
+    assert meta.logging["enabled"] is True
+    assert meta.logging["log_input"] is True
+    assert meta.logging["log_output"] is True
+    assert meta.logging["max_length"] == 128
+    assert meta.logging["redact_fields"] == ("secret",)
 
 
 def test_hyperparams_requires_hyperparams_base() -> None:
-    reg = AlgorithmRegistry()
-    deco = DefaultAlgorithmDecorator(registry=reg)
+    deco = DefaultAlgorithmDecorator()
 
     with pytest.raises(AlgorithmValidationError, match="HyperParams"):
         deco(
@@ -181,13 +173,12 @@ def test_hyperparams_requires_hyperparams_base() -> None:
         **_DEFAULT_METADATA,
     )(_AlgoWithValidParams)
 
-    spec = reg.get("good-params", "v1")
-    assert spec.hyperparams_model is _ParamsValid
+    meta = getattr(_AlgoWithValidParams, "__algo_meta__")
+    assert meta.hyperparams_model is _ParamsValid
 
 
 def test_algorithm_metadata_is_recorded() -> None:
-    reg = AlgorithmRegistry()
-    deco = DefaultAlgorithmDecorator(registry=reg)
+    deco = DefaultAlgorithmDecorator()
 
     deco(
         name="meta-algo",
@@ -200,17 +191,16 @@ def test_algorithm_metadata_is_recorded() -> None:
         extra={"owner": "unit"},
     )(_AlgoForRegistration)
 
-    spec = reg.get("meta-algo", "v1")
-    assert spec.created_time == "2026-01-06"
-    assert spec.author == "qa"
-    assert spec.category == "unit"
-    assert spec.application_scenarios == "demo"
-    assert spec.extra == {"owner": "unit"}
+    meta = getattr(_AlgoForRegistration, "__algo_meta__")
+    assert meta.created_time == "2026-01-06"
+    assert meta.author == "qa"
+    assert meta.category == "unit"
+    assert meta.application_scenarios == "demo"
+    assert meta.extra == {"owner": "unit"}
 
 
 def test_algorithm_metadata_rejects_invalid_values() -> None:
-    reg = AlgorithmRegistry()
-    deco = DefaultAlgorithmDecorator(registry=reg)
+    deco = DefaultAlgorithmDecorator()
 
     with pytest.raises(AlgorithmValidationError, match="created_time"):
         deco(
