@@ -3,21 +3,30 @@ from __future__ import annotations
 from collections.abc import Iterable, Mapping
 from dataclasses import replace
 from datetime import date
+import importlib
+import inspect
 import logging
 from pathlib import Path
+import pickle
 import re
+import sys
 from threading import RLock
-from typing import Any, TypeVar, cast
+from types import ModuleType
+from typing import Any, TypeVar, cast, get_type_hints
 
 import yaml
+from pydantic import BaseModel as _PydanticBaseModel
 
 from .base_model_impl import BaseModel
 from .errors import AlgorithmNotFoundError, AlgorithmRegistrationError
+from .lifecycle import BaseAlgorithm
 from .metadata import (
+    AlgorithmMarker,
     AlgorithmSpec,
     AlgorithmType,
     ExecutionConfig,
     ExecutionMode,
+    HyperParams,
     LoggingConfig,
 )
 
@@ -63,6 +72,104 @@ class AlgorithmRegistry:
         with self._lock:
             return tuple(self._items.values())
 
+    def register_from_module(self, module: ModuleType) -> None:
+        exports = getattr(module, "__all__", None)
+        if not isinstance(exports, (list, tuple)):
+            _LOGGER.warning(
+                "Module %s has no __all__ exports; skipping",
+                module.__name__,
+            )
+            return
+
+        for name in exports:
+            if not isinstance(name, str):
+                _LOGGER.warning(
+                    "Module %s has non-string __all__ entry: %r",
+                    module.__name__,
+                    name,
+                )
+                continue
+            obj = getattr(module, name, None)
+            if obj is None:
+                _LOGGER.warning(
+                    "Module %s missing __all__ export %s",
+                    module.__name__,
+                    name,
+                )
+                continue
+            if not inspect.isclass(obj):
+                _LOGGER.warning(
+                    "Skipping %s from %s: not a class",
+                    name,
+                    module.__name__,
+                )
+                continue
+            if not issubclass(obj, BaseAlgorithm):
+                _LOGGER.warning(
+                    "Skipping %s from %s: not a BaseAlgorithm",
+                    name,
+                    module.__name__,
+                )
+                continue
+            marker = getattr(obj, "__algo_meta__", None)
+            if not isinstance(marker, AlgorithmMarker):
+                _LOGGER.warning(
+                    "Skipping %s from %s: missing algorithm marker",
+                    name,
+                    module.__name__,
+                )
+                continue
+            try:
+                spec = self._build_spec_from_marker(obj, marker)
+                self.register(spec)
+            except AlgorithmRegistrationError as exc:
+                _LOGGER.warning(
+                    "Algorithm %s already registered: %s",
+                    name,
+                    exc,
+                )
+            except Exception:
+                _LOGGER.exception(
+                    "Failed to register algorithm %s from %s",
+                    name,
+                    module.__name__,
+                )
+
+    def load_packages_from_dir(self, path: str | Path) -> None:
+        base_dir = Path(path)
+        if not base_dir.exists():
+            _LOGGER.warning(
+                "Algorithm module directory not found: %s", base_dir
+            )
+            return
+        if not base_dir.is_dir():
+            _LOGGER.warning(
+                "Algorithm module path is not a directory: %s", base_dir
+            )
+            return
+
+        resolved = base_dir.resolve()
+        resolved_str = str(resolved)
+        if resolved_str not in sys.path:
+            sys.path.insert(0, resolved_str)
+
+        for package_dir in sorted(resolved.iterdir()):
+            if not package_dir.is_dir():
+                continue
+            if not (package_dir / "__init__.py").exists():
+                continue
+            package_name = package_dir.name
+            try:
+                module = importlib.import_module(package_name)
+            except Exception:
+                _LOGGER.exception(
+                    "Failed to import algorithm package %s from %s",
+                    package_name,
+                    resolved,
+                )
+                continue
+            self.register_from_module(module)
+
     def load_config(self, path: str | Path) -> None:
         overrides = self._load_overrides_from_dir(Path(path))
         if not overrides:
@@ -102,6 +209,54 @@ class AlgorithmRegistry:
                 spec.execution,
                 cast(Mapping[str, object], override["execution"]),
             )
+
+    def _build_spec_from_marker(
+        self,
+        target_cls: type[BaseAlgorithm[BaseModel, BaseModel]],
+        marker: AlgorithmMarker,
+    ) -> AlgorithmSpec[BaseModel, BaseModel]:
+        run_method: object = getattr(target_cls, "run", None)
+        if run_method is None or not callable(run_method):
+            raise ValueError("algorithm class missing callable 'run' method")
+        if getattr(run_method, "__isabstractmethod__", False):
+            raise ValueError("algorithm class must implement 'run'")
+        if inspect.isabstract(target_cls):
+            raise ValueError("algorithm class must not be abstract")
+
+        input_model, output_model, inferred_hyperparams = self._extract_io(
+            run_method
+        )
+
+        exec_config = self._build_execution_config(marker.execution)
+        log_config = self._build_logging_config(marker.logging)
+
+        self._assert_picklable(target_cls, label="algorithm entrypoint")
+        self._assert_picklable(input_model, label="algorithm input model")
+        self._assert_picklable(output_model, label="algorithm output model")
+        if inferred_hyperparams is not None:
+            self._assert_picklable(
+                inferred_hyperparams,
+                label="algorithm hyperparams model",
+            )
+
+        return AlgorithmSpec(
+            name=marker.name,
+            version=marker.version,
+            algorithm_type=marker.algorithm_type,
+            description=marker.description,
+            created_time=marker.created_time,
+            author=marker.author,
+            category=marker.category,
+            input_model=input_model,
+            output_model=output_model,
+            application_scenarios=marker.application_scenarios,
+            extra=dict(marker.extra),
+            execution=exec_config,
+            logging=log_config,
+            hyperparams_model=inferred_hyperparams,
+            entrypoint=target_cls,
+            is_class=True,
+        )
 
     def _load_overrides_from_dir(
         self, path: Path
@@ -431,6 +586,132 @@ class AlgorithmRegistry:
                 override[key] = item
         return override
 
+    def _build_execution_config(
+        self, execution: Mapping[str, object] | None
+    ) -> ExecutionConfig:
+        if not execution:
+            return ExecutionConfig()
+
+        allowed_keys = {
+            "execution_mode",
+            "stateful",
+            "isolated_pool",
+            "max_workers",
+            "timeout_s",
+            "gpu",
+        }
+        unknown = set(execution.keys()) - allowed_keys
+        if unknown:
+            raise ValueError(
+                f"unknown execution keys: {', '.join(sorted(unknown))}"
+            )
+
+        execution_mode = execution.get(
+            "execution_mode", ExecutionMode.PROCESS_POOL
+        )
+        if isinstance(execution_mode, str):
+            execution_mode = ExecutionMode(execution_mode)
+        if not isinstance(execution_mode, ExecutionMode):
+            raise ValueError("execution_mode must be an ExecutionMode value")
+
+        stateful = execution.get("stateful", False)
+        if not isinstance(stateful, bool):
+            raise ValueError("stateful must be a bool")
+
+        isolated_pool = execution.get("isolated_pool", False)
+        if not isinstance(isolated_pool, bool):
+            raise ValueError("isolated_pool must be a bool")
+
+        max_workers = execution.get("max_workers")
+        if max_workers is not None and not isinstance(max_workers, int):
+            raise ValueError("max_workers must be an int")
+
+        timeout_s = execution.get("timeout_s")
+        if timeout_s is not None and not isinstance(timeout_s, int):
+            raise ValueError("timeout_s must be an int")
+
+        gpu = execution.get("gpu")
+        if gpu is not None and not isinstance(gpu, str):
+            raise ValueError("gpu must be a str")
+
+        return ExecutionConfig(
+            execution_mode=execution_mode,
+            stateful=stateful,
+            isolated_pool=isolated_pool,
+            max_workers=max_workers,
+            timeout_s=timeout_s,
+            gpu=gpu,
+        )
+
+    def _build_logging_config(
+        self, logging_config: Mapping[str, object] | None
+    ) -> LoggingConfig:
+        if not logging_config:
+            return LoggingConfig()
+
+        allowed_keys = {
+            "enabled",
+            "log_input",
+            "log_output",
+            "on_error_only",
+            "sample_rate",
+            "max_length",
+            "redact_fields",
+        }
+        unknown = set(logging_config.keys()) - allowed_keys
+        if unknown:
+            raise ValueError(
+                f"unknown logging keys: {', '.join(sorted(unknown))}"
+            )
+
+        enabled = logging_config.get("enabled", True)
+        if not isinstance(enabled, bool):
+            raise ValueError("enabled must be a bool")
+
+        log_input = logging_config.get("log_input", False)
+        if not isinstance(log_input, bool):
+            raise ValueError("log_input must be a bool")
+
+        log_output = logging_config.get("log_output", False)
+        if not isinstance(log_output, bool):
+            raise ValueError("log_output must be a bool")
+
+        on_error_only = logging_config.get("on_error_only", False)
+        if not isinstance(on_error_only, bool):
+            raise ValueError("on_error_only must be a bool")
+
+        sample_rate = logging_config.get("sample_rate", 1.0)
+        if not isinstance(sample_rate, (int, float)):
+            raise ValueError("sample_rate must be a number")
+        sample_rate = float(sample_rate)
+        if sample_rate < 0 or sample_rate > 1:
+            raise ValueError("sample_rate must be between 0 and 1")
+
+        max_length = logging_config.get("max_length", 2048)
+        if not isinstance(max_length, int):
+            raise ValueError("max_length must be an int")
+        if max_length < 0:
+            raise ValueError("max_length must be non-negative")
+
+        redact_fields = logging_config.get("redact_fields", ())
+        if isinstance(redact_fields, str):
+            raise ValueError("redact_fields must be a list of str")
+        if not isinstance(redact_fields, (list, tuple, set)):
+            raise ValueError("redact_fields must be a list of str")
+        redact_tuple: tuple[str, ...] = tuple(
+            str(field) for field in redact_fields
+        )
+
+        return LoggingConfig(
+            enabled=enabled,
+            log_input=log_input,
+            log_output=log_output,
+            on_error_only=on_error_only,
+            sample_rate=sample_rate,
+            max_length=max_length,
+            redact_fields=redact_tuple,
+        )
+
     def _merge_logging(
         self, current: LoggingConfig, override: Mapping[str, object]
     ) -> LoggingConfig:
@@ -468,6 +749,107 @@ class AlgorithmRegistry:
         if "gpu" in override:
             kwargs["gpu"] = override["gpu"]
         return replace(current, **kwargs)
+
+    def _assert_picklable(self, obj: object, *, label: str) -> None:
+        qualname = getattr(obj, "__qualname__", None)
+        module_name = getattr(obj, "__module__", None)
+        obj_name = getattr(obj, "__name__", None)
+        if (
+            module_name
+            and obj_name
+            and qualname
+            and qualname == obj_name
+            and "<locals>" not in qualname
+        ):
+            module = sys.modules.get(module_name)
+            if module is not None and not hasattr(module, obj_name):
+                setattr(module, obj_name, obj)
+        try:
+            pickle.dumps(obj)
+        except Exception as exc:
+            module = getattr(obj, "__module__", None)
+            hint = (
+                "Entrypoint and model types must be defined at module top "
+                "level (not inside a function), and must be importable by "
+                "module path. Avoid lambdas/closures/local classes."
+            )
+            details = (
+                f"{label} is not picklable"
+                f" (module={module!r}, qualname={qualname!r}): {exc}"
+            )
+            raise ValueError(f"{details}. {hint}") from exc
+
+    def _extract_io(
+        self,
+        callable_obj: object,
+        *,
+        skip_first: bool = True,
+    ) -> tuple[type[BaseModel], type[BaseModel], type[HyperParams] | None]:
+        sig = inspect.signature(callable_obj)
+        params = list(sig.parameters.values())
+        if skip_first and params:
+            params = params[1:]
+
+        if len(params) not in (1, 2):
+            raise ValueError(
+                "run method must accept one or two arguments (besides self)"
+            )
+
+        param = params[0]
+        type_hints = get_type_hints(callable_obj, include_extras=False)
+        annotation: object = type_hints.get(
+            param.name, param.annotation  # pyright: ignore[reportAny]
+        )
+        if annotation is inspect.Signature.empty:
+            raise ValueError(
+                "input must be type-annotated with a BaseModel subclass"
+            )
+        if not (
+            inspect.isclass(annotation)
+            and issubclass(annotation, _PydanticBaseModel)
+        ):
+            raise ValueError(
+                "algorithm input must be a BaseModel subclass"
+            )
+
+        hyperparams_model: type[HyperParams] | None = None
+        if len(params) == 2:
+            hyper_param = params[1]
+            hyper_annotation: object = type_hints.get(
+                hyper_param.name, hyper_param.annotation
+            )
+            if hyper_annotation is inspect.Signature.empty:
+                raise ValueError(
+                    "hyperparams must be type-annotated with a HyperParams subclass"
+                )
+            if not (
+                inspect.isclass(hyper_annotation)
+                and issubclass(hyper_annotation, HyperParams)
+            ):
+                raise ValueError(
+                    "hyperparams must be a HyperParams subclass"
+                )
+            hyperparams_model = hyper_annotation  # type: ignore[assignment]
+
+        ret_anno = sig.return_annotation  # pyright: ignore[reportAny]
+        output_annotation: object = type_hints.get("return", ret_anno)
+        if output_annotation is inspect.Signature.empty:
+            raise ValueError(
+                "output must be type-annotated with a BaseModel subclass"
+            )
+        if not (
+            inspect.isclass(output_annotation)
+            and issubclass(output_annotation, _PydanticBaseModel)
+        ):
+            raise ValueError(
+                "algorithm output must be a BaseModel subclass"
+            )
+
+        return (
+            annotation,
+            output_annotation,
+            hyperparams_model,
+        )  # type: ignore[return-value]
 
 
 _default_registry = AlgorithmRegistry()
