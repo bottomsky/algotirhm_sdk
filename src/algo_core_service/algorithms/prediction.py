@@ -22,7 +22,7 @@ from algo_sdk.runtime import (
     algorithm_type=AlgorithmType.PREDICTION,
     created_time="2026-01-06",
     author="algo-team",
-    category="prediction",
+    category="Cognitive",
     application_scenarios="demo",
     extra={"owner": "algo-core-service"},
     logging=LoggingConfig(enabled=True, log_input=True, log_output=True),
