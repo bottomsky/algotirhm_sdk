@@ -162,6 +162,7 @@ def test_service_info(monkeypatch):
 
 
 def test_list_registry_algorithms(monkeypatch):
+    monkeypatch.setenv("SERVICE_REGISTRY_ENABLED", "true")
     registry = AlgorithmRegistry()
     captured = {}
 

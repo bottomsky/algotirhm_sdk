@@ -518,6 +518,9 @@ def create_app(registry: Optional[AlgorithmRegistry] = None) -> FastAPI:
         healthy_only: bool = True,
     ):
         """List algorithms registered in the service registry."""
+        registry_config = load_registry_config()
+        if not registry_config.enabled:
+            return api_error(code=503, message="service registry disabled")
         try:
             catalogs, errors = fetch_registry_algorithm_catalogs(
                 kv_prefix=prefix,
