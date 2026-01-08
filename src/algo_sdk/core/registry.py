@@ -1,15 +1,15 @@
 from __future__ import annotations
 
-from collections.abc import Iterable, Mapping
-from dataclasses import replace
-from datetime import date
 import importlib
 import inspect
 import logging
-from pathlib import Path
 import pickle
 import re
 import sys
+from collections.abc import Iterable, Mapping
+from dataclasses import replace
+from datetime import date
+from pathlib import Path
 from threading import RLock
 from types import ModuleType
 from typing import Any, TypeVar, cast, get_type_hints
@@ -66,7 +66,8 @@ class AlgorithmRegistry:
                 return self._items[key]
             except KeyError as exc:
                 raise AlgorithmNotFoundError(
-                    f"algorithm not found: {name} ({version})") from exc
+                    f"algorithm not found: {name} ({version})"
+                ) from exc
 
     def list(self) -> Iterable[AnySpec]:
         with self._lock:
@@ -262,9 +263,7 @@ class AlgorithmRegistry:
         self, path: Path
     ) -> list[tuple[OverrideKey, dict[str, object]]]:
         if not path.exists():
-            _LOGGER.warning(
-                "Algorithm metadata directory not found: %s", path
-            )
+            _LOGGER.warning("Algorithm metadata directory not found: %s", path)
             return []
         if not path.is_dir():
             _LOGGER.warning(
@@ -327,9 +326,7 @@ class AlgorithmRegistry:
         algorithm_type_raw = entry.get("algorithm_type")
         if not name or not version or not category:
             return None
-        algorithm_type = self._parse_algorithm_type(
-            algorithm_type_raw, source
-        )
+        algorithm_type = self._parse_algorithm_type(algorithm_type_raw, source)
         if algorithm_type is None:
             return None
 
@@ -808,9 +805,7 @@ class AlgorithmRegistry:
             inspect.isclass(annotation)
             and issubclass(annotation, _PydanticBaseModel)
         ):
-            raise ValueError(
-                "algorithm input must be a BaseModel subclass"
-            )
+            raise ValueError("algorithm input must be a BaseModel subclass")
 
         hyperparams_model: type[HyperParams] | None = None
         if len(params) == 2:
@@ -820,15 +815,14 @@ class AlgorithmRegistry:
             )
             if hyper_annotation is inspect.Signature.empty:
                 raise ValueError(
-                    "hyperparams must be type-annotated with a HyperParams subclass"
+                    "hyperparams must be type-annotated with a "
+                    "HyperParams subclass"
                 )
             if not (
                 inspect.isclass(hyper_annotation)
                 and issubclass(hyper_annotation, HyperParams)
             ):
-                raise ValueError(
-                    "hyperparams must be a HyperParams subclass"
-                )
+                raise ValueError("hyperparams must be a HyperParams subclass")
             hyperparams_model = hyper_annotation  # type: ignore[assignment]
 
         ret_anno = sig.return_annotation  # pyright: ignore[reportAny]
@@ -841,9 +835,7 @@ class AlgorithmRegistry:
             inspect.isclass(output_annotation)
             and issubclass(output_annotation, _PydanticBaseModel)
         ):
-            raise ValueError(
-                "algorithm output must be a BaseModel subclass"
-            )
+            raise ValueError("algorithm output must be a BaseModel subclass")
 
         return (
             annotation,
