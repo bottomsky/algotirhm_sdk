@@ -61,3 +61,7 @@ reportGeneralTypeIssues = "warning"
 
 [tool.black]
 line-length = 79
+
+[tool.isort]
+profile = "black"
+line_length = 79
