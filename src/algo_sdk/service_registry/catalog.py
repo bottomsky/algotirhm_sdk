@@ -50,6 +50,7 @@ def build_algorithm_catalog(
         items.append(
             {
                 "name": spec.name,
+                "display_name": spec.display_name or spec.name,
                 "version": spec.version,
                 "description": spec.description,
                 "algorithm_type": spec.algorithm_type.value,

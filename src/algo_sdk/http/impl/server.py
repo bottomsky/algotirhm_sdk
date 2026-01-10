@@ -484,6 +484,7 @@ def create_app(registry: Optional[AlgorithmRegistry] = None) -> FastAPI:
         data = [
             {
                 "name": s.name,
+                "display_name": s.display_name or s.name,
                 "version": s.version,
                 "description": s.description,
                 "algorithm_type": s.algorithm_type.value,
@@ -537,6 +538,7 @@ def create_app(registry: Optional[AlgorithmRegistry] = None) -> FastAPI:
                         "execution": _execution_to_dict(spec.execution),
                         "algorithm_type": spec.algorithm_type.value,
                         "hyperparams": hyperparams,
+                        "display_name": spec.display_name or spec.name,
                         "created_time": spec.created_time,
                         "author": spec.author,
                         "category": spec.category,

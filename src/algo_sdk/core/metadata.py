@@ -67,6 +67,7 @@ class AlgorithmMarker:
     execution: dict[str, object] = field(default_factory=dict)
     logging: dict[str, object] = field(default_factory=dict)
     hyperparams_model: type[HyperParams] | None = None
+    display_name: str | None = None
 
 
 def _extract_schema_type(schema: dict[str, Any]) -> str | None:
@@ -137,6 +138,7 @@ class AlgorithmSpec(Generic[TInput, TOutput]):
     logging: LoggingConfig = field(default_factory=LoggingConfig)
     hyperparams_model: type[HyperParams] | None = None
     is_class: bool = False
+    display_name: str | None = None
 
     def key(self) -> tuple[str, str]:
         return self.name, self.version

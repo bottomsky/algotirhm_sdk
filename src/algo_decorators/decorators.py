@@ -34,6 +34,7 @@ class DefaultAlgorithmDecorator:
         name: str,
         version: str,
         algorithm_type: AlgorithmType | str,
+        display_name: str | None = None,
         description: str | None = None,
         created_time: str | None = None,
         author: str | None = None,
@@ -53,6 +54,7 @@ class DefaultAlgorithmDecorator:
             version: Algorithm version
             algorithm_type: Required algorithm type (Planning, Prepare,
                 Prediction)
+            display_name: Optional display name (defaults to name)
             description: Optional description
             created_time: Required created date (YYYY-MM-DD)
             author: Required author name
@@ -81,6 +83,19 @@ class DefaultAlgorithmDecorator:
             raise AlgorithmValidationError(
                 "algorithm_type must be an AlgorithmType enum value"
             )
+
+        if display_name is None:
+            display_name = name
+        elif not isinstance(display_name, str):
+            raise AlgorithmValidationError(
+                "display_name must be a non-empty string"
+            )
+        else:
+            display_name = display_name.strip()
+            if not display_name:
+                raise AlgorithmValidationError(
+                    "display_name must be a non-empty string"
+                )
 
         exec_config = self._build_execution_config(execution)
         log_config = self._build_logging_config(logging)
@@ -130,6 +145,7 @@ class DefaultAlgorithmDecorator:
             _, _, inferred_hyperparams = self._extract_io(run_method)
             marker = AlgorithmMarker(
                 name=name,
+                display_name=display_name,
                 version=version,
                 algorithm_type=algorithm_type,
                 description=description,

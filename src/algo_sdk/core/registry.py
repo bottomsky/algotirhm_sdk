@@ -197,6 +197,8 @@ class AlgorithmRegistry:
             spec.application_scenarios = cast(
                 str, override["application_scenarios"]
             )
+        if "display_name" in override:
+            spec.display_name = cast(str, override["display_name"])
         if "extra" in override:
             extra = cast(dict[str, str], override["extra"])
             spec.extra = {**spec.extra, **extra}
@@ -243,6 +245,7 @@ class AlgorithmRegistry:
         return AlgorithmSpec(
             name=marker.name,
             version=marker.version,
+            display_name=marker.display_name or marker.name,
             algorithm_type=marker.algorithm_type,
             description=marker.description,
             created_time=marker.created_time,
@@ -336,6 +339,7 @@ class AlgorithmRegistry:
             "created_time",
             "author",
             "application_scenarios",
+            "display_name",
             "extra",
             "logging",
             "execution",
@@ -349,6 +353,11 @@ class AlgorithmRegistry:
                 )
                 continue
             if key in {"description", "author", "application_scenarios"}:
+                text = self._require_str(entry, key, source)
+                if text is None:
+                    return None
+                override[key] = text
+            elif key == "display_name":
                 text = self._require_str(entry, key, source)
                 if text is None:
                     return None
