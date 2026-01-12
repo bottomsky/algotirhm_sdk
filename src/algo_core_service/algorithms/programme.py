@@ -127,6 +127,7 @@ class ProgrammeAlgorithm(BaseAlgorithm[ProgrammeRequest, ProgrammeResult]):
                     orbit_man_info=orbit_man_info,
                     laser_data=laser_data,
                     dn_data=dn_data,
+                    target_id=1,
                 )
             )
 
