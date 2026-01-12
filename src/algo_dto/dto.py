@@ -192,6 +192,7 @@ class ProgrammeResultItem(SatTypeBase, PlanningBase, CamelBaseModel):
     orbit_man_info: list[OrbitManInfo]
     laser_data: list[LaserData]
     dn_data: list[DnData]
+    target_id: int
 
 
 class ProgrammeResult(RootModel[list[ProgrammeResultItem]], CamelBaseModel):
