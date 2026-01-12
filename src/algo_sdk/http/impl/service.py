@@ -107,6 +107,7 @@ class AlgorithmHttpService:
                 data=result.data,
                 request_id=request.requestId,
                 context=response_context,
+                algorithm_name=spec.name,
                 code=code if code is not None else 0,
                 message=message if message is not None else "success",
             )
@@ -124,6 +125,7 @@ class AlgorithmHttpService:
             message=message,
             request_id=request.requestId,
             context=response_context,
+            algorithm_name=spec.name,
         )
 
     def _emit_start(self, exec_request: ExecutionRequest[Any, Any]) -> None:

@@ -93,6 +93,7 @@ def test_invoke_algorithm(client):
     assert response.status_code == 200
     data = response.json()
     assert data["code"] == 0
+    assert data["algorithmName"] == "test_algo"
     assert data["data"]["doubled"] == 10
 
 

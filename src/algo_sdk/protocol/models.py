@@ -51,6 +51,7 @@ class AlgorithmResponse(_PydanticBaseModel, Generic[T]):
 
     code: int
     message: str
+    algorithm_name: Optional[str] = None
     requestId: Optional[str] = None
     datetime: DateTime = Field(
         default_factory=lambda: DateTime.now(timezone.utc)
@@ -72,6 +73,7 @@ def api_success(
     *,
     request_id: Optional[str] = None,
     context: Optional[AlgorithmContext] = None,
+    algorithm_name: Optional[str] = None,
     message: str = "success",
     code: int = 0,
 ) -> AlgorithmResponse[T]:
@@ -80,6 +82,7 @@ def api_success(
     return AlgorithmResponse(
         code=code,
         message=message,
+        algorithm_name=algorithm_name,
         requestId=request_id,
         context=context,
         data=data,
@@ -92,6 +95,7 @@ def api_error(
     code: int = 500,
     request_id: Optional[str] = None,
     context: Optional[AlgorithmContext] = None,
+    algorithm_name: Optional[str] = None,
     data: Optional[T] = None,
 ) -> AlgorithmResponse[T]:
     """Convenience helper to wrap error responses."""
@@ -99,6 +103,7 @@ def api_error(
     return AlgorithmResponse(
         code=code,
         message=message,
+        algorithm_name=algorithm_name,
         requestId=request_id,
         context=context,
         data=data,

@@ -17,9 +17,12 @@ def test_algorithm_request_requires_request_id() -> None:
 
 
 def test_algorithm_response_success_helper() -> None:
-    resp = api_success(data={"ok": True}, request_id="req-1")
+    resp = api_success(
+        data={"ok": True}, request_id="req-1", algorithm_name="demo"
+    )
     assert resp.code == 0
     assert resp.message == "success"
+    assert resp.algorithm_name == "demo"
     assert resp.requestId == "req-1"
 
 

@@ -105,6 +105,7 @@ def test_service_invokes_executor_and_wraps_success() -> None:
     assert response.code == 0
     assert response.data is not None
     assert response.data.doubled == 4
+    assert response.algorithm_name == "demo"
     assert events == ["start", "done"]
     assert response.requestId == request.requestId
     assert response.context is None
@@ -126,6 +127,7 @@ def test_service_wraps_runtime_error_and_calls_error_hook() -> None:
 
     assert response.code == 500
     assert response.data is None
+    assert response.algorithm_name == "fail"
     assert response.requestId == "fail-id"
     assert events == ["error"]
 
@@ -143,6 +145,7 @@ def test_service_response_meta_overrides_success() -> None:
 
     assert response.code == 201
     assert response.message == "created"
+    assert response.algorithm_name == "meta"
     assert response.context is not None
     assert response.context.traceId == "resp-trace"
     assert response.data is not None
@@ -162,6 +165,7 @@ def test_service_response_meta_overrides_error() -> None:
 
     assert response.code == 418
     assert response.message == "teapot"
+    assert response.algorithm_name == "meta-fail"
     assert response.context is not None
     assert response.context.traceId == "resp-trace"
     assert response.data is None
