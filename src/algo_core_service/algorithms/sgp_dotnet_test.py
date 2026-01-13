@@ -28,9 +28,13 @@ def _get_repo_root() -> Path:
     返回:
       - Path: 仓库根目录路径
     异常:
-      - 无；若路径层级变化则返回推导结果
+      - 无；若未找到 pyproject.toml 则回退到路径层级推导
     """
-    return Path(__file__).resolve().parents[4]
+    start = Path(__file__).resolve()
+    for parent in start.parents:
+        if (parent / "pyproject.toml").is_file():
+            return parent
+    return start.parents[3]
 
 
 def _read_sgp_dll_dir() -> str:
@@ -107,11 +111,25 @@ def _ensure_sgp_assembly_loaded(dll_dir: str) -> None:
             "and .NET runtime is available"
         ) from exc
 
+    dll_path_obj = Path(dll_dir)
+    if not dll_path_obj.is_dir():
+        raise RuntimeError(
+            f"SGP.NET dll directory not found: {dll_dir}. "
+            "Set SGP_DOTNET_DLL_DIR to the directory containing SGP.NET.dll."
+        )
+
     if dll_dir not in sys.path:
         sys.path.append(dll_dir)
 
     if hasattr(os, "add_dll_directory"):
-        os.add_dll_directory(dll_dir)
+        try:
+            os.add_dll_directory(dll_dir)
+        except FileNotFoundError as exc:
+            raise RuntimeError(
+                f"Failed to add dll directory: {dll_dir}. "
+                "Set SGP_DOTNET_DLL_DIR to the directory containing "
+                "SGP.NET.dll."
+            ) from exc
 
     try:
         clr.AddReference("SGP.NET")
@@ -119,7 +137,7 @@ def _ensure_sgp_assembly_loaded(dll_dir: str) -> None:
     except Exception:
         pass
 
-    dll_path = str(Path(dll_dir) / "SGP.NET.dll")
+    dll_path = str(dll_path_obj / "SGP.NET.dll")
     try:
         clr.AddReference(dll_path)
     except Exception as exc:
@@ -202,7 +220,10 @@ class SgpDotnetTestAlgorithm(
         pos = sat.Predict()
 
         lat, lon, alt_km = _read_ground_station()
-        gs = GroundStation(GeodeticCoordinate(lat, lon, alt_km))
+
+        lat_angle = Angle.FromDegrees(float(lat))
+        lon_angle = Angle.FromDegrees(float(lon))
+        gs = GroundStation(GeodeticCoordinate(lat_angle, lon_angle, alt_km))
 
         min_angle = Angle.op_Implicit(10)
         obs = gs.Observe(sat, DateTime.UtcNow)
