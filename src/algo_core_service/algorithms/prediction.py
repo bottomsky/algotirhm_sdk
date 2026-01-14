@@ -26,6 +26,9 @@ from algo_sdk.runtime import (
     application_scenarios="demo",
     extra={"owner": "algo-core-service"},
     logging=LoggingConfig(enabled=True, log_input=True, log_output=True),
+    execution={
+        "execution_mode": "in_process",
+    },
 )
 class PredictionAlgorithm(BaseAlgorithm[PredictionRequest, PredictionResult]):
     def run(self, req: PredictionRequest) -> PredictionResult:
