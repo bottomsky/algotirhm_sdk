@@ -6,7 +6,7 @@ from algo_dto.dto import (
     PredictionResult,
     PredictionResultItem,
 )
-from algo_sdk import Algorithm, BaseAlgorithm
+from algo_sdk import Algorithm, BaseAlgorithm, ExecutionMode
 from algo_sdk.core import AlgorithmType, LoggingConfig
 from algo_sdk.runtime import (
     set_response_code,
@@ -27,7 +27,7 @@ from algo_sdk.runtime import (
     extra={"owner": "algo-core-service"},
     logging=LoggingConfig(enabled=True, log_input=True, log_output=True),
     execution={
-        "execution_mode": "in_process",
+        "execution_mode": ExecutionMode.IN_PROCESS,
     },
 )
 class PredictionAlgorithm(BaseAlgorithm[PredictionRequest, PredictionResult]):
