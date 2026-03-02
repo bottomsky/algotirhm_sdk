@@ -40,10 +40,13 @@ class SatTypeOrbit(SatOrbitVVLHRv, SatOrbitJ2000):
 
 
 class PredictionRequest(CamelBaseModel):
-    sat_states: SatOrbitVVLHRv
+    sat_states: SatOrbitJ2000 = Field(alias="sat")
     target_sats: list[SatOrbitVVLHRv]
     sim_time: SimTime
     duration_s: float = Field(alias="duration_s")
+    step_size_s: float | None = None
+    thread_distance: float | None = 50000
+    danger_distance: float | None = 10000
 
 
 class TargetSatBase(SatOrbit, CamelBaseModel):
@@ -55,6 +58,7 @@ class TargetSatBase(SatOrbit, CamelBaseModel):
     fixed_axis: Vector3
     q4: Vector4
     sat_type: int
+    task_mode: int | None = None
 
 
 class PlanningSource(SatOrbit, CamelBaseModel):
@@ -119,19 +123,19 @@ class PrepareSource(SatTypeOrbit, CamelBaseModel):
     规划算法的准备源信息
     """
 
-    controlled_map: ControlledMap
+    controlled_map: ControlledMap | None
     fixed_axis: Vector3
     q4: Vector4
     controlled_map: ControlledMap
     platform_map: PlatformMap
-    laser_map: LaserMap
-    dn_map: DnMap
+    laser_map: LaserMap | None
+    dn_map: DnMap | None
 
 
 class Prepare(TaskBase, TimeRange, CamelBaseModel):
     target_sats: list[TargetSatBase]
-    source: list[PlanningSource]
-    algorithm_name: str
+    source_sats: list[PrepareSource]
+    algorithm_name: str | None
 
 
 class PrepareRequest(CamelBaseModel):
@@ -152,11 +156,13 @@ class PrepareResultItem(SatBase, TimeRange, TaskBase, CamelBaseModel):
     task_mode: int
 
 
-class PrepareResult(RootModel[dict[str, PrepareResultItem]], CamelBaseModel):
+class PrepareResult(
+    RootModel[dict[str, list[PrepareResultItem]]], CamelBaseModel
+):
     """规划算法的结果信息（字典形式）
 
     Key: str
-    Value: PrepareResultItem
+    Value: list[PrepareResultItem]
     """
 
     model_config = CamelBaseModel.model_config
