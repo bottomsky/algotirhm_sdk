@@ -20,6 +20,8 @@ class AlgorithmType(str, Enum):
     PROGRAMME = "Programme"
     PREPARE = "Prepare"
     PREDICTION = "Prediction"
+    TASK_GENERATION = "TaskGeneration"
+    CONDITION = "Condition"
 
 
 @dataclass(frozen=True, slots=True)
@@ -93,9 +95,7 @@ def _schema_to_fields(schema: dict[str, Any]) -> list[dict[str, Any]]:
     if not isinstance(properties, dict):
         return []
     required = schema.get("required", [])
-    required_set = (
-        set(required) if isinstance(required, list) else set()
-    )
+    required_set = set(required) if isinstance(required, list) else set()
     fields: list[dict[str, Any]] = []
     for name, prop in properties.items():
         if not isinstance(prop, dict):
