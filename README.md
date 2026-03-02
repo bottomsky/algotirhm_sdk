@@ -7,6 +7,17 @@
 - `algo_decorators`：算法装饰器与元数据声明
 - `algo_dto`：DTO 数据模型（Pydantic v2）
 
+## 入手手册
+
+新同事接手项目时，优先阅读根目录 [GETTING_STARTED.md](GETTING_STARTED.md)。
+文档包含：
+
+- `.venv` 如何切换到目标 Python 解释器
+- `.env` 关键参数说明
+- VS Code 离线插件安装
+- 新算法如何放置、导出与注册
+- `@Algorithm` 装饰器的当前能力与限制
+
 ## 项目架构
 
 ### 目录结构

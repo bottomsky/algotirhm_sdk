@@ -171,6 +171,7 @@ class PredictionResultItem(SatBase, CamelBaseModel):
     relative_state_vvlh: VVLHRV
     score: float
     t_nearest_time: SimTime
+    t_danger_time: SimTime
 
 
 class PredictionResult(RootModel[list[PredictionResultItem]], CamelBaseModel):
@@ -211,3 +212,37 @@ class ProgrammeRequest(CamelBaseModel):
     sat: SatOrbitJ2000
     plannings: list[Planning]
     sim_time: SimTime
+
+
+class TaskGenerator(SatBase, CamelBaseModel):
+    """
+    任务生成算法输入
+    """
+
+    min_distance: float
+    relative_state_vvlh: VVLHRV
+    score: float
+    t_nearest_time: SimTime
+    t_danger_time: SimTime
+
+
+class TaskGenerationRequest(CamelBaseModel):
+    """
+    任务生成算法的请求信息
+    """
+
+    sat: SatOrbitJ2000
+    sim_time: SimTime
+    source_sats: list[PrepareSource]
+    target_sats: list[TargetSatBase]
+    target_information: list[TaskGenerator]
+
+
+class TaskGenerationResult(CamelBaseModel):
+    """
+    任务生成算法的结果信息
+    """
+
+    sat: SatOrbitJ2000
+    sim_time: SimTime
+    task: list[Prepare]

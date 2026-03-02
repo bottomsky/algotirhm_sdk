@@ -1,0 +1,103 @@
+{
+  "code": 2001,
+  "message": "programme ok",
+  "algorithmName": "Programme",
+  "requestId": "string",
+  "datetime": "2026-01-14T07:21:28.212254Z",
+  "context": {
+    "traceId": "trace-plan",
+    "tenantId": null,
+    "userId": null,
+    "extra": {
+      "source": "programme",
+      "mode": "mock",
+      "planningCount": 1
+    }
+  },
+  "data": [
+    {
+      // satId: 当前规划结果关联的卫星 NORAD/内部ID（int）
+      "satId": 10001,
+
+      // satType: 卫星类型（int），由业务枚举定义（例如 1=目标星，2=我方平台...）
+      "satType": 2,
+
+      // taskId / subTaskId / planningId: 规划任务标识（string）
+      "taskId": "task-001",
+      "subTaskId": "sub-001",
+      "planningId": "planning-0001",
+
+      // taskMode: 任务模式（int），直接来自请求 planning.task_mode
+      "taskMode": 1,
+
+      // targetId: 目标对象ID（int），示例算法里固定为 1；真实业务里通常对应目标星/目标点编号
+      "targetId": 1,
+
+      // controlledData: 受控动作时间窗列表（ControlledData = { id, startTime, endTime }）
+      "controlledData": [
+        {
+          // id: 受控动作ID（string）
+          "id": "ctrl-001-001",
+
+          // startTime/endTime: 时间范围（SimTime=[Y,M,D,h,m,s]）
+          "startTime": [2026, 1, 13, 10, 0, 0],
+          "endTime": [2026, 1, 13, 10, 5, 0]
+        },
+        {
+          "id": "ctrl-001-002",
+          "startTime": [2026, 1, 13, 10, 5, 0],
+          "endTime": [2026, 1, 13, 10, 15, 0]
+        }
+      ],
+
+      // orbitAng: 指向/姿态角信息列表（OrbitAng = { id, simTime, aimAxis }）
+      "orbitAng": [
+        {
+          "id": "ang-001-001",
+
+          // simTime: 时间戳（SimTime）；Timestamp 基类会把字段序列化为 simTime
+          "simTime": [2026, 1, 13, 10, 0, 0],
+
+          // aimAxis: 指向轴（Vector3=[x,y,z]），通常是单位向量或业务约定坐标系下的方向
+          "aimAxis": [0.0, 0.0, 1.0]
+        }
+      ],
+
+      // orbitManInfo: 轨道机动信息列表（OrbitManInfo = { id, simTime, deltaV, system }）
+      "orbitManInfo": [
+        {
+          "id": "man-001-001",
+          "simTime": [2026, 1, 13, 10, 0, 0],
+
+          // deltaV: 速度增量（Vector3），单位通常为 m/s（若你们业务另有约定以业务为准）
+          "deltaV": [0.05, 0.0, 0.0],
+
+          // system: 机动系统/推进系统编号（int），由业务枚举定义
+          "system": 1
+        }
+      ],
+
+      // laserData: 激光相关时间窗列表（LaserData = { id, startTime, endTime }）
+      "laserData": [
+        {
+          "id": "laser-001-001",
+          "startTime": [2026, 1, 13, 10, 0, 0],
+          "endTime": [2026, 1, 13, 10, 15, 0]
+        }
+      ],
+
+      // dnData: Dn 相关数据列表（DnData = { id, startV, startTime }）
+      "dnData": [
+        {
+          "id": "dn-001-001",
+
+          // startV: 初始速度（Vector3），单位通常 m/s（以业务约定为准）
+          "startV": [0.0, 0.0, 0.0],
+
+          // startTime: 起始时间（SimTime）
+          "startTime": [2026, 1, 13, 10, 0, 0]
+        }
+      ]
+    }
+  ]
+}
