@@ -16,12 +16,26 @@ class ExecutionMode(Enum):
     IN_PROCESS = "in_process"
 
 
+class AlgorithmCategory(str, Enum):
+    """Category of algorithm."""
+
+    COGNITIVE = "Cognitive"  # 认知研判
+    PERCEPTION = "Perception"  # 感知融合
+    DECISION = "Decision"  # 决策规划
+    MANEUVER = "Maneuver"  # 机动策略类
+    DIAGNOSTICS = "Diagnostics"  # 诊断类
+    BEHAVIOR_TREE = "BehaviorTree"  # 行为树类
+
+
 class AlgorithmType(str, Enum):
-    PROGRAMME = "Programme"
-    PREPARE = "Prepare"
-    PREDICTION = "Prediction"
-    TASK_GENERATION = "TaskGeneration"
-    CONDITION = "Condition"
+    PREDICTION = "Prediction"  # 威胁度算法
+    PREPARE = "Prepare"  # 筹划算法
+    PROGRAMME = "Programme"  # 规划算法
+    ANALYSIS_BY_FIXED_POINT_POSITIONING = (
+        "AnalysisByFixedPointPositioning"  # 定点定位分析
+    )
+    TASK_GENERATION = "TaskGeneration"  # 任务生成
+    CONDITION = "Condition"  # 条件类算法
 
 
 @dataclass(frozen=True, slots=True)
