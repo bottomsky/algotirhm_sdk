@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from algo_dto.condition import ConditionRequest, ConditionResult
 from algo_sdk import Algorithm, BaseAlgorithm, ExecutionMode
-from algo_sdk.core import AlgorithmType
+from algo_sdk.core import AlgorithmType, LoggingConfig
 
 
 @Algorithm(
@@ -17,6 +17,7 @@ from algo_sdk.core import AlgorithmType
     category="BehaviorTree",
     application_scenarios="行为树条件节点示例",
     extra={"owner": "algo-core-service"},
+    logging=LoggingConfig(enabled=True, log_input=True, log_output=True),
     execution={"execution_mode": ExecutionMode.IN_PROCESS},
 )
 class ConditionAlgorithm(BaseAlgorithm[ConditionRequest, ConditionResult]):

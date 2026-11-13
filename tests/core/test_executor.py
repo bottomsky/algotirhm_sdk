@@ -601,8 +601,8 @@ def test_logging_config_logs_input_output(caplog) -> None:
             r for r in caplog.records
             if r.msg == "algorithm execution completed"
         )
-        assert '"value": 3' in record.input_preview
-        assert '"doubled": 6' in record.output_preview
+        assert record.input_preview == {"value": 3}
+        assert record.output_preview == {"doubled": 6}
     finally:
         executor.shutdown()
 

@@ -268,7 +268,7 @@ class DefaultAlgorithmDecorator:
                 "sample_rate must be between 0 and 1"
             )
 
-        max_length = logging.get("max_length", 2048)
+        max_length = logging.get("max_length", 0)
         if not isinstance(max_length, int):
             raise AlgorithmValidationError("max_length must be an int")
         if max_length < 0:

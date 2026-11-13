@@ -59,7 +59,8 @@ class LoggingConfig:
     log_output: bool = False
     on_error_only: bool = False
     sample_rate: float = 1.0
-    max_length: int = 2048
+    # Deprecated: payload logs are always complete; kept for compatibility.
+    max_length: int = 0
     redact_fields: tuple[str, ...] = field(default_factory=tuple)
 
 

@@ -8,6 +8,7 @@ from logging.handlers import TimedRotatingFileHandler
 
 from ..protocol import LoggingConfiguratorProtocol
 from ..settings import LoggingSettings
+from ..serialization import to_json_value
 
 _BUILTIN_LOG_RECORD_ATTRS = {
     "args",
@@ -55,7 +56,9 @@ class JsonFormatter(logging.Formatter):
         }
         if extras:
             payload.update(extras)
-        return json.dumps(payload, ensure_ascii=True, default=str)
+        return json.dumps(
+            to_json_value(payload), ensure_ascii=False, allow_nan=False
+        )
 
 
 class PayloadLogFilter(logging.Filter):

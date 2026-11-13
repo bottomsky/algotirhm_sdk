@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import atexit
-import json
 import logging
 import multiprocessing as mp
 import os
@@ -26,8 +25,10 @@ from typing import (
 )
 
 from pydantic import ValidationError
+from pydantic.alias_generators import to_camel
 
 from ..logging import get_event_logger
+from ..logging.serialization import to_json_value
 from ..protocol.models import AlgorithmContext
 from ..runtime.context import (
     ResponseMeta,
@@ -342,8 +343,6 @@ def _sanitize_payload(
     *,
     redact_fields: set[str],
 ) -> object:
-    if isinstance(value, BaseModel):
-        value = value.model_dump()
     if isinstance(value, Mapping):
         sanitized: dict[str, object] = {}
         for key, item in value.items():
@@ -363,25 +362,15 @@ def _sanitize_payload(
     return value
 
 
-def _truncate_text(text: str, max_length: int) -> str:
-    if max_length <= 0:
-        return ""
-    if len(text) <= max_length:
-        return text
-    suffix = "...(truncated)"
-    if max_length <= len(suffix):
-        return suffix[:max_length]
-    return text[: max_length - len(suffix)] + suffix
-
-
-def _serialize_preview(value: object, config: LoggingConfig) -> str:
+def _serialize_payload_for_log(
+    value: object, config: LoggingConfig
+) -> object:
+    """Keep full JSON values; max_length is accepted for config compatibility."""
     redact_fields = {field for field in config.redact_fields}
-    sanitized = _sanitize_payload(value, redact_fields=redact_fields)
-    try:
-        text = json.dumps(sanitized, ensure_ascii=True, default=str)
-    except Exception:
-        text = str(sanitized)
-    return _truncate_text(text, config.max_length)
+    redact_fields.update(to_camel(field) for field in config.redact_fields)
+    return _sanitize_payload(
+        to_json_value(value), redact_fields=redact_fields
+    )
 
 
 def _build_payload_log_extra(
@@ -393,9 +382,13 @@ def _build_payload_log_extra(
         return {}
     extra: dict[str, object] = {}
     if config.log_input:
-        extra["input_preview"] = _serialize_preview(request.payload, config)
+        extra["input_preview"] = _serialize_payload_for_log(
+            request.payload, config
+        )
     if config.log_output and result.data is not None:
-        extra["output_preview"] = _serialize_preview(result.data, config)
+        extra["output_preview"] = _serialize_payload_for_log(
+            result.data, config
+        )
     return extra
 
 

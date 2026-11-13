@@ -459,7 +459,7 @@ class PrepareAlgorithm(
 - `log_output`
 - `on_error_only`
 - `sample_rate`
-- `max_length`
+- `max_length`（兼容旧配置，不再截断输入输出日志）
 - `redact_fields`
 
 示例：
@@ -471,10 +471,25 @@ logging={
     "log_output": True,
     "on_error_only": False,
     "sample_rate": 1.0,
-    "max_length": 2048,
     "redact_fields": ["password", "token"],
 }
 ```
+
+输入输出日志完整记录，不按字符长度截断。`max_length` 默认值为 `0`，
+已有配置中的其他非负值仍可加载，但不再限制日志长度。
+`input_preview`、`output_preview` 保留原字段名，值改为原生 JSON 数据，
+不再是嵌套编码的 JSON 字符串。DTO 使用 camelCase 别名；RootModel 输出
+保持数组、字典或布尔值。脱敏仍按 `redact_fields` 递归处理。
+
+`logs/payload/payload.log` 采用 JSON Lines 格式，每行都是完整 JSON 对象。
+例如条件算法返回 false 时（以下仅列出部分字段）：
+
+```json
+{"message":"algorithm execution completed","input_preview":{"forceType":1,"satId":"1001"},"output_preview":false}
+```
+
+记录仍遵循 `enabled`、输入输出开关、采样和仅错误记录配置。
+条件算法示例已开启输入输出日志。
 
 ### 3.7 装饰器会自动做的校验
 

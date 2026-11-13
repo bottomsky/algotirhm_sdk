@@ -693,7 +693,7 @@ class AlgorithmRegistry:
         if sample_rate < 0 or sample_rate > 1:
             raise ValueError("sample_rate must be between 0 and 1")
 
-        max_length = logging_config.get("max_length", 2048)
+        max_length = logging_config.get("max_length", 0)
         if not isinstance(max_length, int):
             raise ValueError("max_length must be an int")
         if max_length < 0:
