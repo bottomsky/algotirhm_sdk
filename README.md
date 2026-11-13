@@ -9,6 +9,8 @@
 
 ## 入手手册
 
+完整原始参数透传与算法读取方式见 [公共 rawData 协议](docs/raw_data.md)。
+
 新同事接手项目时，优先阅读根目录 [GETTING_STARTED.md](GETTING_STARTED.md)。
 文档包含：
 

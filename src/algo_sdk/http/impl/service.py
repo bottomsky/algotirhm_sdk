@@ -80,6 +80,7 @@ class AlgorithmHttpService:
             spec=spec,
             payload=request.data,
             hyperparams=request.hyperParams,
+            raw_data=request.rawData,
             request_id=request.requestId,
             request_datetime=request.datetime,
             trace_id=request.context.traceId if request.context else None,

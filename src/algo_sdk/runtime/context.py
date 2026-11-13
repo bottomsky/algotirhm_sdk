@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from contextlib import contextmanager
 from contextvars import ContextVar, Token
+from copy import deepcopy
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Mapping
@@ -28,6 +29,9 @@ _CURRENT_RESPONSE_META: ContextVar["ResponseMeta | None"] = ContextVar(
     "algo_response_meta",
     default=None,
 )
+_CURRENT_RAW_DATA: ContextVar[dict[str, Any] | None] = ContextVar(
+    "algo_raw_data", default=None,
+)
 
 
 @dataclass(slots=True)
@@ -44,6 +48,7 @@ class ContextTokens:
     trace_id: Token[str | None]
     request_datetime: Token[datetime | None]
     response_meta: Token[ResponseMeta | None]
+    raw_data: Token[dict[str, Any] | None]
 
 
 def set_execution_context(
@@ -51,13 +56,17 @@ def set_execution_context(
     trace_id: str | None,
     request_datetime: datetime | None,
     context: AlgorithmContext | None,
+    raw_data: dict[str, Any] | None = None,
 ) -> ContextTokens:
+    # Isolate nested mutable JSON from callers and reused requests.
+    raw_data_copy = deepcopy(raw_data)
     return ContextTokens(
         context=_CURRENT_CONTEXT.set(context),
         request_id=_CURRENT_REQUEST_ID.set(request_id),
         trace_id=_CURRENT_TRACE_ID.set(trace_id),
         request_datetime=_CURRENT_REQUEST_DATETIME.set(request_datetime),
         response_meta=_CURRENT_RESPONSE_META.set(None),
+        raw_data=_CURRENT_RAW_DATA.set(raw_data_copy),
     )
 
 
@@ -67,6 +76,7 @@ def reset_execution_context(tokens: ContextTokens) -> None:
     _CURRENT_TRACE_ID.reset(tokens.trace_id)
     _CURRENT_REQUEST_DATETIME.reset(tokens.request_datetime)
     _CURRENT_RESPONSE_META.reset(tokens.response_meta)
+    _CURRENT_RAW_DATA.reset(tokens.raw_data)
 
 
 def get_current_context() -> AlgorithmContext | None:
@@ -83,6 +93,15 @@ def get_current_trace_id() -> str | None:
 
 def get_current_request_datetime() -> datetime | None:
     return _CURRENT_REQUEST_DATETIME.get()
+
+
+def get_current_raw_data() -> dict[str, Any] | None:
+    """Return this invocation's raw JSON object, or None when absent.
+
+    Treat it as read-only. It is isolated from the caller's original object
+    and is available during per-call lifecycle hooks and algorithm execution.
+    """
+    return _CURRENT_RAW_DATA.get()
 
 
 def _ensure_response_meta() -> ResponseMeta:
@@ -127,9 +146,10 @@ def execution_context(
     trace_id: str | None,
     request_datetime: datetime | None = None,
     context: AlgorithmContext | None,
+    raw_data: dict[str, Any] | None = None,
 ):
     tokens = set_execution_context(
-        request_id, trace_id, request_datetime, context
+        request_id, trace_id, request_datetime, context, raw_data
     )
     try:
         yield

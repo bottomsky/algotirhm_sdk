@@ -76,6 +76,7 @@ class ExecutionRequest(Generic[TInput, TOutput]):
     trace_id: str | None = None
     context: AlgorithmContext | None = None
     timeout_s: int | None = None
+    raw_data: dict[str, Any] | None = None
 
     def __post_init__(self) -> None:
         if not self.request_id:
@@ -428,6 +429,7 @@ class _WorkerPayload(Generic[TInput, TOutput]):
     request_datetime: datetime | None
     trace_id: str | None
     context: Mapping[str, Any] | None
+    raw_data: dict[str, Any] | None = None
 
 
 @dataclass(slots=True)
@@ -513,6 +515,7 @@ def _worker_execute(payload: _WorkerPayload[Any, Any]) -> _WorkerResponse[Any]:
             trace_id,
             payload.request_datetime,
             context,
+            raw_data=payload.raw_data,
         )
 
         try:
@@ -748,6 +751,7 @@ class InProcessExecutor(ExecutorProtocol):
             trace_id,
             request.request_datetime,
             context,
+            raw_data=request.raw_data,
         )
         try:
             try:
@@ -1008,6 +1012,7 @@ class ProcessPoolExecutor(ExecutorProtocol):
                 request_datetime=request.request_datetime,
                 trace_id=request.trace_id,
                 context=context_data,
+                raw_data=request.raw_data,
             )
             self._workers[worker_index].input_queue.put((task_id, payload))
             dispatched = True

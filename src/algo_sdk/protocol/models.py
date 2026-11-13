@@ -25,6 +25,7 @@ class AlgorithmRequest(_PydanticBaseModel, Generic[T]):
 
     The `data` field carries business-domain models (from algo_dto) used as
     the algorithm input. `hyperParams` carries optional hyper-parameters.
+    `rawData` carries optional original JSON independently of business models.
     """
 
     requestId: str = Field(min_length=1)
@@ -32,6 +33,7 @@ class AlgorithmRequest(_PydanticBaseModel, Generic[T]):
     context: AlgorithmContext = Field(default_factory=AlgorithmContext)
     data: T
     hyperParams: Dict[str, Any] | None = None
+    rawData: dict[str, Any] | None = None
 
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
