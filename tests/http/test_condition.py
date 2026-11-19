@@ -1,13 +1,21 @@
 from __future__ import annotations
 
 from collections.abc import Iterator
+from dataclasses import replace
+import json
+from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
 
 import algo_core_service.algorithms as algorithms
 from algo_dto.condition import ConditionRequest, ConditionResult
-from algo_sdk import AlgorithmRegistry, ExecutionMode, create_app
+from algo_sdk import (
+    AlgorithmRegistry,
+    ExecutionConfig,
+    ExecutionMode,
+    create_app,
+)
 from algo_sdk.core import AlgorithmType
 
 
@@ -48,6 +56,38 @@ def test_condition_catalog_and_schema(condition_client: TestClient) -> None:
         "forceType",
     }
     assert schema["input"]["properties"]["satId"]["type"] == "string"
+    definitions = schema["input"]["$defs"]
+    assert "ProjectDTO" in definitions
+    assert "PlatParam" in definitions
+    assert "LaserPayloadParam" in definitions
+    assert definitions["ProjectDTO"]["additionalProperties"] is True
+    assert "algorithmsSatType" in definitions["PlatParam"]["properties"]
+
+
+@pytest.mark.parametrize("mode", ["in_process", "shared", "isolated"])
+def test_full_csharp_models_run_in_all_execution_modes(mode: str) -> None:
+    source = Path(__file__).resolve().parents[1]
+    data = json.loads(
+        (source / "fixtures/csharp_condition_contract.json").read_text()
+    )["conditionData"]
+    catalog = AlgorithmRegistry()
+    catalog.register_from_module(algorithms)
+    spec = replace(catalog.get("Condition", "v1"), execution=ExecutionConfig(
+        execution_mode=(ExecutionMode.IN_PROCESS if mode == "in_process"
+                        else ExecutionMode.PROCESS_POOL),
+        isolated_pool=mode == "isolated", max_workers=1,
+    ))
+    registry = AlgorithmRegistry()
+    registry.register(spec)
+    with TestClient(create_app(registry)) as client:
+        response = client.post("/algorithms/Condition/v1", json={
+            "requestId": "csharp-full", "datetime": "2026-11-13T10:00:00Z",
+            "data": data,
+        })
+        assert response.status_code == 200
+        body = response.json()
+        assert body["code"] == 0, body
+        assert body["data"] is True
 
 
 @pytest.mark.parametrize("fault, expected", [(1, True), (0, False)])

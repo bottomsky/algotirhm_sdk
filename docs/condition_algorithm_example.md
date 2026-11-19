@@ -9,6 +9,7 @@
 
 - 算法：`src/algo_core_service/algorithms/condition.py`
 - 输入输出 DTO：`src/algo_dto/condition.py`
+- 完整 C# 业务模型：`src/algo_dto/csharp_models.py`
 - 注册：算法包导出 `ConditionAlgorithm`，沿用 `@Algorithm` 自动加载机制。
 
 算法类型为 `Condition`，分类为 `BehaviorTree`，采用进程内执行。
@@ -67,15 +68,63 @@ $env:SERVICE_REGISTRY_ENABLED = "false"
 | `data.frameData.data` | 卫星 ID 到状态的字典，允许为空 |
 | 卫星状态的 `forceType` | 必填整数，卫星所属阵营 |
 | 卫星状态的 `isSatFault` | 必填整数，1 表示故障 |
-| `data.projectDto` | 必填项目上下文字典，可为 `{}`，本示例不参与判断 |
+| `data.projectDto` | 必填 ProjectDTO 模型，可为 `{}`，采用 C# 默认值 |
 | `data.forceType` | 必填整数，当前行为树所属阵营 |
 | `data.satId` | 当前行为树的卫星标识字符串，省略时为空；兼容输入别名 `sateId` |
 
-DTO 沿用 `CamelBaseModel` 的行为：接受 camelCase JSON 字段名与 Python
-snake_case 字段名，忽略未参与建模的其他帧、卫星和请求业务字段。
-`projectDto` 的字典内容正常接收。
+DTO 沿用 `CamelBaseModel` 的命名约定：接受 C# JSON 字段名与 Python
+snake_case 属性名。帧、卫星及项目对象中已知字段均有类型，并保留未知扩展字段；
+请求业务根对象仍忽略额外上下文字段。向量复用 SDK 的 Vector3/4/6，校验数组长度。
 `satId` 从行为树黑板的 `SatelliteId` 读取，仅作为上下文传递；本示例仍判断
 己方是否存在故障卫星，不按该标识筛选卫星。
+
+## 完整 C# 模型
+
+模型来自本服务当前引用的 `LJ.DTO 1.0.12`，从 ProjectDTO、SimData 递归提取
+34 个模型、242 个序列化字段，包括装备递归结构、平台能力、八类载荷、轨道参数、
+姿态、卫星实时状态、脚本及平台事件。C# 继承属性在 Python 模型中完整展开。
+只包含当前 JSON 协议可见的属性；`[JsonIgnore]` 的 RawData、Time，以及未开启
+IncludeFields 时不参与序列化的 ScriptVo.PayloadParamsAll 字段不生成。
+
+常用访问方式：
+
+```python
+from algo_dto.condition import ConditionRequest
+from algo_dto.csharp_models import ProjectDTO
+
+def read_platform(req: ConditionRequest) -> float:
+    project: ProjectDTO = req.project_dto
+    equipment = project.force.equipment[0]
+    platform = equipment.equipment_param.plat_param
+    return platform.sat_mass
+
+# JSON algorithmsSatType 对应 Python sat_type。
+# AttReFrame、Isp、Thrust、m_TarSize、relations 后的空格等沿用 C# 原始别名。
+# 未知参数可通过对应对象的 model_extra 字典读取。
+```
+
+保持原有必填规则：frameData.data、projectDto、forceType，以及每颗卫星的
+forceType/isSatFault 必填。其他已知字段采用 C# 默认值，可空字段用 `None`。
+集合使用 default_factory，实例之间不共享数据。日期在 Python 中为 datetime；
+JSON 导出采用 SDK 的 ISO 日期格式，可能规范化时区或小数秒的文本表示。
+C# getter 的快照字段（如 bjt、sunPosition）也已建模并在 Schema 中标记 readOnly；
+Python 接收这些快照，不实现 C# getter 的运行时计算。
+
+项目参数中的动态字典和 JsonElement 使用 `JsonValue`；已知业务结构不使用 Any
+代替。未知 JSON 仅能保留实际收到的内容；C# 强类型 DTO 已丢弃的原始字段需要
+通过公共顶层 rawData 通道传递，不能由这些模型恢复。
+
+模型可重复生成。升级共享包后，在 SDK 根目录运行（需安装 .NET 10）：
+
+```powershell
+dotnet restore scripts/csharp_contract/DtoContract.csproj --source D:/nuget
+dotnet run --project scripts/csharp_contract/DtoContract.csproj --no-restore -- tests/fixtures/csharp_condition_contract.json
+.\.venv\Scripts\python.exe scripts/generate_csharp_models.py
+```
+
+导出器使用与 C# 条件节点相同的 JsonSerializerDefaults.Web 配置，保存属性元数据和
+实际序列化的完整样例。生成器依据该契约输出静态 Pydantic 类，运行 SDK 无需 .NET。
+后续升级版本时先修改导出项目的 DtoVersion，再重新生成并运行契约测试。
 
 也可以在 PowerShell 中直接调用：
 
@@ -138,4 +187,8 @@ Invoke-RestMethod -Method Post `
 
 ```powershell
 .\.venv\Scripts\python.exe -m pytest tests/core/test_condition.py tests/http/test_condition.py -q
+.\.venv\Scripts\python.exe -m pytest tests/core/test_csharp_condition_models.py tests/logging/test_payload_json.py -q
 ```
+
+本次相关测试 84 项通过，覆盖全部字段映射、完整 C# JSON 往返、未知字段保留、
+独立集合默认值、向量校验、生成结果一致性、Schema 和三种 SDK 执行模式。

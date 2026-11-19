@@ -1,0 +1,4361 @@
+{
+  "assembly": "LJ.DTO, Version=1.0.12.0, Culture=neutral, PublicKeyToken=null",
+  "models": {
+    "SpaceWeatherContainer": {
+      "source": "LJ.DTO.SpaceWeatherContainer",
+      "properties": [
+        {
+          "name": "SpaceWeather",
+          "alias": "spaceWeather",
+          "type": {
+            "kind": "dict",
+            "key": {
+              "kind": "str",
+              "name": "String"
+            },
+            "item": {
+              "kind": "json",
+              "name": "Object"
+            }
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": {}
+        }
+      ]
+    },
+    "ScenarioWeather": {
+      "source": "LJ.DTO.ScenarioWeather",
+      "properties": [
+        {
+          "name": "SpaceWeather",
+          "alias": "spaceWeather",
+          "type": {
+            "kind": "model",
+            "name": "SpaceWeatherContainer"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": {
+            "spaceWeather": {}
+          }
+        }
+      ]
+    },
+    "EnvironmentConfig": {
+      "source": "LJ.DTO.EnvironmentConfig",
+      "properties": [
+        {
+          "name": "ScenarioWeather",
+          "alias": "scenarioWeather",
+          "type": {
+            "kind": "model",
+            "name": "ScenarioWeather"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": {
+            "spaceWeather": {
+              "spaceWeather": {}
+            }
+          }
+        }
+      ]
+    },
+    "EquipmentState": {
+      "source": "LJ.DTO.EquipmentState",
+      "properties": [
+        {
+          "name": "Angle",
+          "alias": "angle",
+          "type": {
+            "kind": "json",
+            "name": "Object"
+          },
+          "nullable": true,
+          "readOnly": false,
+          "default": null
+        },
+        {
+          "name": "IsInjure",
+          "alias": "isInjure",
+          "type": {
+            "kind": "json",
+            "name": "Object"
+          },
+          "nullable": true,
+          "readOnly": false,
+          "default": null
+        },
+        {
+          "name": "Mpoint",
+          "alias": "mpoint",
+          "type": {
+            "kind": "json",
+            "name": "Object"
+          },
+          "nullable": true,
+          "readOnly": false,
+          "default": null
+        },
+        {
+          "name": "Speed",
+          "alias": "speed",
+          "type": {
+            "kind": "json",
+            "name": "Object"
+          },
+          "nullable": true,
+          "readOnly": false,
+          "default": null
+        },
+        {
+          "name": "Type",
+          "alias": "type",
+          "type": {
+            "kind": "json",
+            "name": "Object"
+          },
+          "nullable": true,
+          "readOnly": false,
+          "default": null
+        },
+        {
+          "name": "WorkStatus",
+          "alias": "workStatus",
+          "type": {
+            "kind": "json",
+            "name": "Object"
+          },
+          "nullable": true,
+          "readOnly": false,
+          "default": null
+        }
+      ]
+    },
+    "PayloadCcsPayParam": {
+      "source": "LJ.DTO.PayloadCcsPayParam",
+      "properties": [
+        {
+          "name": "Angle",
+          "alias": "angle",
+          "type": {
+            "kind": "json",
+            "name": "Object"
+          },
+          "nullable": true,
+          "readOnly": false,
+          "default": null
+        },
+        {
+          "name": "Azimuth",
+          "alias": "azimuth",
+          "type": {
+            "kind": "json",
+            "name": "Object"
+          },
+          "nullable": true,
+          "readOnly": false,
+          "default": null
+        },
+        {
+          "name": "AzimuthRange",
+          "alias": "azimuthRange",
+          "type": {
+            "kind": "json",
+            "name": "Object"
+          },
+          "nullable": true,
+          "readOnly": false,
+          "default": null
+        },
+        {
+          "name": "Elevation",
+          "alias": "elevation",
+          "type": {
+            "kind": "json",
+            "name": "Object"
+          },
+          "nullable": true,
+          "readOnly": false,
+          "default": null
+        },
+        {
+          "name": "ElevationRange",
+          "alias": "elevationRange",
+          "type": {
+            "kind": "json",
+            "name": "Object"
+          },
+          "nullable": true,
+          "readOnly": false,
+          "default": null
+        },
+        {
+          "name": "ExplorePower",
+          "alias": "explorePower",
+          "type": {
+            "kind": "json",
+            "name": "Object"
+          },
+          "nullable": true,
+          "readOnly": false,
+          "default": null
+        },
+        {
+          "name": "IsInjure",
+          "alias": "isInjure",
+          "type": {
+            "kind": "json",
+            "name": "Object"
+          },
+          "nullable": true,
+          "readOnly": false,
+          "default": null
+        },
+        {
+          "name": "Scan",
+          "alias": "scan",
+          "type": {
+            "kind": "json",
+            "name": "Object"
+          },
+          "nullable": true,
+          "readOnly": false,
+          "default": null
+        },
+        {
+          "name": "ScanDistance",
+          "alias": "scanDistance",
+          "type": {
+            "kind": "json",
+            "name": "Object"
+          },
+          "nullable": true,
+          "readOnly": false,
+          "default": null
+        },
+        {
+          "name": "SmList",
+          "alias": "smList",
+          "type": {
+            "kind": "json",
+            "name": "Object"
+          },
+          "nullable": true,
+          "readOnly": false,
+          "default": null
+        },
+        {
+          "name": "WorkStatus",
+          "alias": "workStatus",
+          "type": {
+            "kind": "json",
+            "name": "Object"
+          },
+          "nullable": true,
+          "readOnly": false,
+          "default": null
+        }
+      ]
+    },
+    "EquipmentUnit": {
+      "source": "LJ.DTO.EquipmentUnit",
+      "properties": [
+        {
+          "name": "EquipGb",
+          "alias": "equipGb",
+          "type": {
+            "kind": "str",
+            "name": "String"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": ""
+        },
+        {
+          "name": "EquipNo",
+          "alias": "equipNo",
+          "type": {
+            "kind": "str",
+            "name": "String"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": ""
+        },
+        {
+          "name": "Equipment",
+          "alias": "equipment",
+          "type": {
+            "kind": "list",
+            "item": {
+              "kind": "model",
+              "name": "EquipmentUnit"
+            }
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": []
+        },
+        {
+          "name": "EquipmentParam",
+          "alias": "equipmentParam",
+          "type": {
+            "kind": "model",
+            "name": "EquipmentState"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": {
+            "angle": null,
+            "isInjure": null,
+            "mpoint": null,
+            "speed": null,
+            "type": null,
+            "workStatus": null
+          }
+        },
+        {
+          "name": "OpticalPerceptionParam",
+          "alias": "opticalPerceptionParam",
+          "type": {
+            "kind": "dict",
+            "key": {
+              "kind": "str",
+              "name": "String"
+            },
+            "item": {
+              "kind": "json",
+              "name": "Object"
+            }
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": {}
+        },
+        {
+          "name": "PayloadAdsorptionParam",
+          "alias": "payloadAdsorptionParam",
+          "type": {
+            "kind": "dict",
+            "key": {
+              "kind": "str",
+              "name": "String"
+            },
+            "item": {
+              "kind": "json",
+              "name": "Object"
+            }
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": {}
+        },
+        {
+          "name": "PayloadBaseInfoParam",
+          "alias": "payloadBaseInfoParam",
+          "type": {
+            "kind": "dict",
+            "key": {
+              "kind": "str",
+              "name": "String"
+            },
+            "item": {
+              "kind": "json",
+              "name": "Object"
+            }
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": {}
+        },
+        {
+          "name": "PayloadCcsPayParam",
+          "alias": "payloadCCSPayParam",
+          "type": {
+            "kind": "model",
+            "name": "PayloadCcsPayParam"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": {
+            "angle": null,
+            "azimuth": null,
+            "azimuthRange": null,
+            "elevation": null,
+            "elevationRange": null,
+            "explorePower": null,
+            "isInjure": null,
+            "scan": null,
+            "scanDistance": null,
+            "smList": null,
+            "workStatus": null
+          }
+        },
+        {
+          "name": "PayloadCkCameraPayParam",
+          "alias": "payloadCKCameraPayParam",
+          "type": {
+            "kind": "dict",
+            "key": {
+              "kind": "str",
+              "name": "String"
+            },
+            "item": {
+              "kind": "json",
+              "name": "Object"
+            }
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": {}
+        },
+        {
+          "name": "PayloadCkJxbParam",
+          "alias": "payloadCKJXBParam",
+          "type": {
+            "kind": "dict",
+            "key": {
+              "kind": "str",
+              "name": "String"
+            },
+            "item": {
+              "kind": "json",
+              "name": "Object"
+            }
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": {}
+        }
+      ]
+    },
+    "OrbitElements": {
+      "source": "LJ.DTO.OrbitElements",
+      "properties": [
+        {
+          "name": "Eccentricity",
+          "alias": "ecc",
+          "type": {
+            "kind": "float",
+            "name": "Double"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": 0
+        },
+        {
+          "name": "Inclination",
+          "alias": "i",
+          "type": {
+            "kind": "float",
+            "name": "Double"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": 0
+        },
+        {
+          "name": "RightAscension",
+          "alias": "raan",
+          "type": {
+            "kind": "float",
+            "name": "Double"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": 0
+        },
+        {
+          "name": "ArgumentOfPerigee",
+          "alias": "argPeri",
+          "type": {
+            "kind": "float",
+            "name": "Double"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": 0
+        },
+        {
+          "name": "MeanAnomaly",
+          "alias": "meanA",
+          "type": {
+            "kind": "float",
+            "name": "Double"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": 0
+        },
+        {
+          "name": "SemiMajorAxis",
+          "alias": "sMajAx",
+          "type": {
+            "kind": "float",
+            "name": "Double"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": 0
+        }
+      ]
+    },
+    "ForceModel": {
+      "source": "LJ.DTO.ForceModel",
+      "properties": [
+        {
+          "name": "GravityDegree",
+          "alias": "gravityDegree",
+          "type": {
+            "kind": "int",
+            "name": "Int32"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": 0
+        },
+        {
+          "name": "GravityOrder",
+          "alias": "gravityOrder",
+          "type": {
+            "kind": "int",
+            "name": "Int32"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": 0
+        },
+        {
+          "name": "DragCoeff",
+          "alias": "dragCoeff",
+          "type": {
+            "kind": "float",
+            "name": "Double"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": 0
+        },
+        {
+          "name": "Ca",
+          "alias": "ca",
+          "type": {
+            "kind": "float",
+            "name": "Double"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": 0
+        },
+        {
+          "name": "Cs",
+          "alias": "cs",
+          "type": {
+            "kind": "float",
+            "name": "Double"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": 0
+        },
+        {
+          "name": "Cr",
+          "alias": "cr",
+          "type": {
+            "kind": "float",
+            "name": "Double"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": 0
+        },
+        {
+          "name": "DailyFlux",
+          "alias": "dailyFlux",
+          "type": {
+            "kind": "float",
+            "name": "Double"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": 0
+        },
+        {
+          "name": "AverageFlux",
+          "alias": "averageFlux",
+          "type": {
+            "kind": "float",
+            "name": "Double"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": 0
+        },
+        {
+          "name": "Ap",
+          "alias": "ap",
+          "type": {
+            "kind": "float",
+            "name": "Double"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": 0
+        }
+      ]
+    },
+    "MassArea": {
+      "source": "LJ.DTO.MassArea",
+      "properties": [
+        {
+          "name": "Mass",
+          "alias": "mass",
+          "type": {
+            "kind": "float",
+            "name": "Double"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": 0
+        },
+        {
+          "name": "DragSection",
+          "alias": "dragSection",
+          "type": {
+            "kind": "float",
+            "name": "Double"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": 0
+        },
+        {
+          "name": "SolarCross",
+          "alias": "solarCross",
+          "type": {
+            "kind": "float",
+            "name": "Double"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": 0
+        }
+      ]
+    },
+    "Attitude": {
+      "source": "LJ.DTO.Attitude",
+      "properties": [
+        {
+          "name": "AttRefFrame",
+          "alias": "AttReFrame",
+          "type": {
+            "kind": "str",
+            "name": "String"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": ""
+        },
+        {
+          "name": "RotationOrderNum",
+          "alias": "RotationOrderNum",
+          "type": {
+            "kind": "int",
+            "name": "Int32"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": 0
+        },
+        {
+          "name": "Euler1",
+          "alias": "Euler1",
+          "type": {
+            "kind": "float",
+            "name": "Double"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": 0
+        },
+        {
+          "name": "Euler2",
+          "alias": "Euler2",
+          "type": {
+            "kind": "float",
+            "name": "Double"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": 0
+        },
+        {
+          "name": "Euler3",
+          "alias": "Euler3",
+          "type": {
+            "kind": "float",
+            "name": "Double"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": 0
+        }
+      ]
+    },
+    "Capability": {
+      "source": "LJ.DTO.Capability",
+      "properties": [
+        {
+          "name": "Score",
+          "alias": "score",
+          "type": {
+            "kind": "float",
+            "name": "Double"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": 0
+        }
+      ]
+    },
+    "ManeuverCapability": {
+      "source": "LJ.DTO.ManeuverCapability",
+      "properties": [
+        {
+          "name": "Score",
+          "alias": "score",
+          "type": {
+            "kind": "float",
+            "name": "Double"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": 0
+        },
+        {
+          "name": "Isp",
+          "alias": "isp",
+          "type": {
+            "kind": "float",
+            "name": "Double"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": 0
+        },
+        {
+          "name": "Thrust",
+          "alias": "thrust",
+          "type": {
+            "kind": "float",
+            "name": "Double"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": 0
+        },
+        {
+          "name": "SingleMaxDeltaV",
+          "alias": "singleMaxDeltaV",
+          "type": {
+            "kind": "float",
+            "name": "Double"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": 0
+        },
+        {
+          "name": "TotalDeltaV",
+          "alias": "totalDeltaV",
+          "type": {
+            "kind": "float",
+            "name": "Double"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": 0
+        },
+        {
+          "name": "OrbitCtrlInterval",
+          "alias": "orbitCtrlInterval",
+          "type": {
+            "kind": "float",
+            "name": "Double"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": 0
+        }
+      ]
+    },
+    "InformationCapability": {
+      "source": "LJ.DTO.InformationCapability",
+      "properties": [
+        {
+          "name": "Score",
+          "alias": "score",
+          "type": {
+            "kind": "float",
+            "name": "Double"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": 0
+        },
+        {
+          "name": "TargetGuidance",
+          "alias": "targetGuidance",
+          "type": {
+            "kind": "str",
+            "name": "String"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": ""
+        },
+        {
+          "name": "TmBandwidth",
+          "alias": "tmBandwidth",
+          "type": {
+            "kind": "float",
+            "name": "Double"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": 0
+        }
+      ]
+    },
+    "PerceptionCapability": {
+      "source": "LJ.DTO.PerceptionCapability",
+      "properties": [
+        {
+          "name": "Score",
+          "alias": "score",
+          "type": {
+            "kind": "float",
+            "name": "Double"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": 0
+        },
+        {
+          "name": "TargetNum",
+          "alias": "targetNum",
+          "type": {
+            "kind": "int",
+            "name": "Int32"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": 0
+        },
+        {
+          "name": "DetectionDistance",
+          "alias": "detectionDistance",
+          "type": {
+            "kind": "float",
+            "name": "Double"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": 0
+        }
+      ]
+    },
+    "PlatParam": {
+      "source": "LJ.DTO.PlatParam",
+      "properties": [
+        {
+          "name": "SatType",
+          "alias": "algorithmsSatType",
+          "type": {
+            "kind": "int",
+            "name": "Int32"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": 0
+        },
+        {
+          "name": "DynType",
+          "alias": "dynType",
+          "type": {
+            "kind": "int",
+            "name": "Int32"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": 0
+        },
+        {
+          "name": "DwellDis",
+          "alias": "dwellDis",
+          "type": {
+            "kind": "model",
+            "name": "Vector3d"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": [
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "SprayTime",
+          "alias": "sprayTime",
+          "type": {
+            "kind": "float",
+            "name": "Double"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": 0
+        },
+        {
+          "name": "SatMass",
+          "alias": "satMass",
+          "type": {
+            "kind": "float",
+            "name": "Double"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": 0
+        },
+        {
+          "name": "FuelMass",
+          "alias": "fuelMass",
+          "type": {
+            "kind": "float",
+            "name": "Double"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": 0
+        },
+        {
+          "name": "MissDis",
+          "alias": "missDis",
+          "type": {
+            "kind": "float",
+            "name": "Double"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": 0
+        },
+        {
+          "name": "OrbitEpoch",
+          "alias": "orbitEpoch",
+          "type": {
+            "kind": "str",
+            "name": "String"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": ""
+        },
+        {
+          "name": "OrbitInitType",
+          "alias": "orbitInitType",
+          "type": {
+            "kind": "int",
+            "name": "Int32"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": 0
+        },
+        {
+          "name": "OrbitType",
+          "alias": "orbitType",
+          "type": {
+            "kind": "int",
+            "name": "Int32"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": 0
+        },
+        {
+          "name": "PowerDensity",
+          "alias": "powerDensity",
+          "type": {
+            "kind": "model",
+            "name": "Vector3d"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": [
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "SatRV",
+          "alias": "satRV",
+          "type": {
+            "kind": "list",
+            "item": {
+              "kind": "float",
+              "name": "Double"
+            }
+          },
+          "nullable": true,
+          "readOnly": false,
+          "default": null
+        },
+        {
+          "name": "OrbitTle",
+          "alias": "orbitTLE",
+          "type": {
+            "kind": "str",
+            "name": "String"
+          },
+          "nullable": true,
+          "readOnly": false,
+          "default": null
+        },
+        {
+          "name": "OrbitElements",
+          "alias": "orbitElem",
+          "type": {
+            "kind": "model",
+            "name": "OrbitElements"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": {
+            "ecc": 0,
+            "i": 0,
+            "raan": 0,
+            "argPeri": 0,
+            "meanA": 0,
+            "sMajAx": 0
+          }
+        },
+        {
+          "name": "EulerAng",
+          "alias": "eulerAng",
+          "type": {
+            "kind": "list",
+            "item": {
+              "kind": "float",
+              "name": "Double"
+            }
+          },
+          "nullable": true,
+          "readOnly": false,
+          "default": null
+        },
+        {
+          "name": "Omega",
+          "alias": "omega",
+          "type": {
+            "kind": "model",
+            "name": "Vector3d"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": [
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "OrbitCtrlErr",
+          "alias": "orbitCtrlErr",
+          "type": {
+            "kind": "float",
+            "name": "Double"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": 0
+        },
+        {
+          "name": "OrbitCtrlInterval",
+          "alias": "orbitCtrlInterval",
+          "type": {
+            "kind": "float",
+            "name": "Double"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": 0
+        },
+        {
+          "name": "TargetSize",
+          "alias": "m_TarSize",
+          "type": {
+            "kind": "model",
+            "name": "Vector3d"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": [
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "EulerSeq",
+          "alias": "eulerSeq",
+          "type": {
+            "kind": "int",
+            "name": "Int32"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": 0
+        },
+        {
+          "name": "ForceModel",
+          "alias": "forceModel",
+          "type": {
+            "kind": "model",
+            "name": "ForceModel"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": {
+            "gravityDegree": 0,
+            "gravityOrder": 0,
+            "dragCoeff": 0,
+            "ca": 0,
+            "cs": 0,
+            "cr": 0,
+            "dailyFlux": 0,
+            "averageFlux": 0,
+            "ap": 0
+          }
+        },
+        {
+          "name": "MassArea",
+          "alias": "massArea",
+          "type": {
+            "kind": "model",
+            "name": "MassArea"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": {
+            "mass": 0,
+            "dragSection": 0,
+            "solarCross": 0
+          }
+        },
+        {
+          "name": "Attitude",
+          "alias": "attitude",
+          "type": {
+            "kind": "model",
+            "name": "Attitude"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": {
+            "AttReFrame": "",
+            "RotationOrderNum": 0,
+            "Euler1": 0,
+            "Euler2": 0,
+            "Euler3": 0
+          }
+        },
+        {
+          "name": "StrikeCapability",
+          "alias": "strikeCapability",
+          "type": {
+            "kind": "model",
+            "name": "Capability"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": {
+            "score": 0
+          }
+        },
+        {
+          "name": "ProtectCapability",
+          "alias": "protectCapability",
+          "type": {
+            "kind": "model",
+            "name": "Capability"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": {
+            "score": 0
+          }
+        },
+        {
+          "name": "ManeuverCapability",
+          "alias": "maneuverCapability",
+          "type": {
+            "kind": "model",
+            "name": "ManeuverCapability"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": {
+            "isp": 0,
+            "thrust": 0,
+            "singleMaxDeltaV": 0,
+            "totalDeltaV": 0,
+            "orbitCtrlInterval": 0,
+            "score": 0
+          }
+        },
+        {
+          "name": "InformationCapability",
+          "alias": "informationCapability",
+          "type": {
+            "kind": "model",
+            "name": "InformationCapability"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": {
+            "targetGuidance": "",
+            "tmBandwidth": 0,
+            "score": 0
+          }
+        },
+        {
+          "name": "PerceptionCapability",
+          "alias": "perceptionCapability",
+          "type": {
+            "kind": "model",
+            "name": "PerceptionCapability"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": {
+            "targetNum": 0,
+            "detectionDistance": 0,
+            "score": 0
+          }
+        },
+        {
+          "name": "Isp",
+          "alias": "Isp",
+          "type": {
+            "kind": "float",
+            "name": "Double"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": 0
+        },
+        {
+          "name": "Thrust",
+          "alias": "Thrust",
+          "type": {
+            "kind": "float",
+            "name": "Double"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": 0
+        },
+        {
+          "name": "InertiaMatrix",
+          "alias": "I",
+          "type": {
+            "kind": "list",
+            "item": {
+              "kind": "list",
+              "item": {
+                "kind": "float",
+                "name": "Double"
+              }
+            }
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": []
+        },
+        {
+          "name": "DwellTime",
+          "alias": "dwellTime",
+          "type": {
+            "kind": "model",
+            "name": "Vector3d"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": [
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "CanBattleTime",
+          "alias": "canBattleTime",
+          "type": {
+            "kind": "datetime",
+            "name": "DateTime"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": "0001-01-01T00:00:00"
+        }
+      ]
+    },
+    "LaserPayloadParam": {
+      "source": "LJ.DTO.LaserPayloadParam",
+      "properties": [
+        {
+          "name": "InstallMatrix",
+          "alias": "installMatrix",
+          "type": {
+            "kind": "str",
+            "name": "String"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": "1"
+        },
+        {
+          "name": "StrikeDistance",
+          "alias": "strikeDistance",
+          "type": {
+            "kind": "float",
+            "name": "Double"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": 0
+        },
+        {
+          "name": "RelativeW",
+          "alias": "relativeW",
+          "type": {
+            "kind": "model",
+            "name": "Vector3d"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": [
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "Area",
+          "alias": "area",
+          "type": {
+            "kind": "float",
+            "name": "Double"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": 0
+        },
+        {
+          "name": "DissCoe",
+          "alias": "dissCoe",
+          "type": {
+            "kind": "float",
+            "name": "Double"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": 0
+        },
+        {
+          "name": "EvasionAng",
+          "alias": "evasionAng",
+          "type": {
+            "kind": "model",
+            "name": "Vector3d"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": [
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "Power",
+          "alias": "power",
+          "type": {
+            "kind": "float",
+            "name": "Double"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": 0
+        },
+        {
+          "name": "LaserTime",
+          "alias": "laserTime",
+          "type": {
+            "kind": "float",
+            "name": "Double"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": 0
+        },
+        {
+          "name": "BattleInterval",
+          "alias": "battleInterval",
+          "type": {
+            "kind": "float",
+            "name": "Double"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": 0
+        },
+        {
+          "name": "CanBattleTime",
+          "alias": "canBattleTime",
+          "type": {
+            "kind": "datetime",
+            "name": "DateTime"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": "0001-01-01T00:00:00"
+        }
+      ]
+    },
+    "DnPayloadParam": {
+      "source": "LJ.DTO.DnPayloadParam",
+      "properties": [
+        {
+          "name": "InstallMatrix",
+          "alias": "installMatrix",
+          "type": {
+            "kind": "str",
+            "name": "String"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": "1"
+        },
+        {
+          "name": "RelativeV",
+          "alias": "relativeV",
+          "type": {
+            "kind": "model",
+            "name": "Vector3d"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": [
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "EvasionAng",
+          "alias": "evasionAng",
+          "type": {
+            "kind": "model",
+            "name": "Vector3d"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": [
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "BombNum",
+          "alias": "bombNum",
+          "type": {
+            "kind": "int",
+            "name": "Int32"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": 0
+        },
+        {
+          "name": "ReleaseDis",
+          "alias": "releaseDis",
+          "type": {
+            "kind": "float",
+            "name": "Double"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": 0
+        },
+        {
+          "name": "CanBattleTime",
+          "alias": "canBattleTime",
+          "type": {
+            "kind": "datetime",
+            "name": "DateTime"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": "0001-01-01T00:00:00"
+        },
+        {
+          "name": "StrikeDistance",
+          "alias": "strikeDistance",
+          "type": {
+            "kind": "float",
+            "name": "Double"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": 0
+        }
+      ]
+    },
+    "ControlledPayloadParam": {
+      "source": "LJ.DTO.ControlledPayloadParam",
+      "properties": [
+        {
+          "name": "InstallMatrix",
+          "alias": "installMatrix",
+          "type": {
+            "kind": "str",
+            "name": "String"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": "1"
+        },
+        {
+          "name": "RelativeW",
+          "alias": "relativeW",
+          "type": {
+            "kind": "model",
+            "name": "Vector3d"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": [
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "RelativeV",
+          "alias": "relativeV",
+          "type": {
+            "kind": "model",
+            "name": "Vector3d"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": [
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "EvasionAng",
+          "alias": "evasionAng",
+          "type": {
+            "kind": "model",
+            "name": "Vector3d"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": [
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "OperationDis",
+          "alias": "operationDis",
+          "type": {
+            "kind": "float",
+            "name": "Double"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": 0
+        },
+        {
+          "name": "OperationInterval",
+          "alias": "operationInterval",
+          "type": {
+            "kind": "float",
+            "name": "Double"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": 0
+        },
+        {
+          "name": "OperationNum",
+          "alias": "operationNum",
+          "type": {
+            "kind": "int",
+            "name": "Int32"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": 0
+        },
+        {
+          "name": "CanBattleTime",
+          "alias": "canBattleTime",
+          "type": {
+            "kind": "datetime",
+            "name": "DateTime"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": "0001-01-01T00:00:00"
+        }
+      ]
+    },
+    "InterferencePayloadParam": {
+      "source": "LJ.DTO.InterferencePayloadParam",
+      "properties": [
+        {
+          "name": "InstallMatrix",
+          "alias": "installMatrix",
+          "type": {
+            "kind": "str",
+            "name": "String"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": "1"
+        },
+        {
+          "name": "PayloadDirection",
+          "alias": "payloadDirection",
+          "type": {
+            "kind": "model",
+            "name": "Vector3d"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": [
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "AngleRange",
+          "alias": "angleRange",
+          "type": {
+            "kind": "float",
+            "name": "Double"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": 0
+        }
+      ]
+    },
+    "RadarPayloadParam": {
+      "source": "LJ.DTO.RadarPayloadParam",
+      "properties": [
+        {
+          "name": "InstallMatrix",
+          "alias": "installMatrix",
+          "type": {
+            "kind": "str",
+            "name": "String"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": "1"
+        },
+        {
+          "name": "PayloadDirection",
+          "alias": "payloadDirection",
+          "type": {
+            "kind": "model",
+            "name": "Vector3d"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": [
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "AngleRange",
+          "alias": "angleRange",
+          "type": {
+            "kind": "float",
+            "name": "Double"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": 0
+        }
+      ]
+    },
+    "CommunicationPayloadParam": {
+      "source": "LJ.DTO.CommunicationPayloadParam",
+      "properties": [
+        {
+          "name": "InstallMatrix",
+          "alias": "installMatrix",
+          "type": {
+            "kind": "str",
+            "name": "String"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": "1"
+        },
+        {
+          "name": "CommunicationDistance",
+          "alias": "communicationDistance",
+          "type": {
+            "kind": "float",
+            "name": "Double"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": 0
+        }
+      ]
+    },
+    "InfraredPayloadParam": {
+      "source": "LJ.DTO.InfraredPayloadParam",
+      "properties": [
+        {
+          "name": "InstallMatrix",
+          "alias": "installMatrix",
+          "type": {
+            "kind": "str",
+            "name": "String"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": "1"
+        },
+        {
+          "name": "PayloadDirection",
+          "alias": "payloadDirection",
+          "type": {
+            "kind": "model",
+            "name": "Vector3d"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": [
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "AngleRange",
+          "alias": "angleRange",
+          "type": {
+            "kind": "float",
+            "name": "Double"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": 0
+        }
+      ]
+    },
+    "OpticsPayloadParam": {
+      "source": "LJ.DTO.OpticsPayloadParam",
+      "properties": [
+        {
+          "name": "InstallMatrix",
+          "alias": "installMatrix",
+          "type": {
+            "kind": "str",
+            "name": "String"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": "1"
+        },
+        {
+          "name": "PayloadDirection",
+          "alias": "payloadDirection",
+          "type": {
+            "kind": "model",
+            "name": "Vector3d"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": [
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "AngleXRange",
+          "alias": "angleXRange",
+          "type": {
+            "kind": "float",
+            "name": "Double"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": 0
+        },
+        {
+          "name": "AngleYRange",
+          "alias": "angleYRange",
+          "type": {
+            "kind": "float",
+            "name": "Double"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": 0
+        }
+      ]
+    },
+    "PayloadParam": {
+      "source": "LJ.DTO.PayloadParam",
+      "properties": [
+        {
+          "name": "LaserPayloadParam",
+          "alias": "laserPayloadParam",
+          "type": {
+            "kind": "model",
+            "name": "LaserPayloadParam"
+          },
+          "nullable": true,
+          "readOnly": false,
+          "default": null
+        },
+        {
+          "name": "DnPayloadParam",
+          "alias": "dnPayloadParam",
+          "type": {
+            "kind": "model",
+            "name": "DnPayloadParam"
+          },
+          "nullable": true,
+          "readOnly": false,
+          "default": null
+        },
+        {
+          "name": "ControlledPayloadParam",
+          "alias": "controlledPayloadParam",
+          "type": {
+            "kind": "model",
+            "name": "ControlledPayloadParam"
+          },
+          "nullable": true,
+          "readOnly": false,
+          "default": null
+        },
+        {
+          "name": "InterferencePayloadParam",
+          "alias": "interferencePayloadParam",
+          "type": {
+            "kind": "model",
+            "name": "InterferencePayloadParam"
+          },
+          "nullable": true,
+          "readOnly": false,
+          "default": null
+        },
+        {
+          "name": "RadarPayloadParam",
+          "alias": "radarPayloadParam",
+          "type": {
+            "kind": "model",
+            "name": "RadarPayloadParam"
+          },
+          "nullable": true,
+          "readOnly": false,
+          "default": null
+        },
+        {
+          "name": "CommunicationPayloadParam",
+          "alias": "communicationPayloadParam",
+          "type": {
+            "kind": "model",
+            "name": "CommunicationPayloadParam"
+          },
+          "nullable": true,
+          "readOnly": false,
+          "default": null
+        },
+        {
+          "name": "InfraredPayloadParam",
+          "alias": "infraredPayloadParam",
+          "type": {
+            "kind": "model",
+            "name": "InfraredPayloadParam"
+          },
+          "nullable": true,
+          "readOnly": false,
+          "default": null
+        },
+        {
+          "name": "OpticsPayloadParam",
+          "alias": "opticsPayloadParam",
+          "type": {
+            "kind": "model",
+            "name": "OpticsPayloadParam"
+          },
+          "nullable": true,
+          "readOnly": false,
+          "default": null
+        }
+      ]
+    },
+    "EquipmentParam": {
+      "source": "LJ.DTO.EquipmentParam",
+      "properties": [
+        {
+          "name": "PlatParam",
+          "alias": "platParam",
+          "type": {
+            "kind": "model",
+            "name": "PlatParam"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": {
+            "algorithmsSatType": 0,
+            "dynType": 0,
+            "dwellDis": [
+              0,
+              0,
+              0
+            ],
+            "sprayTime": 0,
+            "satMass": 0,
+            "fuelMass": 0,
+            "missDis": 0,
+            "orbitEpoch": "",
+            "orbitInitType": 0,
+            "orbitType": 0,
+            "powerDensity": [
+              0,
+              0,
+              0
+            ],
+            "satRV": null,
+            "orbitTLE": null,
+            "orbitElem": {
+              "ecc": 0,
+              "i": 0,
+              "raan": 0,
+              "argPeri": 0,
+              "meanA": 0,
+              "sMajAx": 0
+            },
+            "eulerAng": null,
+            "omega": [
+              0,
+              0,
+              0
+            ],
+            "orbitCtrlErr": 0,
+            "orbitCtrlInterval": 0,
+            "m_TarSize": [
+              0,
+              0,
+              0
+            ],
+            "eulerSeq": 0,
+            "forceModel": {
+              "gravityDegree": 0,
+              "gravityOrder": 0,
+              "dragCoeff": 0,
+              "ca": 0,
+              "cs": 0,
+              "cr": 0,
+              "dailyFlux": 0,
+              "averageFlux": 0,
+              "ap": 0
+            },
+            "massArea": {
+              "mass": 0,
+              "dragSection": 0,
+              "solarCross": 0
+            },
+            "attitude": {
+              "AttReFrame": "",
+              "RotationOrderNum": 0,
+              "Euler1": 0,
+              "Euler2": 0,
+              "Euler3": 0
+            },
+            "strikeCapability": {
+              "score": 0
+            },
+            "protectCapability": {
+              "score": 0
+            },
+            "maneuverCapability": {
+              "isp": 0,
+              "thrust": 0,
+              "singleMaxDeltaV": 0,
+              "totalDeltaV": 0,
+              "orbitCtrlInterval": 0,
+              "score": 0
+            },
+            "informationCapability": {
+              "targetGuidance": "",
+              "tmBandwidth": 0,
+              "score": 0
+            },
+            "perceptionCapability": {
+              "targetNum": 0,
+              "detectionDistance": 0,
+              "score": 0
+            },
+            "Isp": 0,
+            "Thrust": 0,
+            "I": [],
+            "dwellTime": [
+              0,
+              0,
+              0
+            ],
+            "canBattleTime": "0001-01-01 00:00:00"
+          }
+        },
+        {
+          "name": "PayloadParams",
+          "alias": "payloadParams",
+          "type": {
+            "kind": "list",
+            "item": {
+              "kind": "model",
+              "name": "PayloadParam"
+            }
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": []
+        }
+      ]
+    },
+    "ForceEquipment": {
+      "source": "LJ.DTO.ForceEquipment",
+      "properties": [
+        {
+          "name": "EquipGb",
+          "alias": "equipGb",
+          "type": {
+            "kind": "str",
+            "name": "String"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": ""
+        },
+        {
+          "name": "EquipNo",
+          "alias": "equipNo",
+          "type": {
+            "kind": "str",
+            "name": "String"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": ""
+        },
+        {
+          "name": "Equipment",
+          "alias": "equipment",
+          "type": {
+            "kind": "list",
+            "item": {
+              "kind": "model",
+              "name": "EquipmentUnit"
+            }
+          },
+          "nullable": true,
+          "readOnly": false,
+          "default": null
+        },
+        {
+          "name": "EquipmentParam",
+          "alias": "equipmentParam",
+          "type": {
+            "kind": "model",
+            "name": "EquipmentParam"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": {
+            "platParam": {
+              "algorithmsSatType": 0,
+              "dynType": 0,
+              "dwellDis": [
+                0,
+                0,
+                0
+              ],
+              "sprayTime": 0,
+              "satMass": 0,
+              "fuelMass": 0,
+              "missDis": 0,
+              "orbitEpoch": "",
+              "orbitInitType": 0,
+              "orbitType": 0,
+              "powerDensity": [
+                0,
+                0,
+                0
+              ],
+              "satRV": null,
+              "orbitTLE": null,
+              "orbitElem": {
+                "ecc": 0,
+                "i": 0,
+                "raan": 0,
+                "argPeri": 0,
+                "meanA": 0,
+                "sMajAx": 0
+              },
+              "eulerAng": null,
+              "omega": [
+                0,
+                0,
+                0
+              ],
+              "orbitCtrlErr": 0,
+              "orbitCtrlInterval": 0,
+              "m_TarSize": [
+                0,
+                0,
+                0
+              ],
+              "eulerSeq": 0,
+              "forceModel": {
+                "gravityDegree": 0,
+                "gravityOrder": 0,
+                "dragCoeff": 0,
+                "ca": 0,
+                "cs": 0,
+                "cr": 0,
+                "dailyFlux": 0,
+                "averageFlux": 0,
+                "ap": 0
+              },
+              "massArea": {
+                "mass": 0,
+                "dragSection": 0,
+                "solarCross": 0
+              },
+              "attitude": {
+                "AttReFrame": "",
+                "RotationOrderNum": 0,
+                "Euler1": 0,
+                "Euler2": 0,
+                "Euler3": 0
+              },
+              "strikeCapability": {
+                "score": 0
+              },
+              "protectCapability": {
+                "score": 0
+              },
+              "maneuverCapability": {
+                "isp": 0,
+                "thrust": 0,
+                "singleMaxDeltaV": 0,
+                "totalDeltaV": 0,
+                "orbitCtrlInterval": 0,
+                "score": 0
+              },
+              "informationCapability": {
+                "targetGuidance": "",
+                "tmBandwidth": 0,
+                "score": 0
+              },
+              "perceptionCapability": {
+                "targetNum": 0,
+                "detectionDistance": 0,
+                "score": 0
+              },
+              "Isp": 0,
+              "Thrust": 0,
+              "I": [],
+              "dwellTime": [
+                0,
+                0,
+                0
+              ],
+              "canBattleTime": "0001-01-01 00:00:00"
+            },
+            "payloadParams": []
+          }
+        },
+        {
+          "name": "ForceSide",
+          "alias": "forceSide",
+          "type": {
+            "kind": "int",
+            "name": "Int32"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": 0
+        },
+        {
+          "name": "IsActive",
+          "alias": "isActive",
+          "type": {
+            "kind": "bool",
+            "name": "Boolean"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": false
+        },
+        {
+          "name": "ModelName",
+          "alias": "modelName",
+          "type": {
+            "kind": "str",
+            "name": "String"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": ""
+        },
+        {
+          "name": "Name",
+          "alias": "name",
+          "type": {
+            "kind": "str",
+            "name": "String"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": ""
+        },
+        {
+          "name": "Relations",
+          "alias": "relations ",
+          "type": {
+            "kind": "int",
+            "name": "Int32"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": 0
+        },
+        {
+          "name": "Skill",
+          "alias": "skill",
+          "type": {
+            "kind": "str",
+            "name": "String"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": ""
+        },
+        {
+          "name": "Status",
+          "alias": "status",
+          "type": {
+            "kind": "int",
+            "name": "Int32"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": 0
+        },
+        {
+          "name": "ThreeDUrl",
+          "alias": "threeDUrl",
+          "type": {
+            "kind": "str",
+            "name": "String"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": ""
+        },
+        {
+          "name": "UUID",
+          "alias": "uuid",
+          "type": {
+            "kind": "int",
+            "name": "Int64"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": 0
+        },
+        {
+          "name": "Vip",
+          "alias": "vip",
+          "type": {
+            "kind": "bool",
+            "name": "Boolean"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": false
+        },
+        {
+          "name": "Standard",
+          "alias": "standard",
+          "type": {
+            "kind": "bool",
+            "name": "Boolean"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": false
+        }
+      ]
+    },
+    "ForceConfig": {
+      "source": "LJ.DTO.ForceConfig",
+      "properties": [
+        {
+          "name": "Equipment",
+          "alias": "equipment",
+          "type": {
+            "kind": "list",
+            "item": {
+              "kind": "model",
+              "name": "ForceEquipment"
+            }
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": []
+        }
+      ]
+    },
+    "Scenario": {
+      "source": "LJ.DTO.Scenario",
+      "properties": [
+        {
+          "name": "Description",
+          "alias": "description",
+          "type": {
+            "kind": "str",
+            "name": "String"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": ""
+        },
+        {
+          "name": "Keywords",
+          "alias": "keywords",
+          "type": {
+            "kind": "list",
+            "item": {
+              "kind": "str",
+              "name": "String"
+            }
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": []
+        },
+        {
+          "name": "ModificationDate",
+          "alias": "modificationDate",
+          "type": {
+            "kind": "str",
+            "name": "String"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": ""
+        },
+        {
+          "name": "Name",
+          "alias": "name",
+          "type": {
+            "kind": "str",
+            "name": "String"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": ""
+        },
+        {
+          "name": "SceneId",
+          "alias": "sceneId",
+          "type": {
+            "kind": "int",
+            "name": "Int64"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": 0
+        },
+        {
+          "name": "Version",
+          "alias": "version",
+          "type": {
+            "kind": "str",
+            "name": "String"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": ""
+        }
+      ]
+    },
+    "ProjectDTO": {
+      "source": "LJ.DTO.ProjectDTO",
+      "properties": [
+        {
+          "name": "Distributed",
+          "alias": "distributed",
+          "type": {
+            "kind": "bool",
+            "name": "Boolean"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": false
+        },
+        {
+          "name": "Environment",
+          "alias": "environment",
+          "type": {
+            "kind": "model",
+            "name": "EnvironmentConfig"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": {
+            "scenarioWeather": {
+              "spaceWeather": {
+                "spaceWeather": {}
+              }
+            }
+          }
+        },
+        {
+          "name": "EquipmentNumEachNode",
+          "alias": "equipmentNumEachNode",
+          "type": {
+            "kind": "int",
+            "name": "Int32"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": 0
+        },
+        {
+          "name": "Force",
+          "alias": "force",
+          "type": {
+            "kind": "model",
+            "name": "ForceConfig"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": {
+            "equipment": []
+          }
+        },
+        {
+          "name": "Id",
+          "alias": "id",
+          "type": {
+            "kind": "str",
+            "name": "String"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": ""
+        },
+        {
+          "name": "Scenario",
+          "alias": "scenario",
+          "type": {
+            "kind": "model",
+            "name": "Scenario"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": {
+            "description": "",
+            "keywords": [],
+            "modificationDate": "",
+            "name": "",
+            "sceneId": 0,
+            "version": ""
+          }
+        }
+      ]
+    },
+    "ScriptVo": {
+      "source": "LJ.DTO.Engine.ScriptVo",
+      "properties": [
+        {
+          "name": "EquipmentId",
+          "alias": "equipmentId",
+          "type": {
+            "kind": "int",
+            "name": "Int64"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": 0
+        },
+        {
+          "name": "Type",
+          "alias": "type",
+          "type": {
+            "kind": "int",
+            "name": "Int32"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": 0
+        },
+        {
+          "name": "Data",
+          "alias": "data",
+          "type": {
+            "kind": "json",
+            "name": "JsonElement"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": null
+        }
+      ]
+    },
+    "SimSatSimulation": {
+      "source": "LJ.DTO.Engine.SimSatSimulation",
+      "properties": [
+        {
+          "name": "Id",
+          "alias": "id",
+          "type": {
+            "kind": "int",
+            "name": "Int64"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": 0
+        },
+        {
+          "name": "VVLHRV",
+          "alias": "vvlhRv",
+          "type": {
+            "kind": "model",
+            "name": "Vector6d"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "Ecf",
+          "alias": "ecf",
+          "type": {
+            "kind": "model",
+            "name": "Vector6d"
+          },
+          "nullable": true,
+          "readOnly": false,
+          "default": null
+        },
+        {
+          "name": "M_Name",
+          "alias": "m_Name",
+          "type": {
+            "kind": "str",
+            "name": "String"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": ""
+        },
+        {
+          "name": "ForceType",
+          "alias": "forceType",
+          "type": {
+            "kind": "int",
+            "name": "Int32"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": 0
+        },
+        {
+          "name": "ModelType",
+          "alias": "modelType",
+          "type": {
+            "kind": "int",
+            "name": "Int32"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": 0
+        },
+        {
+          "name": "FuelMass",
+          "alias": "fuelMass",
+          "type": {
+            "kind": "float",
+            "name": "Double"
+          },
+          "nullable": true,
+          "readOnly": false,
+          "default": null
+        },
+        {
+          "name": "SatRV",
+          "alias": "satRV",
+          "type": {
+            "kind": "model",
+            "name": "Vector6d"
+          },
+          "nullable": true,
+          "readOnly": false,
+          "default": null
+        },
+        {
+          "name": "SatCoe",
+          "alias": "satCoe",
+          "type": {
+            "kind": "model",
+            "name": "Vector6d"
+          },
+          "nullable": true,
+          "readOnly": false,
+          "default": null
+        },
+        {
+          "name": "IsPulse",
+          "alias": "isPulse",
+          "type": {
+            "kind": "bool",
+            "name": "Boolean"
+          },
+          "nullable": true,
+          "readOnly": false,
+          "default": null
+        },
+        {
+          "name": "SatCloseControlModel",
+          "alias": "satCloseControlModel",
+          "type": {
+            "kind": "int",
+            "name": "Int32"
+          },
+          "nullable": true,
+          "readOnly": false,
+          "default": null
+        },
+        {
+          "name": "Euler",
+          "alias": "euler",
+          "type": {
+            "kind": "model",
+            "name": "Vector3d"
+          },
+          "nullable": true,
+          "readOnly": false,
+          "default": null
+        },
+        {
+          "name": "Q",
+          "alias": "q",
+          "type": {
+            "kind": "model",
+            "name": "Vector4d"
+          },
+          "nullable": true,
+          "readOnly": false,
+          "default": null
+        },
+        {
+          "name": "Omega",
+          "alias": "omega",
+          "type": {
+            "kind": "model",
+            "name": "Vector3d"
+          },
+          "nullable": true,
+          "readOnly": false,
+          "default": null
+        },
+        {
+          "name": "Mode",
+          "alias": "mode",
+          "type": {
+            "kind": "int",
+            "name": "Int32"
+          },
+          "nullable": true,
+          "readOnly": false,
+          "default": null
+        },
+        {
+          "name": "IsSteadyAtti",
+          "alias": "isSteadyAtti",
+          "type": {
+            "kind": "bool",
+            "name": "Boolean"
+          },
+          "nullable": true,
+          "readOnly": false,
+          "default": null
+        },
+        {
+          "name": "NaviTarget",
+          "alias": "naviTarget",
+          "type": {
+            "kind": "int",
+            "name": "Int64"
+          },
+          "nullable": true,
+          "readOnly": false,
+          "default": null
+        },
+        {
+          "name": "IsKeepNavi",
+          "alias": "isKeepNavi",
+          "type": {
+            "kind": "bool",
+            "name": "Boolean"
+          },
+          "nullable": true,
+          "readOnly": false,
+          "default": null
+        },
+        {
+          "name": "IsSatFault",
+          "alias": "isSatFault",
+          "type": {
+            "kind": "int",
+            "name": "Int32"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": 0
+        },
+        {
+          "name": "Lat",
+          "alias": "lat",
+          "type": {
+            "kind": "float",
+            "name": "Double"
+          },
+          "nullable": true,
+          "readOnly": false,
+          "default": null
+        },
+        {
+          "name": "Lon",
+          "alias": "lon",
+          "type": {
+            "kind": "float",
+            "name": "Double"
+          },
+          "nullable": true,
+          "readOnly": false,
+          "default": null
+        },
+        {
+          "name": "Alt",
+          "alias": "alt",
+          "type": {
+            "kind": "float",
+            "name": "Double"
+          },
+          "nullable": true,
+          "readOnly": false,
+          "default": null
+        },
+        {
+          "name": "Payloads",
+          "alias": "payloads",
+          "type": {
+            "kind": "model",
+            "name": "PayloadParam"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": {
+            "laserPayloadParam": null,
+            "dnPayloadParam": null,
+            "controlledPayloadParam": null,
+            "interferencePayloadParam": null,
+            "radarPayloadParam": null,
+            "communicationPayloadParam": null,
+            "infraredPayloadParam": null,
+            "opticsPayloadParam": null
+          }
+        },
+        {
+          "name": "RecoverDatas",
+          "alias": "recoverDatas",
+          "type": {
+            "kind": "list",
+            "item": {
+              "kind": "int",
+              "name": "Int32"
+            }
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": []
+        },
+        {
+          "name": "WorkStatus",
+          "alias": "workStatus",
+          "type": {
+            "kind": "int",
+            "name": "Int32"
+          },
+          "nullable": true,
+          "readOnly": false,
+          "default": null
+        },
+        {
+          "name": "MPoint",
+          "alias": "mPoint",
+          "type": {
+            "kind": "model",
+            "name": "Vector3d"
+          },
+          "nullable": true,
+          "readOnly": false,
+          "default": null
+        },
+        {
+          "name": "Angle",
+          "alias": "angle",
+          "type": {
+            "kind": "float",
+            "name": "Double"
+          },
+          "nullable": true,
+          "readOnly": false,
+          "default": null
+        },
+        {
+          "name": "Speed",
+          "alias": "speed",
+          "type": {
+            "kind": "float",
+            "name": "Double"
+          },
+          "nullable": true,
+          "readOnly": false,
+          "default": null
+        },
+        {
+          "name": "Type",
+          "alias": "type",
+          "type": {
+            "kind": "int",
+            "name": "Int32"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": 0
+        },
+        {
+          "name": "ScriptVo",
+          "alias": "scriptVo",
+          "type": {
+            "kind": "list",
+            "item": {
+              "kind": "model",
+              "name": "ScriptVo"
+            }
+          },
+          "nullable": true,
+          "readOnly": false,
+          "default": null
+        },
+        {
+          "name": "Vip",
+          "alias": "vip",
+          "type": {
+            "kind": "bool",
+            "name": "Boolean"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": false
+        },
+        {
+          "name": "Standard",
+          "alias": "standard",
+          "type": {
+            "kind": "bool",
+            "name": "Boolean"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": false
+        },
+        {
+          "name": "NextOrbitManeTimeMills",
+          "alias": "nextOrbitManeTimeMills",
+          "type": {
+            "kind": "int",
+            "name": "Int64"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": 0
+        },
+        {
+          "name": "NextOrbitManeTime",
+          "alias": "nextOrbitManeTime",
+          "type": {
+            "kind": "datetime",
+            "name": "DateTimeOffset"
+          },
+          "nullable": false,
+          "readOnly": true,
+          "default": "1970-01-01T00:00:00\u002B00:00"
+        }
+      ]
+    },
+    "SimPointThree": {
+      "source": "LJ.DTO.Engine.SimPointThree",
+      "properties": [
+        {
+          "name": "Position",
+          "alias": "position",
+          "type": {
+            "kind": "model",
+            "name": "Vector3d"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": [
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "Time",
+          "alias": "time",
+          "type": {
+            "kind": "str",
+            "name": "String"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": ""
+        }
+      ]
+    },
+    "PlatEvent": {
+      "source": "LJ.DTO.Engine.PlatEvent",
+      "properties": [
+        {
+          "name": "EventType",
+          "alias": "eventType",
+          "type": {
+            "kind": "int",
+            "name": "Int32"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": 0
+        },
+        {
+          "name": "EventID",
+          "alias": "eventID",
+          "type": {
+            "kind": "int",
+            "name": "Int64"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": 0
+        },
+        {
+          "name": "MissionID",
+          "alias": "missionID",
+          "type": {
+            "kind": "int",
+            "name": "Int64"
+          },
+          "nullable": true,
+          "readOnly": false,
+          "default": null
+        },
+        {
+          "name": "EventTime",
+          "alias": "eventTime",
+          "type": {
+            "kind": "int",
+            "name": "Int64"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": 0
+        },
+        {
+          "name": "EventEndTime",
+          "alias": "eventEndTime",
+          "type": {
+            "kind": "int",
+            "name": "Int64"
+          },
+          "nullable": true,
+          "readOnly": false,
+          "default": null
+        },
+        {
+          "name": "CauseEID",
+          "alias": "causeEID",
+          "type": {
+            "kind": "int",
+            "name": "Int64"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": 0
+        },
+        {
+          "name": "TargetEID",
+          "alias": "targetEID",
+          "type": {
+            "kind": "int",
+            "name": "Int64"
+          },
+          "nullable": true,
+          "readOnly": false,
+          "default": null
+        },
+        {
+          "name": "EventName",
+          "alias": "eventName",
+          "type": {
+            "kind": "str",
+            "name": "String"
+          },
+          "nullable": true,
+          "readOnly": false,
+          "default": null
+        },
+        {
+          "name": "EventPhase",
+          "alias": "eventPhase",
+          "type": {
+            "kind": "int",
+            "name": "Int32"
+          },
+          "nullable": true,
+          "readOnly": false,
+          "default": null
+        },
+        {
+          "name": "EventState",
+          "alias": "eventState",
+          "type": {
+            "kind": "int",
+            "name": "Int32"
+          },
+          "nullable": true,
+          "readOnly": false,
+          "default": null
+        },
+        {
+          "name": "EventContent",
+          "alias": "eventContent",
+          "type": {
+            "kind": "bytes"
+          },
+          "nullable": true,
+          "readOnly": false,
+          "default": null
+        },
+        {
+          "name": "TaskID",
+          "alias": "taskID",
+          "type": {
+            "kind": "int",
+            "name": "Int64"
+          },
+          "nullable": true,
+          "readOnly": false,
+          "default": null
+        }
+      ]
+    },
+    "SimData": {
+      "source": "LJ.DTO.Engine.SimData",
+      "properties": [
+        {
+          "name": "SceneId",
+          "alias": "sceneId",
+          "type": {
+            "kind": "int",
+            "name": "Int64"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": 0
+        },
+        {
+          "name": "Timestamp",
+          "alias": "timestamp",
+          "type": {
+            "kind": "int",
+            "name": "Int64"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": 0
+        },
+        {
+          "name": "BJT",
+          "alias": "bjt",
+          "type": {
+            "kind": "datetime",
+            "name": "DateTimeOffset"
+          },
+          "nullable": false,
+          "readOnly": true,
+          "default": "1970-01-01T08:00:00\u002B08:00"
+        },
+        {
+          "name": "Data",
+          "alias": "data",
+          "type": {
+            "kind": "dict",
+            "key": {
+              "kind": "int",
+              "name": "Int64"
+            },
+            "item": {
+              "kind": "model",
+              "name": "SimSatSimulation"
+            }
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": {}
+        },
+        {
+          "name": "SunPosAndVel",
+          "alias": "sunPosAndVel",
+          "type": {
+            "kind": "model",
+            "name": "Vector6d"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "SunPosition",
+          "alias": "sunPosition",
+          "type": {
+            "kind": "model",
+            "name": "Vector3d"
+          },
+          "nullable": false,
+          "readOnly": true,
+          "default": [
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "MoonPosition",
+          "alias": "moonPosition",
+          "type": {
+            "kind": "model",
+            "name": "SimPointThree"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": {
+            "position": [
+              0,
+              0,
+              0
+            ],
+            "time": ""
+          }
+        },
+        {
+          "name": "EarthSpainAngle",
+          "alias": "earthSpainAngle",
+          "type": {
+            "kind": "float",
+            "name": "Double"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": 0
+        },
+        {
+          "name": "PlatformEvent",
+          "alias": "platformEvent",
+          "type": {
+            "kind": "list",
+            "item": {
+              "kind": "model",
+              "name": "PlatEvent"
+            }
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": []
+        },
+        {
+          "name": "SimulationSpeed",
+          "alias": "simulationSpeed",
+          "type": {
+            "kind": "int",
+            "name": "Int32"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": 0
+        },
+        {
+          "name": "Speed",
+          "alias": "speed",
+          "type": {
+            "kind": "int",
+            "name": "Int32"
+          },
+          "nullable": true,
+          "readOnly": false,
+          "default": null
+        },
+        {
+          "name": "Step",
+          "alias": "step",
+          "type": {
+            "kind": "float",
+            "name": "Double"
+          },
+          "nullable": true,
+          "readOnly": false,
+          "default": null
+        },
+        {
+          "name": "SunVelocity",
+          "alias": "sunVelocity",
+          "type": {
+            "kind": "model",
+            "name": "Vector3d"
+          },
+          "nullable": false,
+          "readOnly": true,
+          "default": [
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "TaskId",
+          "alias": "taskId",
+          "type": {
+            "kind": "str",
+            "name": "String"
+          },
+          "nullable": false,
+          "readOnly": false,
+          "default": ""
+        }
+      ]
+    }
+  },
+  "conditionData": {
+    "frameData": {
+      "sceneId": 1001,
+      "timestamp": 1794535200000,
+      "bjt": "2026-11-13T10:00:00\u002B08:00",
+      "data": {
+        "1001": {
+          "id": 1001,
+          "vvlhRv": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6
+          ],
+          "ecf": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6
+          ],
+          "m_Name": "sample",
+          "forceType": 1,
+          "modelType": 1,
+          "fuelMass": 1.5,
+          "satRV": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6
+          ],
+          "satCoe": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6
+          ],
+          "isPulse": true,
+          "satCloseControlModel": 1,
+          "euler": [
+            1,
+            2,
+            3
+          ],
+          "q": [
+            1,
+            2,
+            3,
+            4
+          ],
+          "omega": [
+            1,
+            2,
+            3
+          ],
+          "mode": 1,
+          "isSteadyAtti": true,
+          "naviTarget": 1001,
+          "isKeepNavi": true,
+          "isSatFault": 1,
+          "lat": 1.5,
+          "lon": 1.5,
+          "alt": 1.5,
+          "payloads": {
+            "laserPayloadParam": {
+              "relativeW": [
+                1,
+                2,
+                3
+              ],
+              "area": 1.5,
+              "dissCoe": 1.5,
+              "evasionAng": [
+                1,
+                2,
+                3
+              ],
+              "power": 1.5,
+              "laserTime": 1.5,
+              "battleInterval": 1.5,
+              "canBattleTime": "2026-11-13 10:00:00",
+              "installMatrix": "sample",
+              "strikeDistance": 1.5
+            },
+            "dnPayloadParam": {
+              "installMatrix": "sample",
+              "relativeV": [
+                1,
+                2,
+                3
+              ],
+              "evasionAng": [
+                1,
+                2,
+                3
+              ],
+              "bombNum": 1,
+              "releaseDis": 1.5,
+              "canBattleTime": "2026-11-13 10:00:00",
+              "strikeDistance": 1.5
+            },
+            "controlledPayloadParam": {
+              "installMatrix": "sample",
+              "relativeW": [
+                1,
+                2,
+                3
+              ],
+              "relativeV": [
+                1,
+                2,
+                3
+              ],
+              "evasionAng": [
+                1,
+                2,
+                3
+              ],
+              "operationDis": 1.5,
+              "operationInterval": 1.5,
+              "operationNum": 1,
+              "canBattleTime": "2026-11-13 10:00:00"
+            },
+            "interferencePayloadParam": {
+              "installMatrix": "sample",
+              "payloadDirection": [
+                1,
+                2,
+                3
+              ],
+              "angleRange": 1.5
+            },
+            "radarPayloadParam": {
+              "installMatrix": "sample",
+              "payloadDirection": [
+                1,
+                2,
+                3
+              ],
+              "angleRange": 1.5
+            },
+            "communicationPayloadParam": {
+              "installMatrix": "sample",
+              "communicationDistance": 1.5
+            },
+            "infraredPayloadParam": {
+              "angleRange": 1.5,
+              "installMatrix": "sample",
+              "payloadDirection": [
+                1,
+                2,
+                3
+              ]
+            },
+            "opticsPayloadParam": {
+              "angleXRange": 1.5,
+              "angleYRange": 1.5,
+              "installMatrix": "sample",
+              "payloadDirection": [
+                1,
+                2,
+                3
+              ]
+            }
+          },
+          "recoverDatas": [
+            1
+          ],
+          "workStatus": 1,
+          "mPoint": [
+            1,
+            2,
+            3
+          ],
+          "angle": 1.5,
+          "speed": 1.5,
+          "type": 1,
+          "scriptVo": [
+            {
+              "equipmentId": 1001,
+              "type": 1,
+              "data": {
+                "custom": [
+                  true,
+                  null,
+                  "002"
+                ]
+              }
+            }
+          ],
+          "vip": true,
+          "standard": true,
+          "nextOrbitManeTimeMills": 1001,
+          "nextOrbitManeTime": "1970-01-01T00:00:01.001\u002B00:00"
+        }
+      },
+      "sunPosAndVel": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "sunPosition": [
+        1,
+        2,
+        3
+      ],
+      "moonPosition": {
+        "position": [
+          1,
+          2,
+          3
+        ],
+        "time": "sample"
+      },
+      "earthSpainAngle": 1.5,
+      "platformEvent": [
+        {
+          "eventType": 1,
+          "eventID": 1001,
+          "missionID": 1001,
+          "eventTime": 1001,
+          "eventEndTime": 1001,
+          "causeEID": 1001,
+          "targetEID": 1001,
+          "eventName": "sample",
+          "eventPhase": 1,
+          "eventState": 1,
+          "eventContent": "AQL/",
+          "taskID": 1001
+        }
+      ],
+      "simulationSpeed": 1,
+      "speed": 1,
+      "step": 1.5,
+      "sunVelocity": [
+        4,
+        5,
+        6
+      ],
+      "taskId": "sample"
+    },
+    "projectDto": {
+      "distributed": true,
+      "environment": {
+        "scenarioWeather": {
+          "spaceWeather": {
+            "spaceWeather": {
+              "sample": {
+                "custom": [
+                  true,
+                  null,
+                  "002"
+                ]
+              }
+            }
+          }
+        }
+      },
+      "equipmentNumEachNode": 1,
+      "force": {
+        "equipment": [
+          {
+            "equipGb": "sample",
+            "equipNo": "sample",
+            "equipment": [
+              {
+                "equipGb": "sample",
+                "equipNo": "sample",
+                "equipment": [
+                  {
+                    "equipGb": "sample",
+                    "equipNo": "sample",
+                    "equipment": [
+                      {
+                        "equipGb": "sample",
+                        "equipNo": "sample",
+                        "equipment": [],
+                        "equipmentParam": {
+                          "angle": {
+                            "custom": [
+                              true,
+                              null,
+                              "002"
+                            ]
+                          },
+                          "isInjure": {
+                            "custom": [
+                              true,
+                              null,
+                              "002"
+                            ]
+                          },
+                          "mpoint": {
+                            "custom": [
+                              true,
+                              null,
+                              "002"
+                            ]
+                          },
+                          "speed": {
+                            "custom": [
+                              true,
+                              null,
+                              "002"
+                            ]
+                          },
+                          "type": {
+                            "custom": [
+                              true,
+                              null,
+                              "002"
+                            ]
+                          },
+                          "workStatus": {
+                            "custom": [
+                              true,
+                              null,
+                              "002"
+                            ]
+                          }
+                        },
+                        "opticalPerceptionParam": {
+                          "sample": {
+                            "custom": [
+                              true,
+                              null,
+                              "002"
+                            ]
+                          }
+                        },
+                        "payloadAdsorptionParam": {
+                          "sample": {
+                            "custom": [
+                              true,
+                              null,
+                              "002"
+                            ]
+                          }
+                        },
+                        "payloadBaseInfoParam": {
+                          "sample": {
+                            "custom": [
+                              true,
+                              null,
+                              "002"
+                            ]
+                          }
+                        },
+                        "payloadCCSPayParam": {
+                          "angle": {
+                            "custom": [
+                              true,
+                              null,
+                              "002"
+                            ]
+                          },
+                          "azimuth": {
+                            "custom": [
+                              true,
+                              null,
+                              "002"
+                            ]
+                          },
+                          "azimuthRange": {
+                            "custom": [
+                              true,
+                              null,
+                              "002"
+                            ]
+                          },
+                          "elevation": {
+                            "custom": [
+                              true,
+                              null,
+                              "002"
+                            ]
+                          },
+                          "elevationRange": {
+                            "custom": [
+                              true,
+                              null,
+                              "002"
+                            ]
+                          },
+                          "explorePower": {
+                            "custom": [
+                              true,
+                              null,
+                              "002"
+                            ]
+                          },
+                          "isInjure": {
+                            "custom": [
+                              true,
+                              null,
+                              "002"
+                            ]
+                          },
+                          "scan": {
+                            "custom": [
+                              true,
+                              null,
+                              "002"
+                            ]
+                          },
+                          "scanDistance": {
+                            "custom": [
+                              true,
+                              null,
+                              "002"
+                            ]
+                          },
+                          "smList": {
+                            "custom": [
+                              true,
+                              null,
+                              "002"
+                            ]
+                          },
+                          "workStatus": {
+                            "custom": [
+                              true,
+                              null,
+                              "002"
+                            ]
+                          }
+                        },
+                        "payloadCKCameraPayParam": {
+                          "sample": {
+                            "custom": [
+                              true,
+                              null,
+                              "002"
+                            ]
+                          }
+                        },
+                        "payloadCKJXBParam": {
+                          "sample": {
+                            "custom": [
+                              true,
+                              null,
+                              "002"
+                            ]
+                          }
+                        }
+                      }
+                    ],
+                    "equipmentParam": {
+                      "angle": {
+                        "custom": [
+                          true,
+                          null,
+                          "002"
+                        ]
+                      },
+                      "isInjure": {
+                        "custom": [
+                          true,
+                          null,
+                          "002"
+                        ]
+                      },
+                      "mpoint": {
+                        "custom": [
+                          true,
+                          null,
+                          "002"
+                        ]
+                      },
+                      "speed": {
+                        "custom": [
+                          true,
+                          null,
+                          "002"
+                        ]
+                      },
+                      "type": {
+                        "custom": [
+                          true,
+                          null,
+                          "002"
+                        ]
+                      },
+                      "workStatus": {
+                        "custom": [
+                          true,
+                          null,
+                          "002"
+                        ]
+                      }
+                    },
+                    "opticalPerceptionParam": {
+                      "sample": {
+                        "custom": [
+                          true,
+                          null,
+                          "002"
+                        ]
+                      }
+                    },
+                    "payloadAdsorptionParam": {
+                      "sample": {
+                        "custom": [
+                          true,
+                          null,
+                          "002"
+                        ]
+                      }
+                    },
+                    "payloadBaseInfoParam": {
+                      "sample": {
+                        "custom": [
+                          true,
+                          null,
+                          "002"
+                        ]
+                      }
+                    },
+                    "payloadCCSPayParam": {
+                      "angle": {
+                        "custom": [
+                          true,
+                          null,
+                          "002"
+                        ]
+                      },
+                      "azimuth": {
+                        "custom": [
+                          true,
+                          null,
+                          "002"
+                        ]
+                      },
+                      "azimuthRange": {
+                        "custom": [
+                          true,
+                          null,
+                          "002"
+                        ]
+                      },
+                      "elevation": {
+                        "custom": [
+                          true,
+                          null,
+                          "002"
+                        ]
+                      },
+                      "elevationRange": {
+                        "custom": [
+                          true,
+                          null,
+                          "002"
+                        ]
+                      },
+                      "explorePower": {
+                        "custom": [
+                          true,
+                          null,
+                          "002"
+                        ]
+                      },
+                      "isInjure": {
+                        "custom": [
+                          true,
+                          null,
+                          "002"
+                        ]
+                      },
+                      "scan": {
+                        "custom": [
+                          true,
+                          null,
+                          "002"
+                        ]
+                      },
+                      "scanDistance": {
+                        "custom": [
+                          true,
+                          null,
+                          "002"
+                        ]
+                      },
+                      "smList": {
+                        "custom": [
+                          true,
+                          null,
+                          "002"
+                        ]
+                      },
+                      "workStatus": {
+                        "custom": [
+                          true,
+                          null,
+                          "002"
+                        ]
+                      }
+                    },
+                    "payloadCKCameraPayParam": {
+                      "sample": {
+                        "custom": [
+                          true,
+                          null,
+                          "002"
+                        ]
+                      }
+                    },
+                    "payloadCKJXBParam": {
+                      "sample": {
+                        "custom": [
+                          true,
+                          null,
+                          "002"
+                        ]
+                      }
+                    }
+                  }
+                ],
+                "equipmentParam": {
+                  "angle": {
+                    "custom": [
+                      true,
+                      null,
+                      "002"
+                    ]
+                  },
+                  "isInjure": {
+                    "custom": [
+                      true,
+                      null,
+                      "002"
+                    ]
+                  },
+                  "mpoint": {
+                    "custom": [
+                      true,
+                      null,
+                      "002"
+                    ]
+                  },
+                  "speed": {
+                    "custom": [
+                      true,
+                      null,
+                      "002"
+                    ]
+                  },
+                  "type": {
+                    "custom": [
+                      true,
+                      null,
+                      "002"
+                    ]
+                  },
+                  "workStatus": {
+                    "custom": [
+                      true,
+                      null,
+                      "002"
+                    ]
+                  }
+                },
+                "opticalPerceptionParam": {
+                  "sample": {
+                    "custom": [
+                      true,
+                      null,
+                      "002"
+                    ]
+                  }
+                },
+                "payloadAdsorptionParam": {
+                  "sample": {
+                    "custom": [
+                      true,
+                      null,
+                      "002"
+                    ]
+                  }
+                },
+                "payloadBaseInfoParam": {
+                  "sample": {
+                    "custom": [
+                      true,
+                      null,
+                      "002"
+                    ]
+                  }
+                },
+                "payloadCCSPayParam": {
+                  "angle": {
+                    "custom": [
+                      true,
+                      null,
+                      "002"
+                    ]
+                  },
+                  "azimuth": {
+                    "custom": [
+                      true,
+                      null,
+                      "002"
+                    ]
+                  },
+                  "azimuthRange": {
+                    "custom": [
+                      true,
+                      null,
+                      "002"
+                    ]
+                  },
+                  "elevation": {
+                    "custom": [
+                      true,
+                      null,
+                      "002"
+                    ]
+                  },
+                  "elevationRange": {
+                    "custom": [
+                      true,
+                      null,
+                      "002"
+                    ]
+                  },
+                  "explorePower": {
+                    "custom": [
+                      true,
+                      null,
+                      "002"
+                    ]
+                  },
+                  "isInjure": {
+                    "custom": [
+                      true,
+                      null,
+                      "002"
+                    ]
+                  },
+                  "scan": {
+                    "custom": [
+                      true,
+                      null,
+                      "002"
+                    ]
+                  },
+                  "scanDistance": {
+                    "custom": [
+                      true,
+                      null,
+                      "002"
+                    ]
+                  },
+                  "smList": {
+                    "custom": [
+                      true,
+                      null,
+                      "002"
+                    ]
+                  },
+                  "workStatus": {
+                    "custom": [
+                      true,
+                      null,
+                      "002"
+                    ]
+                  }
+                },
+                "payloadCKCameraPayParam": {
+                  "sample": {
+                    "custom": [
+                      true,
+                      null,
+                      "002"
+                    ]
+                  }
+                },
+                "payloadCKJXBParam": {
+                  "sample": {
+                    "custom": [
+                      true,
+                      null,
+                      "002"
+                    ]
+                  }
+                }
+              }
+            ],
+            "equipmentParam": {
+              "platParam": {
+                "algorithmsSatType": 1,
+                "dynType": 1,
+                "dwellDis": [
+                  1,
+                  2,
+                  3
+                ],
+                "sprayTime": 1.5,
+                "satMass": 1.5,
+                "fuelMass": 1.5,
+                "missDis": 1.5,
+                "orbitEpoch": "sample",
+                "orbitInitType": 1,
+                "orbitType": 1,
+                "powerDensity": [
+                  1,
+                  2,
+                  3
+                ],
+                "satRV": [
+                  1.5,
+                  1.5,
+                  1.5
+                ],
+                "orbitTLE": "sample",
+                "orbitElem": {
+                  "ecc": 1.5,
+                  "i": 1.5,
+                  "raan": 1.5,
+                  "argPeri": 1.5,
+                  "meanA": 1.5,
+                  "sMajAx": 1.5
+                },
+                "eulerAng": [
+                  1.5,
+                  1.5,
+                  1.5
+                ],
+                "omega": [
+                  1,
+                  2,
+                  3
+                ],
+                "orbitCtrlErr": 1.5,
+                "orbitCtrlInterval": 1.5,
+                "m_TarSize": [
+                  1,
+                  2,
+                  3
+                ],
+                "eulerSeq": 1,
+                "forceModel": {
+                  "gravityDegree": 1,
+                  "gravityOrder": 1,
+                  "dragCoeff": 1.5,
+                  "ca": 1.5,
+                  "cs": 1.5,
+                  "cr": 1.5,
+                  "dailyFlux": 1.5,
+                  "averageFlux": 1.5,
+                  "ap": 1.5
+                },
+                "massArea": {
+                  "mass": 1.5,
+                  "dragSection": 1.5,
+                  "solarCross": 1.5
+                },
+                "attitude": {
+                  "AttReFrame": "sample",
+                  "RotationOrderNum": 1,
+                  "Euler1": 1.5,
+                  "Euler2": 1.5,
+                  "Euler3": 1.5
+                },
+                "strikeCapability": {
+                  "score": 1.5
+                },
+                "protectCapability": {
+                  "score": 1.5
+                },
+                "maneuverCapability": {
+                  "isp": 1.5,
+                  "thrust": 1.5,
+                  "singleMaxDeltaV": 1.5,
+                  "totalDeltaV": 1.5,
+                  "orbitCtrlInterval": 1.5,
+                  "score": 1.5
+                },
+                "informationCapability": {
+                  "targetGuidance": "sample",
+                  "tmBandwidth": 1.5,
+                  "score": 1.5
+                },
+                "perceptionCapability": {
+                  "targetNum": 1,
+                  "detectionDistance": 1.5,
+                  "score": 1.5
+                },
+                "Isp": 1.5,
+                "Thrust": 1.5,
+                "I": [
+                  [
+                    1.5
+                  ]
+                ],
+                "dwellTime": [
+                  1,
+                  2,
+                  3
+                ],
+                "canBattleTime": "2026-11-13 10:00:00"
+              },
+              "payloadParams": [
+                {
+                  "laserPayloadParam": {
+                    "relativeW": [
+                      1,
+                      2,
+                      3
+                    ],
+                    "area": 1.5,
+                    "dissCoe": 1.5,
+                    "evasionAng": [
+                      1,
+                      2,
+                      3
+                    ],
+                    "power": 1.5,
+                    "laserTime": 1.5,
+                    "battleInterval": 1.5,
+                    "canBattleTime": "2026-11-13 10:00:00",
+                    "installMatrix": "sample",
+                    "strikeDistance": 1.5
+                  },
+                  "dnPayloadParam": {
+                    "installMatrix": "sample",
+                    "relativeV": [
+                      1,
+                      2,
+                      3
+                    ],
+                    "evasionAng": [
+                      1,
+                      2,
+                      3
+                    ],
+                    "bombNum": 1,
+                    "releaseDis": 1.5,
+                    "canBattleTime": "2026-11-13 10:00:00",
+                    "strikeDistance": 1.5
+                  },
+                  "controlledPayloadParam": {
+                    "installMatrix": "sample",
+                    "relativeW": [
+                      1,
+                      2,
+                      3
+                    ],
+                    "relativeV": [
+                      1,
+                      2,
+                      3
+                    ],
+                    "evasionAng": [
+                      1,
+                      2,
+                      3
+                    ],
+                    "operationDis": 1.5,
+                    "operationInterval": 1.5,
+                    "operationNum": 1,
+                    "canBattleTime": "2026-11-13 10:00:00"
+                  },
+                  "interferencePayloadParam": {
+                    "installMatrix": "sample",
+                    "payloadDirection": [
+                      1,
+                      2,
+                      3
+                    ],
+                    "angleRange": 1.5
+                  },
+                  "radarPayloadParam": {
+                    "installMatrix": "sample",
+                    "payloadDirection": [
+                      1,
+                      2,
+                      3
+                    ],
+                    "angleRange": 1.5
+                  },
+                  "communicationPayloadParam": {
+                    "installMatrix": "sample",
+                    "communicationDistance": 1.5
+                  },
+                  "infraredPayloadParam": {
+                    "angleRange": 1.5,
+                    "installMatrix": "sample",
+                    "payloadDirection": [
+                      1,
+                      2,
+                      3
+                    ]
+                  },
+                  "opticsPayloadParam": {
+                    "angleXRange": 1.5,
+                    "angleYRange": 1.5,
+                    "installMatrix": "sample",
+                    "payloadDirection": [
+                      1,
+                      2,
+                      3
+                    ]
+                  }
+                }
+              ]
+            },
+            "forceSide": 1,
+            "isActive": true,
+            "modelName": "sample",
+            "name": "sample",
+            "relations ": 1,
+            "skill": "sample",
+            "status": 1,
+            "threeDUrl": "sample",
+            "uuid": 1001,
+            "vip": true,
+            "standard": true
+          }
+        ]
+      },
+      "id": "sample",
+      "scenario": {
+        "description": "sample",
+        "keywords": [
+          "sample"
+        ],
+        "modificationDate": "sample",
+        "name": "sample",
+        "sceneId": 1001,
+        "version": "sample"
+      }
+    },
+    "forceType": 1,
+    "satId": "1001"
+  }
+}

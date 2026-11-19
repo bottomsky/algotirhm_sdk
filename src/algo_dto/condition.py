@@ -2,31 +2,38 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 from pydantic import AliasChoices, Field, RootModel
 
 from algo_dto.base import CamelBaseModel
+from algo_dto.csharp_models import ProjectDTO, SimData, SimSatSimulation
 
 
-class ConditionSatelliteState(CamelBaseModel):
-    """条件判断需要的最小卫星状态，其他仿真字段沿用基类忽略。"""
+class ConditionSatelliteState(SimSatSimulation):
+    """完整 C# 卫星状态；条件示例使用的两个判断字段仍为必填。"""
 
-    force_type: int = Field(description="卫星所属阵营")
-    is_sat_fault: int = Field(description="卫星故障标志，1 表示故障")
+    # Pydantic supports making inherited defaulted fields required.
+    force_type: int = Field(  # pyright: ignore[reportGeneralTypeIssues]
+        description="卫星所属阵营"
+    )
+    is_sat_fault: int = Field(  # pyright: ignore[reportGeneralTypeIssues]
+        description="卫星故障标志，1 表示故障"
+    )
 
 
-class ConditionFrameData(CamelBaseModel):
-    """当前帧；data 的键为卫星 ID。"""
+class ConditionFrameData(SimData):
+    """完整 C# 当前帧；data 的键为卫星 ID。"""
 
-    data: dict[str, ConditionSatelliteState]
+    # Preserve the condition endpoint's existing required-field contract.
+    data: dict[  # pyright: ignore[reportGeneralTypeIssues]
+        str, ConditionSatelliteState
+    ]
 
 
 class ConditionRequest(CamelBaseModel):
     """通过 SDK 标准请求的 data 字段传输的条件算法输入。"""
 
     frame_data: ConditionFrameData
-    project_dto: dict[str, Any] = Field(
+    project_dto: ProjectDTO = Field(
         description="项目上下文，本示例接收但不参与判断"
     )
     force_type: int = Field(description="当前行为树所属阵营")

@@ -89,7 +89,8 @@ def test_accepts_extra_simulation_fields() -> None:
             "extraContext": "ignored",
         }
     )
-    assert req.project_dto["id"] == "demo"
+    assert req.project_dto.id == "demo"
+    assert req.project_dto.model_extra == {"settings": {"enabled": True}}
     assert req.model_dump(by_alias=True)["forceType"] == 1
     assert ConditionAlgorithm().run(req).root is True
 
